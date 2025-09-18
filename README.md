@@ -15,7 +15,9 @@ Este sistema permite analizar videos de tráfico para:
 - Monitorear tráfico en tiempo real
 - Sistema de notificaciones y alertas
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ Arquitectura del ## 📞 Contacto
+
+Para dudas académicas o soporte técnico, contactar al equipo de desarrollo a través de sus perfiles de GitHub.tema
 
 El proyecto está estructurado como un **monorepo** con 3 módulos independientes pero interconectados:
 
@@ -686,7 +688,7 @@ Infraestructura:
 
 Este proyecto es de uso académico y de investigación, desarrollado para la Universidad de Milagro. Todos los derechos reservados al equipo de desarrollo y la institución educativa. 
 
-## � Equipo de Desarrollo
+## 👥 Equipo de Desarrollo
 
 Este proyecto fue desarrollado por estudiantes de 5to semestre de la carrera de Ingeniería en Software de la Universidad de Milagro como proyecto de investigación:
 
@@ -703,11 +705,11 @@ Este proyecto fue desarrollado por estudiantes de 5to semestre de la carrera de 
 - **Tipo de Proyecto**: Investigación y Desarrollo
 - **Año Académico**: 2024-2025
 
-## �📞 Contacto
+## 📞 Contacto
 
 Para dudas académicas o soporte técnico, contactar al equipo de desarrollo a través de sus perfiles de GitHub.
 
 ---
 
-⚡ **Desarrollado con**: FastAPI + React + TypeScript + Machine Learning  
+⚡ **Desarrollado con**: Django REST Framework + React + TypeScript + Machine Learning  
 🎓 **Universidad de Milagro - Ingeniería en Software**
