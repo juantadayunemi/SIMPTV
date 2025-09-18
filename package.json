@@ -1,0 +1,65 @@
+{
+  "name": "traffic-analysis-system",
+  "version": "1.0.0",
+  "description": "Sistema completo de análisis de tráfico con detección de placas y ML",
+  "keywords": [
+    "traffic-analysis",
+    "plate-detection",
+    "machine-learning",
+    "fastapi",
+    "react",
+    "typescript"
+  ],
+  "author": "Traffic Analysis Team",
+  "license": "PRIVATE",
+  "workspaces": [
+    "shared",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:backend",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:shared": "cd shared && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "build:shared": "cd shared && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:all": "npm run build:shared && npm run build:frontend",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "start:frontend": "cd frontend && npm run preview",
+    "start:backend": "cd backend && uvicorn main:app --host 0.0.0.0 --port 8000",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:shared": "cd shared && npm run lint",
+    "lint:all": "npm run lint:shared && npm run lint:frontend",
+    "type-check:frontend": "cd frontend && npx tsc --noEmit",
+    "type-check:shared": "cd shared && npx tsc --noEmit",
+    "type-check:all": "npm run type-check:shared && npm run type-check:frontend",
+    "test:frontend": "cd frontend && npm run test",
+    "test:shared": "cd shared && npm run test",
+    "test:backend": "cd backend && python -m pytest",
+    "test:all": "npm run test:shared && npm run test:frontend && npm run test:backend",
+    "clean": "npm run clean:shared && npm run clean:frontend",
+    "clean:shared": "cd shared && rm -rf dist node_modules",
+    "clean:frontend": "cd frontend && rm -rf dist node_modules",
+    "clean:backend": "cd backend && find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true",
+    "clean:all": "npm run clean && npm run clean:backend",
+    "db:generate": "cd backend && npx prisma generate",
+    "db:push": "cd backend && npx prisma db push",
+    "db:seed": "cd backend && python seed.py",
+    "db:reset": "npm run db:push && npm run db:seed",
+    "setup": "npm run install:all && npm run build:shared && npm run db:generate && npm run db:push && npm run db:seed",
+    "setup:dev": "npm run install:all && npm run build:shared",
+    "postinstall": "npm run build:shared"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.9.0",
+    "npm": ">=8.0.0"
+  },
+  "private": true
+}
