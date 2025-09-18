@@ -100,13 +100,34 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    authService.logout();
-    setState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-    });
+    try {
+      // Clear authentication service data
+      authService.logout();
+      
+      // Update state immediately
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+      
+      // Force clear localStorage as backup
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force clear even if there's an error
+      localStorage.clear();
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    }
   };
 
   const updateProfile = async (data: { fullName?: string; email?: string }) => {

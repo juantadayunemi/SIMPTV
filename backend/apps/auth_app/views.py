@@ -87,7 +87,7 @@ class LoginView(APIView):
                     "expires_in_hours": token_expired_hours,
                     "expires_at": timezone.now() + timedelta(hours=token_expired_hours),
                     "user": {
-                        "id": user.id,
+                        "id": str(user.pk),
                         "email": user.email,
                         "fullName": user.fullName,
                         "phoneNumber": user.phoneNumber,

@@ -65,7 +65,6 @@ LOCAL_APPS = [
     # Core apps
     "apps.entities",  # DLL models (abstract)
     "apps.auth_app",  # Auth API (concrete)
-    # Feature apps (to be created)
     # "apps.plates_app",  # Plates API
     # "apps.external_apis",  # External APIs
     # "apps.notifications",  # Notifications

@@ -23,10 +23,19 @@ export const Header: React.FC = () => {
     };
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    setIsDropdownOpen(false);
-    navigate('/login', { replace: true });
+  const handleLogout = async () => {
+    try {
+      logout();
+      setIsDropdownOpen(false);
+      // Force navigation to login immediately
+      navigate('/login', { replace: true });
+      // Also reload the page to ensure clean state
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: force navigation to login
+      window.location.href = '/login';
+    }
   };
 
   const userRoles = user?.userRoles?.map(ur => ur.role) || [];
@@ -42,13 +51,23 @@ export const Header: React.FC = () => {
         };
       case '/traffic':
         return {
-          title: 'Análisis de Tráfico',
-          subtitle: 'Monitoreo y análisis de patrones de tráfico vehicular'
+          title: 'Monitoreo de Tráfico',
+          subtitle: 'Análisis y monitoreo en tiempo real del tráfico vehicular'
         };
       case '/plates':
         return {
           title: 'Detección de Placas',
           subtitle: 'Sistema de reconocimiento de placas vehiculares'
+        };
+      case '/predictions':
+        return {
+          title: 'Análisis de Predicciones',
+          subtitle: 'Predicciones de tráfico basadas en Machine Learning'
+        };
+      case '/vehicles-reports':
+        return {
+          title: 'Vehículos con Denuncias',
+          subtitle: 'Listado de vehículos reportados y bajo investigación'
         };
       case '/users':
         return {
@@ -59,6 +78,11 @@ export const Header: React.FC = () => {
         return {
           title: 'Notificaciones',
           subtitle: 'Centro de notificaciones y alertas del sistema'
+        };
+      case '/profile':
+        return {
+          title: 'Mi Perfil',
+          subtitle: 'Información personal y configuración de cuenta'
         };
       default:
         return {

@@ -15,7 +15,7 @@ const navigationItems = [
     roles: ['ADMIN', 'OPERATOR', 'VIEWER']
   },
   {
-    name: 'Análisis de Tráfico',
+    name: 'Monitoreo de Tráfico',
     href: '/traffic',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,6 +33,26 @@ const navigationItems = [
       </svg>
     ),
     roles: ['ADMIN', 'OPERATOR', 'VIEWER']
+  },
+  {
+    name: 'Análisis de Predicciones',
+    href: '/predictions',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    ),
+    roles: ['ADMIN', 'OPERATOR', 'VIEWER']
+  },
+  {
+    name: 'Vehículos con Denuncias',
+    href: '/vehicles-reports',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    ),
+    roles: ['ADMIN', 'OPERATOR']
   },
   {
     name: 'Gestión de Usuarios',
@@ -61,11 +81,8 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const userRoles = user?.userRoles?.map(ur => ur.role) || [];
-
-  const hasAccess = (requiredRoles: string[]) => {
-    return requiredRoles.some(role => userRoles.includes(role));
-  };
+  // Temporary: No role validation - all users see all menus
+  const userRoles = ['ADMIN', 'OPERATOR', 'VIEWER']; // Give access to everything
 
   return (
     <div className={`bg-gradient-to-b from-gray-900 to-gray-800 text-white min-h-screen flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} shadow-xl`}>
@@ -75,9 +92,9 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-300 bg-clip-text text-transparent">
-                Urbia Analytics
+                SIMPTV
               </h1>
-              <p className="text-sm text-gray-400 mt-1">Sistema de Tráfico</p>
+              <p className="text-sm text-gray-400 mt-1">Sistema de Monitoreo de Tráfico</p>
             </div>
           )}
           <button
@@ -99,10 +116,7 @@ export const Sidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-6 space-y-1">
         {navigationItems.map((item) => {
-          if (!hasAccess(item.roles)) {
-            return null;
-          }
-
+          // Temporary: Show all menu items (no role validation)
           const isActive = location.pathname === item.href;
 
           return (

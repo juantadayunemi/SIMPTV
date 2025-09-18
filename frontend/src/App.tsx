@@ -8,6 +8,8 @@ import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
+import PredictionsPage from './pages/predictions/PredictionsPage';
+import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
 import UsersPage from './pages/users/UsersPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import ProfilePage from './pages/profile/ProfilePage';
@@ -22,6 +24,16 @@ import './App.css';
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Listen for authentication changes and redirect if needed
+  React.useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        window.location.href = '/login';
+      }
+    }
+  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
@@ -70,6 +82,8 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="traffic" element={<TrafficAnalysisPage />} />
             <Route path="plates" element={<PlateDetectionPage />} />
+            <Route path="predictions" element={<PredictionsPage />} />
+            <Route path="vehicles-reports" element={<VehicleReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="profile" element={<ProfilePage />} />
