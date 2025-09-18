@@ -219,14 +219,8 @@ SIMPLE_JWT = {
 # CORS CONFIGURATION
 # ==============================================================================
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React dev server
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",  # Vue/Angular
-    "http://127.0.0.1:8080",
-]
+## OBSOLETO: La configuración CORS debe estar solo en settings.py principal
+## CORS_ALLOWED_ORIGINS = [ ... ]
 
 CORS_ALLOW_CREDENTIALS = True
 

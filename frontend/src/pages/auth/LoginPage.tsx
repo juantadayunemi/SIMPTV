@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,7 +8,15 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +33,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
+      // Successful login - navigation will be handled by useEffect
     } catch (err) {
       // Error is handled by useAuth hook
     }
@@ -120,8 +129,8 @@ export const LoginPage: React.FC = () => {
           <div className="mt-6 p-4 bg-blue-50 rounded-md">
             <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Account:</h4>
             <p className="text-xs text-blue-700">
-              Email: jtadaym@unemi.edu.ec<br />
-              Password: hola123..
+              Email: admin@gmail.com<br />
+              Password: 123
             </p>
           </div>
         </div>

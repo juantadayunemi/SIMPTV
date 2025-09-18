@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export const Header: React.FC = () => {
@@ -7,6 +7,7 @@ export const Header: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -25,6 +26,7 @@ export const Header: React.FC = () => {
   const handleLogout = () => {
     logout();
     setIsDropdownOpen(false);
+    navigate('/login', { replace: true });
   };
 
   const userRoles = user?.userRoles?.map(ur => ur.role) || [];
