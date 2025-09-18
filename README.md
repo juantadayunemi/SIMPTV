@@ -1,6 +1,9 @@
-# Traffic Analysis System
+# SIMPTV - Sistema Inteligente de Monitoreo y Predicción de Tráfico Vehicular
 
 Sistema completo de análisis de tráfico con detección de placas y predicción usando Machine Learning.
+
+**Proyecto de Investigación - Universidad de Milagro**  
+Carrera de Ingeniería en Software - 5to Semestre
 
 ## 🚀 Descripción del Proyecto
 
@@ -52,8 +55,8 @@ DATABASE_URL="sqlserver://localhost;database=UrbiaDb;integratedSecurity=true;tru
 
 ### Usuario Administrador
 ```
-Email: jtadaym@unemi.edu.ec
-Password: hola123..
+Email: admin@gmail.com
+Password: 123
 Roles: ADMIN
 ```
 
@@ -262,12 +265,30 @@ npm run dev:backend      # Dev backend (Python)
 
 ## 📄 Licencia
 
-Este proyecto es privado y está destinado para uso interno de la organización.
+Este proyecto es de uso académico y de investigación, desarrollado para la Universidad de Milagro. Todos los derechos reservados al equipo de desarrollo y la institución educativa. 
 
-## 📞 Contacto
+## � Equipo de Desarrollo
 
-Para dudas o soporte técnico, contactar al equipo de desarrollo.
+Este proyecto fue desarrollado por estudiantes de 5to semestre de la carrera de Ingeniería en Software de la Universidad de Milagro como proyecto de investigación:
+
+- **Juan Taday** - [@juantadayunemi](https://github.com/juantadayunemi)
+- **Adrian Avila** - [@adrianavila](https://github.com/adrianavila) 
+- **Damian Solari** - [@damsoles](https://github.com/damsoles)
+- **Domenica Janina Piza Arias** - [@domenica-arpi](https://github.com/domenica-arpi)
+
+## 🎓 Información Académica
+
+- **Institución**: Universidad de Milagro (UNEMI)
+- **Carrera**: Ingeniería en Software
+- **Semestre**: 5to Semestre
+- **Tipo de Proyecto**: Investigación y Desarrollo
+- **Año Académico**: 2024-2025
+
+## �📞 Contacto
+
+Para dudas académicas o soporte técnico, contactar al equipo de desarrollo a través de sus perfiles de GitHub.
 
 ---
 
-⚡ **Desarrollado con**: FastAPI + React + TypeScript + Machine Learning
+⚡ **Desarrollado con**: FastAPI + React + TypeScript + Machine Learning  
+🎓 **Universidad de Milagro - Ingeniería en Software**
