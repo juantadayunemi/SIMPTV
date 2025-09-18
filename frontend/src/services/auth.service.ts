@@ -29,16 +29,24 @@ export interface User {
 
 class AuthService {
   // Login user
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+  async login(credentials: LoginCredentials, rememberMe: boolean = false): Promise<AuthResponse> {
     const response = await api.post('/api/auth/login/', credentials);
-    const { access_token, refresh_token, user } = response.data;
+    const { access_token, refresh_token, user, expires_at } = response.data;
     
-    // Store tokens and user
-    localStorage.setItem('access_token', access_token);
+    // Store tokens and user based on rememberMe preference
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    storage.setItem('access_token', access_token);
     if (refresh_token) {
-      localStorage.setItem('refresh_token', refresh_token);
+      storage.setItem('refresh_token', refresh_token);
     }
-    localStorage.setItem('user', JSON.stringify(user));
+    storage.setItem('user', JSON.stringify(user));
+    
+    // Store expiration date and remember preference
+    if (expires_at) {
+      storage.setItem('token_expires_at', expires_at);
+    }
+    localStorage.setItem('remember_me', rememberMe.toString());
     
     return response.data;
   }
@@ -72,19 +80,40 @@ class AuthService {
 
   // Logout
   logout(): void {
+    // Clear from both localStorage and sessionStorage
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('token_expires_at');
+    localStorage.removeItem('remember_me');
+    
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token_expires_at');
   }
 
-  // Get stored token
+  // Get stored token (check both localStorage and sessionStorage)
   getToken(): string | null {
-    return localStorage.getItem('access_token');
+    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+  }
+
+  // Check if token is still valid
+  isTokenValid(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    const expiresAt = localStorage.getItem('token_expires_at') || sessionStorage.getItem('token_expires_at');
+    if (!expiresAt) return true; // If no expiration date, assume valid
+
+    const now = new Date();
+    const expiration = new Date(expiresAt);
+    return now < expiration;
   }
 
   // Get current user from storage or API
   async getCurrentUser(): Promise<User> {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
     if (userStr) {
       try {
         return JSON.parse(userStr);
@@ -108,7 +137,7 @@ class AuthService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('access_token');
+    return !!this.getToken() && this.isTokenValid();
   }
 
   // Get current user roles

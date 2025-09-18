@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { login, isLoading, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       // Successful login - navigation will be handled by useEffect
     } catch (err) {
       // Error is handled by useAuth hook
@@ -74,6 +75,21 @@ export const LoginPage: React.FC = () => {
               required
               placeholder="Enter your password"
             />
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                Recordar mi contraseña
+              </label>
+            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">

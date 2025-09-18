@@ -30,6 +30,19 @@ export const useAuth = () => {
         return;
       }
 
+      // Check if token is still valid
+      if (!authService.isTokenValid()) {
+        console.log('Token has expired, logging out...');
+        authService.logout();
+        setState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
+        return;
+      }
+
       const user = await authService.getCurrentUser();
       setState({
         user,
@@ -49,11 +62,11 @@ export const useAuth = () => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const response = await authService.login({ email, password });
+      const response = await authService.login({ email, password }, rememberMe);
       
       setState({
         user: response.user,
