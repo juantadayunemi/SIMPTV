@@ -129,9 +129,9 @@ SIMPTV/
 ```env
 # Configuración en backend/.env
 DB_NAME=UrbiaDb
-DB_USER=jsofuseradmin
-DB_PASSWORD=1234567890
-DB_HOST=.
+DB_USER=xxxxxxx
+DB_PASSWORD=xxxxxxx
+DB_HOST=xxxxxxx
 DB_PORT=1433
 ```
 
@@ -144,7 +144,7 @@ USE_SQLITE=True
 ### Usuario Administrador por Defecto
 ```
 Email: admin@gmail.com
-Password: 123
+Password: xxxxxxx
 Roles: ADMIN
 ```
 
@@ -488,23 +488,23 @@ class Notification(Model):
 ```env
 # Base de datos SQL Server
 DB_NAME=UrbiaDb
-DB_USER=jsofuseradmin
-DB_PASSWORD=1234567890
-DB_HOST=.
+DB_USER=xxxxxxx
+DB_PASSWORD=xxxxxxx
+DB_HOST=xxxxxxx
 DB_PORT=1433
 
 # Alternativa SQLite para desarrollo
 USE_SQLITE=False
 
 # Seguridad Django
-SECRET_KEY=django-insecure-p08#hw$-d%ufc!j5139jqlu)o_mv_3-*c06l%r)0v!-a-s@tj^
+SECRET_KEY=xxxxxxx
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 
 # APIs externas (futuro)
-SENDGRID_API_KEY=your-sendgrid-key
-TWILIO_ACCOUNT_SID=your-twilio-sid
-TWILIO_AUTH_TOKEN=your-twilio-token
+SENDGRID_API_KEY=xxxxxxx
+TWILIO_ACCOUNT_SID=xxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxx
 
 # Machine Learning (futuro)
 ML_MODEL_PATH=models/
