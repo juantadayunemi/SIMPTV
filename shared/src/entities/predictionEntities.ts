@@ -8,7 +8,7 @@ import { DensityLevelKey, VehicleTypeKey } from "../types/trafficTypes";
 // ============= HISTORICAL DATA ENTITIES =============
 
 export interface TrafficHistoricalDataEntity {
-  id: string;
+  id: number;
   location: string;
   date: Date;
   hour: number; // 0-23
@@ -25,7 +25,7 @@ export interface TrafficHistoricalDataEntity {
 }
 
 export interface LocationTrafficPatternEntity {
-  id: string;
+  id: number;
   location: string;
   patternType: string; // 'hourly', 'daily', 'weekly', 'monthly'
   patternData: string; // JSON serialized pattern data

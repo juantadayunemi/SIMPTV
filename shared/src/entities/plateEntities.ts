@@ -8,7 +8,7 @@ import { VehicleTypeKey } from "../types/trafficTypes";
 // ============= PLATE ENTITIES =============
 
 export interface PlateDetectionEntity {
-  id: string;
+  id: number;
   trafficAnalysisId: string;
   plateNumber: string;
   confidence: number;
@@ -21,7 +21,7 @@ export interface PlateDetectionEntity {
 }
 
 export interface PlateAnalysisEntity {
-  id: string;
+  id: number;
   plateNumber: string;
   detectionCount: number;
   firstDetected: Date;

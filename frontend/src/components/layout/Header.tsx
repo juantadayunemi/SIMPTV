@@ -130,7 +130,7 @@ export const Header: React.FC = () => {
                 
                 {/* Enhanced notification badge with pulse animation */}
                 <span className="absolute -top-0.5 -right-0.5 h-6 w-6 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse border-2 border-white z-20">
-                  <span className="relative z-10">99+</span>
+                  <span className="relative z-10"> 9+ </span>
                   {/* Pulse ring effect */}
                   <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
                 </span>

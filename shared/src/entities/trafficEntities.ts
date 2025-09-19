@@ -8,7 +8,7 @@ import { AnalysisStatusKey, DensityLevelKey, VehicleTypeKey } from "../types/tra
 // ============= TRAFFIC ENTITIES =============
 
 export interface TrafficAnalysisEntity {
-  id: string;
+  id: number;
   location: string;
   videoPath?: string;
   vehicleCount: number;
@@ -22,7 +22,7 @@ export interface TrafficAnalysisEntity {
 }
 
 export interface VehicleDetectionEntity {
-  id: string;
+  id: number;
   trafficAnalysisId: string;
   vehicleType: VehicleTypeKey;
   confidence: number;

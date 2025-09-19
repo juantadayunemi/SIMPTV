@@ -73,8 +73,8 @@ class LoginView(APIView):
             token_expired_hours = 24  # ← Configurable directamente aquí
 
             # Generar tokens JWT con expiración personalizada
-            refresh = RefreshToken.for_user(user)
-            access_token = AccessToken.for_user(user)
+            refresh = RefreshToken.for_user(user )# type: ignore
+            access_token = AccessToken.for_user(user) # type: ignore
 
             # Configurar tiempo de expiración personalizado
             access_token.set_exp(lifetime=timedelta(hours=token_expired_hours))

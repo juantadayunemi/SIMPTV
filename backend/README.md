@@ -1,3 +1,90 @@
+# ⚡️ Instrucciones rápidas para auto-recuperación de modelos
+
+1. Si eliminas o corrompes cualquier archivo de modelo en `apps/entities/models/`, no edites manualmente los imports en `__init__.py`.
+2. Ejecuta:
+
+    ```bash
+    python manage.py generate_entities --organized
+    ```
+
+3. El generador comentará automáticamente los bloques de importación problemáticos, recreará los archivos eliminados y restaurará los imports.
+4. El sistema es auto-recuperable y robusto ante eliminaciones accidentales.
+
+---
+# Auto-recuperación de modelos y manejo de imports
+
+Este proyecto utiliza un generador inteligente para sincronizar los modelos Django con las interfaces TypeScript de `shared/src/entities`.
+
+## ¿Qué ocurre si eliminas un archivo de modelo?
+
+Si eliminas manualmente un archivo de modelo (por ejemplo, `plates.py`), los bloques de importación correspondientes en `apps/entities/models/__init__.py` pueden causar errores de importación.
+
+**Solución automática:**
+
+El generador (`python manage.py generate_entities --organized`) detecta los archivos faltantes y comenta automáticamente los bloques de importación relacionados. Luego, recrea los archivos eliminados y restaura los imports.
+
+## Pasos para regenerar y auto-recuperar modelos
+
+1. Elimina o corrompe cualquier archivo de modelo en `apps/entities/models/`.
+2. Ejecuta:
+
+    ```bash
+    python manage.py generate_entities --organized
+    ```
+
+3. El generador comentará los imports problemáticos, recreará los archivos y restaurará los imports.
+
+## Notas
+
+- No es necesario editar manualmente los imports en `__init__.py`.
+- El sistema es auto-recuperable y robusto ante eliminaciones accidentales.
+
+---
+# 🛠️ Generador de Modelos DLL desde TypeScript
+
+### Comando: `python manage.py generate_entities`
+
+Este comando genera automáticamente los modelos DLL de Django a partir de las interfaces TypeScript ubicadas en el proyecto compartido (`shared/src/entities`).
+
+**¿Para qué sirve?**
+- Convierte las interfaces TypeScript en modelos abstractos de Django (DLL), listos para ser heredados en otras apps.
+- Permite mantener sincronizados los modelos entre backend y frontend, facilitando el desarrollo ágil y la integración continua.
+- Sobrescribe los modelos cada vez que se ejecuta, ideal para entornos de desarrollo con cambios frecuentes.
+
+**¿Cómo funciona?**
+1. Busca todos los archivos TypeScript en la ruta compartida (`shared/src/entities`).
+2. Analiza las interfaces y sus propiedades, mapeando los tipos TypeScript a campos Django:
+    - `id: number` → campo autoincremental (identity, heredado de BaseModel)
+    - `id: string` o `guid: string` → campo `UUIDField` autogenerado
+    - `createdAt`, `updatedAt` → `DateTimeField` (en migraciones SQL Server se recomienda default `getdate()`)
+    - Otros tipos (`string`, `number`, `boolean`, arrays, enums) se mapean automáticamente
+3. Genera los archivos de modelos en la carpeta `apps/entities/models/` organizados por dominio (auth, traffic, plates, etc).
+4. Genera los archivos de constantes y choices en `apps/entities/constants/`.
+5. Sobrescribe los modelos existentes (no es necesario borrar manualmente).
+
+**Opciones avanzadas:**
+- `--shared-path`: Ruta al proyecto compartido TypeScript (por defecto: `../shared/src`)
+- `--entities-only`: Solo genera modelos, omite tipos/enums
+- `--organized`: Genera estructura organizada por dominio (recomendado)
+- `--output-file`: Archivo de salida para modelos (por defecto: `apps/entities/models.py`)
+- `--dry-run`: Muestra el resultado sin escribir archivos
+
+**Ejemplo de uso básico:**
+```bash
+python manage.py generate_entities --organized
+```
+
+**Ejemplo de uso avanzado:**
+```bash
+python manage.py generate_entities --shared-path="../shared/src" --entities-only --dry-run
+```
+
+**Notas técnicas:**
+- El campo `id` siempre es autoincremental (identity) y heredado de `BaseModel`.
+- Los GUIDs se generan como `UUIDField` con autogeneración.
+- Los campos de fecha (`createdAt`, `updatedAt`) deben tener default `getdate()` en migraciones SQL Server (personalizar si es necesario).
+- Los modelos generados son abstractos y no crean tablas directamente, deben ser heredados en apps concretas.
+
 # Urbia Traffic Analysis API Backend
 
 Backend API REST completo construido con **Django 5.2** + **Django REST Framework** para sistema de análisis de tráfico vehicular con IA y Machine Learning.

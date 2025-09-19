@@ -165,11 +165,32 @@ class TypeScriptEntityParser:
             }
 
         # Special handling for common field patterns
-        if "id" in prop_name and ts_type.lower() == "number":
+        if prop_name.lower() == "id" and ts_type.lower() == "number":
+            # Heredado de BaseModel como autoincremental
             return {
-                "field_type": "BigIntegerField",
-                "options": {},
+                "field_type": "BigAutoField",
+                "options": {"primary_key": True},
                 "import": "from django.db import models",
+            }
+        # GUID/UUID
+        if (
+            "id" in prop_name.lower() or "guid" in prop_name.lower()
+        ) and ts_type.lower() == "string":
+            return {
+                "field_type": "UUIDField",
+                "options": {"default": "uuid.uuid4", "editable": False},
+                "import": "from django.db import models",
+            }
+        # createdAt/updatedAt para SQL Server
+        if (
+            prop_name.lower() in ["createdat", "updatedat"]
+            and ts_type.lower() == "date"
+        ):
+            return {
+                "field_type": "DateTimeField",
+                "options": {"blank": True, "null": True},
+                "import": "from django.db import models",
+                "note": "En migración SQL Server usar default=getdate()",
             }
         elif "email" in prop_name:
             return {
@@ -300,6 +321,7 @@ class DjangoModelGenerator:
         # Add imports
         models_code.append("from django.db import models")
         models_code.append("from .models import BaseModel")
+        models_code.append("import uuid")
         models_code.append("")
 
         for interface_name, interface_info in interface_data.get(
@@ -380,6 +402,9 @@ class DjangoModelGenerator:
         )
         lines.append("")
         lines.append(
+            "    id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only"
+        )
+        lines.append(
             '    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")'
         )
         lines.append(
@@ -404,6 +429,18 @@ class DjangoModelGenerator:
         lines = []
         lines.append("from django.db import models")
         lines.append("from .base import BaseModel")
+        # Check if any property uses uuid.uuid4 as default
+        needs_uuid_import = False
+        for interface_info in interfaces.values():
+            for prop in interface_info.get("properties", {}).values():
+                django_field = prop.get("django_field", {})
+                if (
+                    django_field.get("field_type") == "UUIDField"
+                    and django_field.get("options", {}).get("default") == "uuid.uuid4"
+                ):
+                    needs_uuid_import = True
+        if needs_uuid_import:
+            lines.append("import uuid")
         lines.append("from ..constants import (")
 
         # Add constants imports based on category
@@ -655,9 +692,13 @@ class DjangoModelGenerator:
         if prop_info["optional"]:
             options.update({"blank": True, "null": True})
 
-        # Special handling for id fields - don't override Django's default id
+        # Special handling for id fields - always generate explicit field
         if prop_name.lower() == "id":
-            return f"# {prop_name} field inherited from BaseModel (auto-generated primary key)"
+            ts_type = prop_info["type"].lower()
+            if ts_type == "number":
+                return "id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only"
+            elif ts_type == "string":
+                return "id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only"
 
         # Build options string
         option_parts = []
@@ -665,6 +706,8 @@ class DjangoModelGenerator:
             if key == "choices" and isinstance(value, str):
                 # Handle choices references
                 option_parts.append(f"{key}={value}")
+            elif key == "default" and value == "uuid.uuid4":
+                option_parts.append(f"{key}=uuid.uuid4")
             elif isinstance(value, str) and key != "choices":
                 option_parts.append(f"{key}='{value}'")
             elif isinstance(value, bool):
@@ -939,6 +982,53 @@ class Command(BaseCommand):
                 )
             )
 
+        # --- PATCH: Comment missing imports in models/__init__.py ---
+        models_init_path = Path("apps/entities/models/__init__.py")
+        if models_init_path.exists():
+            with open(models_init_path, "r", encoding="utf-8") as f:
+                init_lines = f.readlines()
+            new_lines = []
+            block = []
+            block_missing = False
+            for line in init_lines:
+                # Detect start of import block
+                if line.strip().startswith("from .") and "import (" in line:
+                    block = [line]
+                    block_missing = False
+                    # Extract category
+                    import_match = re.match(
+                        r"from \.([a-zA-Z_]+) import \(", line.strip()
+                    )
+                    if import_match:
+                        category = import_match.group(1)
+                        model_file = Path(f"apps/entities/models/{category}.py")
+                        if not model_file.exists():
+                            block_missing = True
+                    continue
+                # Detect end of import block
+                elif block and line.strip() == ")":
+                    block.append(line)
+                    if block_missing:
+                        for bline in block:
+                            new_lines.append(
+                                f"# {bline}" if not bline.startswith("#") else bline
+                            )
+                    else:
+                        new_lines.extend(block)
+                    block = []
+                    block_missing = False
+                    continue
+                # Collect lines inside import block
+                elif block:
+                    block.append(line)
+                    continue
+                else:
+                    new_lines.append(line)
+            # Write the commented version
+            with open(models_init_path, "w", encoding="utf-8") as f:
+                f.writelines(new_lines)
+        # --- END PATCH ---
+
         # Generate Django code
         if organized:
             # Generate organized structure with separate files
@@ -962,6 +1052,22 @@ class Command(BaseCommand):
             else:
                 # Create the organized structure
                 self._create_organized_structure(organized_files)
+
+                # --- PATCH: Uncomment imports in models/__init__.py after generation ---
+                if models_init_path.exists():
+                    with open(models_init_path, "r", encoding="utf-8") as f:
+                        init_lines = f.readlines()
+                    new_lines = []
+                    for line in init_lines:
+                        if line.strip().startswith("# from ."):
+                            uncommented = line.replace("# ", "", 1)
+                            new_lines.append(uncommented)
+                        else:
+                            new_lines.append(line)
+                    with open(models_init_path, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                # --- END PATCH ---
+
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"Successfully generated organized structure with {len(organized_files)} files"
@@ -1048,12 +1154,21 @@ class BaseModel(models.Model):
         )
 
     def _create_organized_structure(self, organized_files: Dict[str, str]):
-        """Create the organized file structure on disk"""
+        """Create the organized file structure on disk, deleting obsolete files"""
         base_path = Path("apps/entities")
 
         # Create directories
         (base_path / "models").mkdir(parents=True, exist_ok=True)
         (base_path / "constants").mkdir(parents=True, exist_ok=True)
+
+        # Delete obsolete model files
+        models_dir = base_path / "models"
+        valid_model_files = set(f for f in organized_files if f.startswith("models/"))
+        for file in models_dir.glob("*.py"):
+            rel_path = f"models/{file.name}"
+            if rel_path not in valid_model_files:
+                file.unlink()
+                print(f"Deleted obsolete: {file}")
 
         # Write all files
         for file_path, content in organized_files.items():

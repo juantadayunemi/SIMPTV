@@ -32,11 +32,12 @@ class Command(BaseCommand):
         admin_role = "ADMIN"  # Debe coincidir con USER_ROLES_CHOICES
         UserRole.objects.create(
             user=user,
-            userId=str(user.id),
+            userId=str(user.id),  # type: ignore
             role=admin_role,
             assignedBy="SYSTEM",
             isActive=True,
-            # assignedAt, created_at, updated_at se llenan automáticamente
+            assignedAt=timezone.now(),
+            # created_at, updated_at se llenan automáticamente
         )
 
         self.stdout.write(

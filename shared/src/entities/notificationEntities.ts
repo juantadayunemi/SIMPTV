@@ -8,7 +8,7 @@ import { NotificationTypeKey } from "../types/trafficTypes";
 // ============= NOTIFICATION ENTITIES =============
 
 export interface NotificationEntity {
-  id: string;
+  id: number;
   type: NotificationTypeKey;
   title: string;
   message: string;
@@ -20,7 +20,7 @@ export interface NotificationEntity {
 }
 
 export interface NotificationSettingsEntity {
-  id: string;
+  id: number;
   userId: string;
   emailEnabled: boolean;
   whatsappEnabled: boolean;
