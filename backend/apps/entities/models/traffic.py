@@ -13,7 +13,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
     id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only
-    location = models.CharField(max_length=255)
+    location = models.CharField(max_length=20)
     date = models.DateTimeField(auto_now_add=False)
     hour = models.FloatField()
     dayOfWeek = models.FloatField()

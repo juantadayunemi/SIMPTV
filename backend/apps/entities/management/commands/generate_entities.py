@@ -294,7 +294,11 @@ class DjangoModelGenerator:
     def __init__(self):
         self.generated_models = []
         self.categories = {
-            "auth": ["UserEntity", "UserRoleEntity"],
+            "auth": [
+                "UserEntity", 
+                "UserRoleEntity",
+                "CustomerEntity"
+                ],
             "traffic": [
                 "TrafficAnalysisEntity",
                 "VehicleDetectionEntity",

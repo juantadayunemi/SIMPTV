@@ -46,3 +46,18 @@ class UserRoleEntity(BaseModel):
 
     def __str__(self):
         return f'UserRoleEntity ({self.pk})'
+
+class CustomerEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface CustomerEntity"""
+    """USAGE: Inherit in other apps - class User(CustomerEntity): pass"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
+    name = models.CharField(max_length=255)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract CustomerEntity"
+        verbose_name_plural = "Abstract CustomerEntitys"
+
+    def __str__(self):
+        return f'{self.name} ({self.pk})'

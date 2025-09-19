@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
+
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +34,7 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
+
       await login(email, password, rememberMe);
       // Successful login - navigation will be handled by useEffect
     } catch (err) {

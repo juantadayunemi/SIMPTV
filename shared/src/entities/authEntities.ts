@@ -28,3 +28,8 @@ export interface UserRoleEntity {
   assignedAt: Date;
   isActive: boolean;
 }
+
+export interface  CustomerEntity {
+  id: string;
+  name: string;
+}

@@ -9,6 +9,7 @@ from .base import BaseModel
 from .auth import (
     UserEntity,
     UserRoleEntity,
+    CustomerEntity,
 )
 
 # Traffic Models
@@ -51,6 +52,7 @@ __all__ = [
     "BaseModel",
     "UserEntity",
     "UserRoleEntity",
+    "CustomerEntity",
     "TrafficHistoricalDataEntity",
     "LocationTrafficPatternEntity",
     "TrafficAnalysisEntity",
