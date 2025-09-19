@@ -1,3 +1,17 @@
+# 🧩 Comandos útiles para desarrollo
+
+```bash
+# Generar modelos desde TypeScript
+python manage.py generate_entities --organized
+
+# Aplicar migraciones
+python manage.py makemigrations
+python manage.py migrate
+
+# Poblar usuario administrador y roles
+python manage.py seed_admin
+```
+
 # ⚡️ Instrucciones rápidas para auto-recuperación de modelos
 
 1. Si eliminas o corrompes cualquier archivo de modelo en `apps/entities/models/`, no edites manualmente los imports en `__init__.py`.
