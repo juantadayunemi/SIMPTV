@@ -123,8 +123,7 @@ prisma/migrations/
 ehthumbs.db
 Thumbs.db
 
-# Uploads and media files
-uploads/
+# Uploads and media filesuploads/
 media/
 static/
 videos/
@@ -135,7 +134,6 @@ images/
 *.joblib
 *.h5
 *.pb
-models/
 
 # Redis
 dump.rdb
