@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { APP_NAME } from '../../config/appConfig';
 
 const navigationItems = [
   {
@@ -81,18 +82,19 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+ 
   // Temporary: No role validation - all users see all menus
   const userRoles = ['ADMIN', 'OPERATOR', 'VIEWER']; // Give access to everything
 
   return (
-    <div className={`bg-gradient-to-b from-gray-900 to-gray-800 text-white min-h-screen flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} shadow-xl`}>
+    <div className={`bg-primary-600 text-white min-h-screen flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} shadow-xl`}>
       {/* Logo */}
       <div className="p-6 border-b border-gray-700/50">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-300 bg-clip-text text-transparent">
-                SIMPTV
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-300 bg-clip-text text-text-50">
+                {APP_NAME}
               </h1>
               <p className="text-sm text-gray-400 mt-1">Sistema de Monitoreo de Tráfico</p>
             </div>

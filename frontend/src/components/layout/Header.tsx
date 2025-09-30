@@ -95,7 +95,7 @@ export const Header: React.FC = () => {
   const pageInfo = getPageTitle();
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-primary-50 shadow-sm border-b border-gray-200">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Dynamic Title Based on Route */}

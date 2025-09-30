@@ -1,3 +1,5 @@
+import { text } from 'stream/consumers';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -9,10 +11,17 @@ export default {
       colors: {
         primary: {
           50: '#eff6ff',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
+          500: '#9fc1f8ff',
+          600: '#1E40AF',
+          700: '#10297aff',
         },
+        text: {
+          
+          50: '#f9fafb',
+          500: '#374151', 
+          600: '#1f2937',
+        },
+        
         success: {
           50: '#f0fdf4',
           500: '#22c55e',
