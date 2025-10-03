@@ -1,18 +1,23 @@
 # 🧩 Comandos útiles para desarrollo
 
 ```bash
-# Generar modelos desde TypeScript
+# Generar modelos DLL desde TypeScript
 python manage.py generate_entities --organized
-
-# Aplicar migraciones/ hay que hacer para cada app
-python manage.py makemigrations auth_app
-python manage.py makemigrations traffic_app
-python manage.py makemigrations plates_app
-
-python manage.py migrate
 
 # Poblar usuario administrador y roles
 python manage.py seed_admin
+
+# Aplicar migraciones (hacer para cada app)
+python manage.py makemigrations auth_app
+python manage.py makemigrations traffic_app
+python manage.py makemigrations plates_app
+python manage.py migrate
+
+# Verificar sistema sin errores
+python manage.py check
+
+# Iniciar servidor de desarrollo
+python manage.py runserver
 ```
 
 # ⚡️ Instrucciones rápidas para auto-recuperación de modelos
@@ -57,50 +62,73 @@ El generador (`python manage.py generate_entities --organized`) detecta los arch
 - El sistema es auto-recuperable y robusto ante eliminaciones accidentales.
 
 ---
-# 🛠️ Generador de Modelos DLL desde TypeScript
+# 🛠️ Sistema DLL de Generación Automática de Modelos
 
-### Comando: `python manage.py generate_entities`
+### Comando: `python manage.py generate_entities --organized`
 
-Este comando genera automáticamente los modelos DLL de Django a partir de las interfaces TypeScript ubicadas en el proyecto compartido (`shared/src/entities`).
+Este sistema es el **corazón del backend**: convierte automáticamente las interfaces TypeScript del proyecto `shared/src/` en modelos Django abstractos (DLL Pattern).
 
-**¿Para qué sirve?**
-- Convierte las interfaces TypeScript en modelos abstractos de Django (DLL), listos para ser heredados en otras apps.
-- Permite mantener sincronizados los modelos entre backend y frontend, facilitando el desarrollo ágil y la integración continua.
-- Sobrescribe los modelos cada vez que se ejecuta, ideal para entornos de desarrollo con cambios frecuentes.
+**🎯 ¿Para qué sirve?**
+- **Sincronización automática**: Mantiene los modelos Django sincronizados con TypeScript
+- **DLL Pattern**: Genera modelos abstractos que se heredan en apps concretas
+- **Desarrollo ágil**: Elimina la necesidad de escribir modelos manualmente
+- **Arquitectura limpia**: Separación clara entre entidades DLL y modelos de negocio
 
-**¿Cómo funciona?**
-1. Busca todos los archivos TypeScript en la ruta compartida (`shared/src/entities`).
-2. Analiza las interfaces y sus propiedades, mapeando los tipos TypeScript a campos Django:
-    - `id: number` → campo autoincremental (identity, heredado de BaseModel)
-    - `id: string` o `guid: string` → campo `UUIDField` autogenerado
-    - `createdAt`, `updatedAt` → `DateTimeField` (en migraciones SQL Server se recomienda default `getdate()`)
-    - Otros tipos (`string`, `number`, `boolean`, arrays, enums) se mapean automáticamente
-3. Genera los archivos de modelos en la carpeta `apps/entities/models/` organizados por dominio (auth, traffic, plates, etc).
-4. Genera los archivos de constantes y choices en `apps/entities/constants/`.
-5. Sobrescribe los modelos existentes (no es necesario borrar manualmente).
+**🔧 ¿Cómo funciona?**
+1. **Escanea** todos los archivos TypeScript en `shared/src/entities/`, `shared/src/dto/`, `shared/src/models/`
+2. **Convierte** 124+ interfaces TypeScript en modelos Django organizados por dominio
+3. **Genera** estructura organizada:
+   - `apps/entities/models/auth.py` - 9 entidades de autenticación
+   - `apps/entities/models/traffic.py` - 27 entidades de tráfico  
+   - `apps/entities/models/plates.py` - 26 entidades de placas
+   - `apps/entities/models/predictions.py` - 6 entidades de predicciones
+   - `apps/entities/models/notifications.py` - 14 entidades de notificaciones
+   - `apps/entities/models/common.py` - 42+ entidades comunes
+   - `apps/entities/constants/` - Constantes y Django choices
+4. **Evita duplicación**: Filtra campos que ya están en `BaseModel` (`id`, `created_at`, `updated_at`, `is_active`)
 
-**Opciones avanzadas:**
-- `--shared-path`: Ruta al proyecto compartido TypeScript (por defecto: `../shared/src`)
-- `--entities-only`: Solo genera modelos, omite tipos/enums
-- `--organized`: Genera estructura organizada por dominio (recomendado)
-- `--output-file`: Archivo de salida para modelos (por defecto: `apps/entities/models.py`)
-- `--dry-run`: Muestra el resultado sin escribir archivos
+**🏗️ Mapeo TypeScript → Django:**
+```typescript
+// TypeScript
+interface UserEntity {
+    id: string;              // → UUIDField(primary_key=True)  
+    email: string;           // → EmailField(max_length=255)
+    firstName: string;       // → CharField(max_length=255)
+    isActive: boolean;       // → FILTRADO (ya está en BaseModel)
+    createdAt: Date;         // → FILTRADO (ya está en BaseModel)
+    role: UserRoleType;      // → CharField(choices=USER_ROLES_CHOICES)
+}
+```
 
-**Ejemplo de uso básico:**
+**🚀 Opciones avanzadas:**
 ```bash
+# Generación básica
 python manage.py generate_entities --organized
+
+# Solo entidades, sin tipos
+python manage.py generate_entities --organized --entities-only
+
+# Ver resultado sin escribir archivos
+python manage.py generate_entities --organized --dry-run
+
+# Ruta personalizada a TypeScript
+python manage.py generate_entities --shared-path="../shared/src" --organized
 ```
 
-**Ejemplo de uso avanzado:**
-```bash
-python manage.py generate_entities --shared-path="../shared/src" --entities-only --dry-run
-```
+**💡 Uso en apps concretas:**
+```python
+# En apps/auth_app/models.py
+from apps.entities.models import UserEntity
 
-**Notas técnicas:**
-- El campo `id` siempre es autoincremental (identity) y heredado de `BaseModel`.
-- Los GUIDs se generan como `UUIDField` con autogeneración.
-- Los campos de fecha (`createdAt`, `updatedAt`) deben tener default `getdate()` en migraciones SQL Server (personalizar si es necesario).
-- Los modelos generados son abstractos y no crean tablas directamente, deben ser heredados en apps concretas.
+class User(UserEntity):
+    """Usuario concreto que hereda de entidad DLL"""
+    # Campos adicionales específicos de autenticación
+    last_login = models.DateTimeField(null=True, blank=True)
+    failed_login_attempts = models.IntegerField(default=0)
+    
+    class Meta:
+        db_table = "auth_users"
+```
 
 # Urbia Traffic Analysis API Backend
 
@@ -126,17 +154,28 @@ backend/
 │   │   ├── base.py               # Settings compartidos
 │   │   ├── development.py        # Settings desarrollo
 │   │   └── production.py         # Settings producción
-│   ├── urls.py                   # URLs principales
+│   ├── urls.py                   # URLs principales con auto-discovery
 │   ├── wsgi.py
 │   └── asgi.py
 ├── apps/                         # Apps Django modulares
-│   ├── shared_models/           # ✅ Modelos base (Usuario, TrafficEntity, VehicleDetection)
-│   ├── authentication/          # 🔄 JWT tokens, usuarios, roles
-│   ├── traffic_analysis/        # 🔄 OpenCV, análisis de tráfico
-│   ├── plate_detection/         # 🔄 YOLO, detección de placas
-│   ├── traffic_prediction/      # 🔄 ML, análisis predictivo
-│   ├── external_apis/           # 🔄 APIs externas infracciones
-│   └── notifications/           # 🔄 Email, WhatsApp, WebSockets
+│   ├── entities/                # ✅ Sistema DLL - Modelos generados desde TypeScript
+│   │   ├── models/              # Modelos abstractos DLL organizados
+│   │   ├── constants/           # Constantes y choices Django
+│   │   ├── management/commands/ # Comando generate_entities
+│   │   └── dto/                 # DTOs para serialización
+│   ├── auth_app/                # ✅ JWT tokens, usuarios, roles
+│   │   ├── management/commands/ # Comando seed_admin
+│   │   ├── models.py            # User, UserRole (hereda de entities)
+│   │   ├── views.py             # LoginView implementado
+│   │   └── urls.py              # /api/auth/login/
+│   ├── traffic_app/             # ✅ Análisis de tráfico y vehículos
+│   │   ├── models.py            # TrafficAnalysis (hereda de entities)
+│   │   ├── views.py             # ViewSets para análisis
+│   │   └── urls.py              # /api/traffic/ con múltiples endpoints
+│   ├── plates_app/              # ✅ Detección de placas
+│   │   ├── models.py            # PlateDetection (hereda de entities)
+│   │   └── views.py             # Preparado para YOLO
+│   └── external_apis/           # 🔄 APIs externas infracciones
 ├── requirements/                # Requirements organizados
 │   ├── base.txt                 # ✅ Dependencias base
 │   ├── development.txt          # ✅ Dependencias desarrollo
@@ -218,19 +257,44 @@ python manage.py runserver
 - **Seguridad**: Headers de seguridad activados
 - **Configuración**: `config.settings.production`
 
-## 📡 Endpoints Disponibles
+## 📡 Endpoints Implementados
 
 ### API Root
-- `GET /` - Información de la API y endpoints disponibles
+- `GET /` - Información de la API y endpoints disponibles con auto-discovery
 
-### Admin
+### Documentación API
+- `GET /api/schema/` - Esquema OpenAPI
+- `GET /api/schema/swagger-ui/` - Interfaz Swagger UI
+- `GET /api/schema/redoc/` - Documentación Redoc
+
+### Admin Panel
 - `GET /admin/` - Panel de administración Django
 
-### Modelos Implementados
-Los siguientes modelos están disponibles en el admin:
-- **Usuario personalizado** con roles (admin, operator, viewer)
-- **TrafficEntity** - Entidades de tráfico con geolocalización
-- **VehicleDetection** - Detecciones de vehículos con confidence score
+### Autenticación (/api/auth/)
+- `POST /api/auth/login/` - Login JWT con email/password
+- `POST /api/auth/register/` - 🔄 Registro de usuarios (preparado)
+- `POST /api/auth/logout/` - 🔄 Logout (preparado)
+- `POST /api/auth/refresh/` - 🔄 Refresh token (preparado)
+
+### Análisis de Tráfico (/api/traffic/)
+- `GET /api/traffic/analysis/` - Lista de análisis de tráfico
+- `POST /api/traffic/analysis/` - Crear nuevo análisis
+- `GET /api/traffic/analysis/{id}/` - Detalle de análisis específico
+- `PUT /api/traffic/analysis/{id}/` - Actualizar análisis
+- `DELETE /api/traffic/analysis/{id}/` - Eliminar análisis
+- `GET /api/traffic/reports/` - Reportes de tráfico
+- `POST /api/traffic/reports/` - Crear nuevo reporte
+- `GET /api/traffic/monitoring/` - Monitoreo en tiempo real
+- `GET /api/traffic/statistics/` - Estadísticas de tráfico
+- `POST /api/traffic/upload-video/` - Subir video para análisis
+
+### Modelos DLL Disponibles
+Los siguientes modelos abstractos están disponibles para herencia:
+- **UserEntity, UserRoleEntity** - Sistema de usuarios y roles
+- **TrafficAnalysisEntity, VehicleEntity** - Análisis de tráfico
+- **LicensePlateEntity, PlateAlertEntity** - Detección de placas
+- **NotificationEntity** - Sistema de notificaciones
+- **120+ entidades más** organizadas por dominio
 
 ## 🔐 Autenticación JWT
 
@@ -370,25 +434,25 @@ python manage.py diffsettings
 
 ## ⚠️ Notas Importantes
 
-1. **El servidor está ejecutándose correctamente** en desarrollo con SQLite
-2. **Las migraciones están aplicadas** y los modelos funcionan
-3. **El admin está configurado** para gestionar usuarios y entidades de tráfico
-4. **JWT está configurado** pero los endpoints de autenticación se implementarán en `authentication` app
-5. **Preparado para SQL Server** cambiando `USE_SQLITE=False` en .env
-6. **Arquitectura modular** permite desarrollo en equipo por apps independientes
+1. **Sistema DLL Funcional**: Generador automático de modelos desde TypeScript operativo
+2. **124+ Entidades Generadas**: Modelos organizados por dominio (auth, traffic, plates, etc.)
+3. **Endpoints Implementados**: Auth login, Traffic analysis completo, auto-discovery de URLs
+4. **Usuario Admin**: Comando `seed_admin` para crear admin@gmail.com / 123
+5. **Base de datos**: SQLite para desarrollo, preparado para SQL Server producción
+6. **Arquitectura modular**: Apps independientes que heredan de entities DLL
+7. **Auto-recuperación**: Sistema robusto ante eliminaciones accidentales de archivos
 
 ## 🎯 Próximos Pasos
 
-1. Implementar app `authentication` con endpoints JWT
-2. Implementar app `traffic_analysis` con OpenCV
-3. Implementar app `plate_detection` con YOLO
-4. Implementar app `traffic_prediction` con ML
-5. Implementar app `external_apis` para consultas externas
-6. Implementar app `notifications` con WebSockets
-7. Convertir modelos del proyecto `shared/src/entities`
+1. **Completar auth_app**: Implementar register, logout, refresh token
+2. **Implementar plates_app**: Endpoints para detección de placas con YOLO
+3. **Agregar predictions_app**: Modelos ML para predicciones de tráfico
+4. **Implementar notifications**: Sistema de notificaciones en tiempo real
+5. **Optimizar external_apis**: Integración con APIs externas de infracciones
+6. **Preparar producción**: Migrar a SQL Server y configurar CI/CD
 
 ---
 
-**Estado Actual**: ✅ Backend base funcional con Django 5.2 + DRF + modelos de prueba + migraciones aplicadas + servidor corriendo
+**Estado Actual**: ✅ Backend DLL completo con 124+ entidades generadas + Auth + Traffic endpoints + Auto-discovery + Usuario admin
 
 **Desarrollado para**: Sistema de análisis de tráfico vehicular con IA 🚗🤖
