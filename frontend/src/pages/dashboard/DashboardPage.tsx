@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   return (
@@ -137,10 +138,13 @@ export const DashboardPage: React.FC = () => {
               <span className="text-2xl mb-2 block">📊</span>
               <span className="text-sm font-medium text-green-900">View Reports</span>
             </button>
-            <button className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg p-4 text-center transition-colors">
+            <Link 
+              to="/settings"
+              className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg p-4 text-center transition-colors block"
+            >
               <span className="text-2xl mb-2 block">⚙️</span>
               <span className="text-sm font-medium text-purple-900">Settings</span>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

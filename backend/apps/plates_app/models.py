@@ -1,8 +1,8 @@
 from django.db import models
 from apps.entities.models import (
-    PlateDetectionEntity,
-    PlateAnalysisEntity,
-    VehicleDetectionEntity,
+    LicensePlateEntity,
+    PlateAlertEntity,
+    VehicleDetection as VehicleDetectionEntity,
 )
 from apps.auth_app.models import User
 
@@ -14,10 +14,10 @@ from apps.auth_app.models import User
 # ============================================================================
 
 
-class PlateDetection(PlateDetectionEntity):
+class PlateDetection(LicensePlateEntity):
     """Concrete PlateDetection model inheriting from entities DLL"""
 
-    # All fields inherited from PlateDetectionEntity
+    # All fields inherited from LicensePlateEntity
     # Add plate-specific functionality
     processed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="processed_plates"
@@ -38,10 +38,10 @@ class PlateDetection(PlateDetectionEntity):
         return f"Plate: {self.plateNumber} (Confidence: {self.confidence}%)"
 
 
-class PlateAnalysis(PlateAnalysisEntity):
+class PlateAnalysis(PlateAlertEntity):
     """Concrete PlateAnalysis model inheriting from entities DLL"""
 
-    # All fields inherited from PlateAnalysisEntity
+    # All fields inherited from PlateAlertEntity
     # Link to concrete PlateDetection model
     detection = models.ForeignKey(
         PlateDetection, on_delete=models.CASCADE, related_name="analyses"
@@ -54,13 +54,13 @@ class PlateAnalysis(PlateAnalysisEntity):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Analysis: {self.detection.plateNumber} - Count: {self.detectionCount}"
+        return f"Analysis: {self.detection.plateNumber} - Count: {self.alertType}"
 
 
 class VehicleDetection(VehicleDetectionEntity):
     """Concrete VehicleDetection model inheriting from entities DLL"""
 
-    # All fields inherited from VehicleDetectionEntity
+    # All fields inherited from VehicleEntity
     # Link to plate detection
     related_plate = models.OneToOneField(
         PlateDetection,
@@ -77,7 +77,7 @@ class VehicleDetection(VehicleDetectionEntity):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Vehicle: {self.vehicleType} - Confidence: {self.confidence}%"
+        return f"Vehicle: {self.type} - Confidence: {self.confidence}%"
 
 
 # ============================================================================

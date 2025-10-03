@@ -201,9 +201,6 @@ export const VehicleReportsPage: React.FC = () => {
                   Prioridad
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -290,24 +287,11 @@ export const VehicleReportsPage: React.FC = () => {
                       {report.priority}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      report.status === 'Activo' 
-                        ? 'bg-red-100 text-red-800' 
-                        : report.status === 'En investigación'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : report.status === 'Resuelto'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {report.status}
-                    </span>
-                  </td>
+          
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">Ver</button>
-                      <button className="text-green-600 hover:text-green-900">Editar</button>
-                      <button className="text-red-600 hover:text-red-900">Resolver</button>
+                      <button className="text-blue-600 hover:text-blue-900">Ver detalles</button>
+
                     </div>
                   </td>
                 </tr>

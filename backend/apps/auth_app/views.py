@@ -64,7 +64,7 @@ class LoginView(APIView):
                 )
 
             # Verificar que la cuenta esté activa
-            if not user.isActive:
+            if not user.is_active:
                 return Response(
                     {"error": "Account is inactive"}, status=status.HTTP_403_FORBIDDEN
                 )
@@ -91,7 +91,7 @@ class LoginView(APIView):
                         "email": user.email,
                         "fullName": user.fullName,
                         "phoneNumber": user.phoneNumber,
-                        "isActive": user.isActive,
+                        "isActive": user.is_active,
                         "emailConfirmed": user.emailConfirmed,
                     },
                 },

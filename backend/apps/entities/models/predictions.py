@@ -2,9 +2,9 @@ from django.db import models
 from .base import BaseModel
 import uuid
 from ..constants import (
-    VEHICLE_TYPES_CHOICES,
     ANALYSIS_STATUS_CHOICES,
     DENSITY_LEVELS_CHOICES,
+    VEHICLE_TYPES_CHOICES,
 )
 
 
@@ -12,7 +12,6 @@ class PredictionModelEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionModelEntity"""
     """USAGE: Inherit in other apps - class User(PredictionModelEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     modelName = models.CharField(max_length=255)
     modelType = models.CharField(max_length=255)
     location = models.CharField(max_length=255)
@@ -23,9 +22,7 @@ class PredictionModelEntity(BaseModel):
     mse = models.FloatField()
     mae = models.FloatField()
     r2Score = models.FloatField()
-    isActive = models.BooleanField(default=False)
     trainedAt = models.DateTimeField(auto_now_add=False)
-    createdAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -39,7 +36,6 @@ class ModelTrainingJobEntity(BaseModel):
     """Abstract DLL model from TypeScript interface ModelTrainingJobEntity"""
     """USAGE: Inherit in other apps - class User(ModelTrainingJobEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     status = models.CharField(max_length=255)
     startTime = models.DateTimeField(auto_now_add=False)
@@ -48,7 +44,6 @@ class ModelTrainingJobEntity(BaseModel):
     errorMessage = models.CharField(max_length=255, blank=True, null=True)
     dataPointsUsed = models.FloatField()
     validationScore = models.FloatField()
-    createdAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -62,7 +57,6 @@ class TrafficPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficPredictionEntity"""
     """USAGE: Inherit in other apps - class User(TrafficPredictionEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     predictionDate = models.DateTimeField(auto_now_add=False)
@@ -76,8 +70,6 @@ class TrafficPredictionEntity(BaseModel):
     actualAvgSpeed = models.FloatField(blank=True, null=True)
     actualDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES, blank=True, null=True)
     predictionError = models.FloatField(blank=True, null=True)
-    createdAt = models.DateTimeField(blank=True, null=True)
-    updatedAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -91,7 +83,6 @@ class BatchPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface BatchPredictionEntity"""
     """USAGE: Inherit in other apps - class User(BatchPredictionEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     predictionStartDate = models.DateTimeField(auto_now_add=False)
@@ -100,7 +91,6 @@ class BatchPredictionEntity(BaseModel):
     avgConfidence = models.FloatField()
     status = models.CharField(max_length=255)
     executionTime = models.FloatField()
-    createdAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -114,7 +104,6 @@ class PredictionAccuracyEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionAccuracyEntity"""
     """USAGE: Inherit in other apps - class User(PredictionAccuracyEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     evaluationPeriod = models.CharField(max_length=255)
@@ -139,7 +128,6 @@ class RealTimePredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface RealTimePredictionEntity"""
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only
     location = models.CharField(max_length=255)
     currentVehicleCount = models.FloatField()
     currentDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
@@ -150,7 +138,6 @@ class RealTimePredictionEntity(BaseModel):
     confidence6Hour = models.FloatField()
     confidence24Hour = models.FloatField()
     lastUpdated = models.DateTimeField(auto_now_add=False)
-    createdAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

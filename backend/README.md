@@ -4,8 +4,11 @@
 # Generar modelos desde TypeScript
 python manage.py generate_entities --organized
 
-# Aplicar migraciones
-python manage.py makemigrations
+# Aplicar migraciones/ hay que hacer para cada app
+python manage.py makemigrations auth_app
+python manage.py makemigrations traffic_app
+python manage.py makemigrations plates_app
+
 python manage.py migrate
 
 # Poblar usuario administrador y roles

@@ -66,7 +66,7 @@ LOCAL_APPS = [
     "apps.entities",  # DLL models (abstract)
     "apps.auth_app",  # Auth API (concrete)
     "apps.traffic_app",  # Traffic Analysis API
-    # "apps.plates_app",  # Plates API
+    "apps.plates_app",  # Plates API
     # "apps.external_apis",  # External APIs
     # "apps.notifications",  # Notifications
 ]

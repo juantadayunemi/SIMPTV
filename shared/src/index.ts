@@ -1,4 +1,6 @@
 // Main exports for the shared library - Nueva estructura organizada
+
+//----- MODELOS -----
 export * from './models/queries';
 export * from './models/trafficModels';
 export * from './models/plateModels';
@@ -19,7 +21,12 @@ export * from './schemas/auth.schemas';
 export * from './schemas/traffic.schemas';
 export * from './schemas/plate.schemas';
 
-// ----- DTOs ----- 
+// ----- DTOs NUEVOS (RECOMENDADOS) ----- 
+export * from './dto/trafficDto';
+export * from './dto/plateDto';
+export * from './dto/commonDto';
+
+// ----- DTOs LEGACY (COMPATIBILIDAD) ----- 
 export * from './dto/responseDto';
 export * from './dto/requestDto';   
 

@@ -1,15 +1,16 @@
 /**
- * DTOs para el Frontend
- * Objetos de transferencia de datos optimizados para la presentación
+ * DTOs Legacy y Específicos
+ * DEPRECATED: Usar los nuevos archivos trafficDto.ts, plateDto.ts y commonDto.ts
+ * Este archivo se mantiene temporalmente para compatibilidad
  */
 
 import { UserRoleType } from "../types/roleTypes";
-import { AnalysisStatusKey, DensityLevelKey, NotificationTypeKey, VehicleTypeKey } from "../types/trafficTypes";
 
+// ============= DEPRECATED - Usar commonDto.ts =============
 
-
-// ============= AUTH DTOs =============
-
+/**
+ * @deprecated Usar UserInfoDTO de commonDto.ts
+ */
 export interface UserDTO {
   id: string;
   email: string;
@@ -21,190 +22,9 @@ export interface UserDTO {
   createdAt: Date;
 }
 
-export interface LoginResponseDTO {
-  accessToken: string;
-  refreshToken: string;
-  user: UserDTO;
-  expiresAt: Date;
-}
-
-export interface AuthTokenDTO {
-  accessToken: string;
-  refreshToken?: string;
-  tokenType: 'Bearer';
-  expiresIn: number;
-}
-
-// ============= TRAFFIC DTOs =============
-
-export interface TrafficAnalysisDTO {
-  id: string;
-  location: string;
-  vehicleCount: number;
-  avgSpeed?: number;
-  densityLevel: DensityLevelKey;
-  status: AnalysisStatusKey;
-  progress?: number; // Para análisis en proceso
-  weatherConditions?: string;
-  vehicleBreakdown: VehicleTypeBreakdownDTO[];
-  peakHours: TimeSlotDTO[];
-  createdAt: Date;
-  estimatedCompletion?: Date;
-}
-
-export interface VehicleTypeBreakdownDTO {
-  type: VehicleTypeKey;
-  count: number;
-  percentage: number;
-}
-
-export interface TimeSlotDTO {
-  startTime: string;
-  endTime: string;
-  vehicleCount: number;
-  avgSpeed?: number;
-}
-
-export interface VehicleDetectionDTO {
-  id: string;
-  vehicleType: VehicleTypeKey;
-  confidence: number;
-  speed?: number;
-  boundingBox: BoundingBoxDTO;
-  timestamp: Date;
-  plateDetected?: boolean;
-}
-
-export interface BoundingBoxDTO {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-// ============= PLATE DTOs =============
-
-export interface PlateDetectionDTO {
-  id: string;
-  plateNumber: string;
-  confidence: number;
-  vehicleType?: VehicleTypeKey;
-  location: string;
-  boundingBox: BoundingBoxDTO;
-  vehicleSpeed?: number;
-  createdAt: Date;
-  analysisId: string;
-}
-
-export interface PlateAnalysisSummaryDTO {
-  plateNumber: string;
-  totalDetections: number;
-  firstSeen: Date;
-  lastSeen: Date;
-  locations: string[];
-  avgConfidence: number;
-  vehicleType?: VehicleTypeKey;
-  frequentLocations: LocationFrequencyDTO[];
-}
-
-export interface LocationFrequencyDTO {
-  location: string;
-  count: number;
-  percentage: number;
-  lastSeen: Date;
-}
-
-// ============= NOTIFICATION DTOs =============
-
-export interface NotificationDTO {
-  id: string;
-  type: NotificationTypeKey;
-  title: string;
-  message: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  isRead: boolean;
-  readAt?: Date;
-  createdAt: Date;
-  actionUrl?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface NotificationSummaryDTO {
-  total: number;
-  unread: number;
-  byType: NotificationTypeCountDTO[];
-  recent: NotificationDTO[];
-}
-
-export interface NotificationTypeCountDTO {
-  type: NotificationTypeKey;
-  count: number;
-  unreadCount: number;
-}
-
-// ============= DASHBOARD DTOs =============
-
-export interface DashboardStatsDTO {
-  traffic: TrafficStatsDTO;
-  plates: PlateStatsDTO;
-  system: SystemStatsDTO;
-  notifications: NotificationSummaryDTO;
-  lastUpdated: Date;
-}
-
-export interface TrafficStatsDTO {
-  totalAnalyses: number;
-  activeAnalyses: number;
-  totalVehicles: number;
-  avgDailyTraffic: number;
-  topLocations: LocationStatsDTO[];
-  hourlyTrend: HourlyTrendDTO[];
-}
-
-export interface PlateStatsDTO {
-  totalDetections: number;
-  uniquePlates: number;
-  avgConfidence: number;
-  topPlates: PlateFrequencyDTO[];
-  detectionTrend: DailyTrendDTO[];
-}
-
-export interface SystemStatsDTO {
-  uptime: number;
-  cpuUsage: number;
-  memoryUsage: number;
-  diskUsage: number;
-  activeUsers: number;
-  totalUsers: number;
-}
-
-export interface LocationStatsDTO {
-  location: string;
-  analysisCount: number;
-  avgVehicles: number;
-  lastActivity: Date;
-}
-
-export interface HourlyTrendDTO {
-  hour: number;
-  vehicleCount: number;
-  analysisCount: number;
-}
-
-export interface DailyTrendDTO {
-  date: Date;
-  count: number;
-}
-
-export interface PlateFrequencyDTO {
-  plateNumber: string;
-  detectionCount: number;
-  locations: string[];
-  lastSeen: Date;
-}
-
-// ============= ERROR DTOs =============
-
+/**
+ * @deprecated Usar ApiErrorDTO de commonDto.ts
+ */
 export interface ErrorDTO {
   code: string;
   message: string;
@@ -213,40 +33,39 @@ export interface ErrorDTO {
   timestamp: Date;
 }
 
-export interface ValidationErrorDTO extends ErrorDTO {
-  field: string;
-  value: any;
-  constraints: string[];
+// ============= DEPRECATED - Usar trafficDto.ts =============
+
+/**
+ * @deprecated Usar TrafficAnalysisResponseDTO de trafficDto.ts
+ */
+export interface TrafficAnalysisDTO {
+  id: string;
+  location: string;
+  vehicleCount: number;
+  avgSpeed?: number;
+  densityLevel: any;
+  status: any;
+  progress?: number;
+  weatherConditions?: string;
+  vehicleBreakdown: any[];
+  peakHours: any[];
+  createdAt: Date;
+  estimatedCompletion?: Date;
 }
 
-// ============= API RESPONSE DTOs =============
+// ============= DEPRECATED - Usar plateDto.ts =============
 
-export interface ApiResponseDTO<T = any> {
-  success: boolean;
-  data?: T;
-  error?: ErrorDTO;
-  message?: string;
-  timestamp: Date;
-}
-
-export interface PaginatedResponseDTO<T = any> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-  filters?: Record<string, any>;
-}
-
-// ============= PAGINATION =============
-
-export interface PaginationQueryDto {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+/**
+ * @deprecated Usar PlateDetectionResponseDTO de plateDto.ts
+ */
+export interface PlateDetectionDTO {
+  id: string;
+  plateNumber: string;
+  confidence: number;
+  vehicleType?: any;
+  location: string;
+  boundingBox: any;
+  vehicleSpeed?: number;
+  createdAt: Date;
+  analysisId: string;
 }

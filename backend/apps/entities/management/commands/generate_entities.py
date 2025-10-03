@@ -163,6 +163,38 @@ class TypeScriptEntityParser:
                 "import": "from django.db import models",
                 "choices_import": "NOTIFICATION_TYPES_CHOICES",
             }
+        # New traffic types
+        elif ts_type in ["AlertTypeKey", "AlertType"]:
+            return {
+                "field_type": "CharField",
+                "options": {"max_length": 30, "choices": "ALERT_TYPE_CHOICES"},
+                "import": "from django.db import models",
+                "choices_import": "ALERT_TYPE_CHOICES",
+            }
+        elif ts_type in ["PlateProcessingStatusKey", "PlateProcessingStatus"]:
+            return {
+                "field_type": "CharField",
+                "options": {
+                    "max_length": 20,
+                    "choices": "PLATE_PROCESSING_STATUS_CHOICES",
+                },
+                "import": "from django.db import models",
+                "choices_import": "PLATE_PROCESSING_STATUS_CHOICES",
+            }
+        elif ts_type in ["TrackingStatusKey", "TrackingStatus"]:
+            return {
+                "field_type": "CharField",
+                "options": {"max_length": 20, "choices": "TRACKING_STATUS_CHOICES"},
+                "import": "from django.db import models",
+                "choices_import": "TRACKING_STATUS_CHOICES",
+            }
+        elif ts_type in ["TrafficDirectionKey", "TrafficDirection"]:
+            return {
+                "field_type": "CharField",
+                "options": {"max_length": 20, "choices": "TRAFFIC_DIRECTION_CHOICES"},
+                "import": "from django.db import models",
+                "choices_import": "TRAFFIC_DIRECTION_CHOICES",
+            }
 
         # Special handling for common field patterns
         if prop_name.lower() == "id" and ts_type.lower() == "number":
@@ -294,18 +326,22 @@ class DjangoModelGenerator:
     def __init__(self):
         self.generated_models = []
         self.categories = {
-            "auth": [
-                "UserEntity", 
-                "UserRoleEntity",
-                "CustomerEntity"
-                ],
+            "auth": ["UserEntity", "UserRoleEntity", "CustomerEntity"],
             "traffic": [
+                "LocationEntity",
+                "CameraEntity",
                 "TrafficAnalysisEntity",
-                "VehicleDetectionEntity",
+                "VehicleEntity",
+                "VehicleFrameEntity",
                 "TrafficHistoricalDataEntity",
                 "LocationTrafficPatternEntity",
             ],
-            "plates": ["PlateDetectionEntity", "PlateAnalysisEntity"],
+            "plates": [
+                "PlateDetectionEntity",
+                "PlateAnalysisEntity",
+                "PlateOcrResultEntity",
+                "PlateVerificationEntity",
+            ],
             "predictions": [
                 "PredictionModelEntity",
                 "ModelTrainingJobEntity",
@@ -315,7 +351,16 @@ class DjangoModelGenerator:
                 "RealTimePredictionEntity",
             ],
             "notifications": ["NotificationEntity", "NotificationSettingsEntity"],
-            "common": ["WeatherDataEntity", "EventDataEntity"],
+            "common": [
+                "WeatherDataEntity",
+                "EventDataEntity",
+                # Agregar entidades de DTOs que también deben ser modelos
+                "LoginRequestDTO",
+                "LoginResponseDTO",
+                "ApiResponseDTO",
+                "TrafficAnalysisResponseDTO",
+                "PlateDetectionResponseDTO",
+            ],
         }
 
     def generate_model_code(self, interface_data: Dict[str, Any]) -> str:
@@ -388,9 +433,35 @@ class DjangoModelGenerator:
                     category_found = True
                     break
 
-            # If not found in predefined categories, put in common
+            # If not found in predefined categories, try to categorize by name patterns
             if not category_found:
-                categorized["common"][interface_name] = interface_info
+                if any(
+                    keyword in interface_name.lower()
+                    for keyword in ["user", "auth", "role", "customer"]
+                ):
+                    categorized["auth"][interface_name] = interface_info
+                elif any(
+                    keyword in interface_name.lower()
+                    for keyword in ["traffic", "vehicle", "camera", "location"]
+                ):
+                    categorized["traffic"][interface_name] = interface_info
+                elif any(
+                    keyword in interface_name.lower() for keyword in ["plate", "ocr"]
+                ):
+                    categorized["plates"][interface_name] = interface_info
+                elif any(
+                    keyword in interface_name.lower()
+                    for keyword in ["prediction", "model", "training"]
+                ):
+                    categorized["predictions"][interface_name] = interface_info
+                elif any(
+                    keyword in interface_name.lower()
+                    for keyword in ["notification", "alert"]
+                ):
+                    categorized["notifications"][interface_name] = interface_info
+                else:
+                    # Put in common as fallback
+                    categorized["common"][interface_name] = interface_info
 
         return categorized
 
@@ -404,12 +475,27 @@ class DjangoModelGenerator:
         lines.append(
             '    """Base abstract model with common fields for all entities"""'
         )
+        lines.append('    """')
+        lines.append(
+            "    IMPORTANT: For SQL Server migrations, use these field configurations:"
+        )
+        lines.append(
+            "    - created_at: default=models.functions.Now() or raw SQL default=getdate()"
+        )
+        lines.append("    - updated_at: will be handled by Django auto_now=True")
+        lines.append('    """')
         lines.append("")
         lines.append(
             "    id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only"
         )
         lines.append(
+            "    # Para SQL Server: En migración usar default=models.functions.Now() o raw SQL default=getdate()"
+        )
+        lines.append(
             '    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")'
+        )
+        lines.append(
+            "    # Django manejará automáticamente el update con auto_now=True"
         )
         lines.append(
             '    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")'
@@ -448,14 +534,36 @@ class DjangoModelGenerator:
         lines.append("from ..constants import (")
 
         # Add constants imports based on category
+        common_imports = [
+            "VEHICLE_TYPES_CHOICES",
+            "ANALYSIS_STATUS_CHOICES",
+            "DENSITY_LEVELS_CHOICES",
+        ]
+
         if category == "auth":
-            lines.append("    USER_ROLES_CHOICES,")
-        elif category in ["traffic", "plates", "predictions", "common"]:
-            lines.append("    VEHICLE_TYPES_CHOICES,")
-            lines.append("    ANALYSIS_STATUS_CHOICES,")
-            lines.append("    DENSITY_LEVELS_CHOICES,")
-        if category == "notifications":
-            lines.append("    NOTIFICATION_TYPES_CHOICES,")
+            common_imports.append("USER_ROLES_CHOICES")
+        elif category == "notifications":
+            common_imports.append("NOTIFICATION_TYPES_CHOICES")
+        elif category in ["traffic", "plates"]:
+            common_imports.extend(
+                [
+                    "ALERT_TYPE_CHOICES",
+                    "PLATE_PROCESSING_STATUS_CHOICES",
+                    "TRACKING_STATUS_CHOICES",
+                    "TRAFFIC_DIRECTION_CHOICES",
+                ]
+            )
+        elif category == "predictions":
+            pass  # Solo usa las comunes
+        elif category == "common":
+            common_imports.extend(["NOTIFICATION_TYPES_CHOICES", "USER_ROLES_CHOICES"])
+
+        # Si es plates, también necesita notification types
+        if category == "plates":
+            common_imports.append("NOTIFICATION_TYPES_CHOICES")
+
+        for import_name in sorted(set(common_imports)):
+            lines.append(f"    {import_name},")
 
         lines.append(")")
         lines.append("")
@@ -511,7 +619,15 @@ class DjangoModelGenerator:
         # Categorize constants by their domain
         constants_categories = {
             "roles": ["USER_ROLES", "PERMISSIONS", "ROLE_PERMISSIONS"],
-            "traffic": ["VEHICLE_TYPES", "ANALYSIS_STATUS", "DENSITY_LEVELS"],
+            "traffic": [
+                "VEHICLE_TYPES",
+                "ANALYSIS_STATUS",
+                "DENSITY_LEVELS",
+                "ALERT_TYPE",
+                "PLATE_PROCESSING_STATUS",
+                "TRACKING_STATUS",
+                "TRAFFIC_DIRECTION",
+            ],
             "notifications": ["NOTIFICATION_TYPES", "NotificationType"],
             "common": [
                 "DataTypeKey",
@@ -587,7 +703,15 @@ class DjangoModelGenerator:
         categories_with_constants = set()
         constants_categories = {
             "roles": ["USER_ROLES", "PERMISSIONS", "ROLE_PERMISSIONS"],
-            "traffic": ["VEHICLE_TYPES", "ANALYSIS_STATUS", "DENSITY_LEVELS"],
+            "traffic": [
+                "VEHICLE_TYPES",
+                "ANALYSIS_STATUS",
+                "DENSITY_LEVELS",
+                "ALERT_TYPE",
+                "PLATE_PROCESSING_STATUS",
+                "TRACKING_STATUS",
+                "TRAFFIC_DIRECTION",
+            ],
             "notifications": ["NOTIFICATION_TYPES", "NotificationType"],
             "common": [
                 "DataTypeKey",
@@ -654,10 +778,28 @@ class DjangoModelGenerator:
         # Generate fields
         properties = interface_info.get("properties", {})
 
-        if not properties:
+        # Campos que ya están en BaseModel - NO los generes
+        base_model_fields = {
+            "id",  # Ya está en BaseModel como BigAutoField
+            "created_at",  # Ya está en BaseModel
+            "createdat",  # Variante del anterior
+            "updated_at",  # Ya está en BaseModel
+            "updatedat",  # Variante del anterior
+            "is_active",  # Ya está en BaseModel
+            "isactive",  # Variante del anterior
+        }
+
+        # Filtrar propiedades para evitar duplicación
+        filtered_properties = {
+            prop_name: prop_info
+            for prop_name, prop_info in properties.items()
+            if prop_name.lower() not in base_model_fields
+        }
+
+        if not filtered_properties:
             lines.append("    pass")
         else:
-            for prop_name, prop_info in properties.items():
+            for prop_name, prop_info in filtered_properties.items():
                 field_code = self._generate_field_code(prop_name, prop_info)
                 lines.append(f"    {field_code}")
 
@@ -937,12 +1079,24 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Found {len(ts_files)} TypeScript files")
 
-        # Categorize files (using Path separators for Windows compatibility)
-        entity_files = [f for f in ts_files if "entities" in f.parts]
-        type_files = [f for f in ts_files if "types" in f.parts]
+        # Categorize files based on new structure
+        entity_files = []
+        type_files = []
+        dto_files = []
+
+        for f in ts_files:
+            if "entities" in f.parts:
+                entity_files.append(f)
+            elif "types" in f.parts:
+                type_files.append(f)
+            elif "dto" in f.parts:
+                dto_files.append(f)
+            elif "models" in f.parts:
+                entity_files.append(f)  # Treat models as entities too
 
         self.stdout.write(f"Entity files: {len(entity_files)}")
         self.stdout.write(f"Type files: {len(type_files)}")
+        self.stdout.write(f"DTO files: {len(dto_files)}")
 
         # Parse TypeScript files
         entity_parser = TypeScriptEntityParser()
@@ -952,9 +1106,10 @@ class Command(BaseCommand):
         all_interfaces = {}
         all_types = {}
 
-        # Parse entity files
-        for ts_file in entity_files:
-            self.stdout.write(f"Parsing entity: {ts_file.name}")
+        # Parse entity files AND DTO files
+        all_files_to_parse = entity_files + dto_files
+        for ts_file in all_files_to_parse:
+            self.stdout.write(f"Parsing: {ts_file.name}")
             parsed_data = entity_parser.parse_file(ts_file)
             if parsed_data.get("interfaces"):
                 all_interfaces.update(parsed_data["interfaces"])

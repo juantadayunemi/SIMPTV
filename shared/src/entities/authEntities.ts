@@ -12,7 +12,8 @@ export interface UserEntity {
   id: string;
   email: string;
   passwordHash: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phoneNumber?: string;
   isActive: boolean;
   emailConfirmed: boolean;

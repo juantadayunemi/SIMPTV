@@ -18,7 +18,11 @@ class User(UserEntity):
     failed_login_attempts = models.IntegerField(default=0)
     is_locked_out = models.BooleanField(default=False)
     lockout_until = models.DateTimeField(null=True, blank=True)
-
+  
+    @property
+    def fullName(self):
+        return f"{self.firstName} {self.lastName}"
+    
     class Meta:
         db_table = "auth_users"
         verbose_name = "User"

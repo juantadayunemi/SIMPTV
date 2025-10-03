@@ -21,21 +21,21 @@ class Command(BaseCommand):
         user = User.objects.create(
             email=email,
             passwordHash=make_password(password),
-            fullName="Administrador Sistema",
-            phoneNumber="+593999999999",
-            isActive=True,
-            emailConfirmed=True,  # Pre-verificado
-            # createdAt y updatedAt se llenan automáticamente con auto_now_add/auto_now
+            firstName="Admin",
+            lastName="User",
+            is_active=True,
+            emailConfirmed=email,  # Es un campo EmailField, no boolean
+            # createdAt y updatedAt se llenan automáticamente
         )
 
         # Crear rol de administrador
         admin_role = "ADMIN"  # Debe coincidir con USER_ROLES_CHOICES
         UserRole.objects.create(
             user=user,
-            userId=str(user.id),  # type: ignore
+            userId=user.id,  # UUID del usuario
             role=admin_role,
             assignedBy="SYSTEM",
-            isActive=True,
+            is_active=True,
             assignedAt=timezone.now(),
             # created_at, updated_at se llenan automáticamente
         )
@@ -50,7 +50,7 @@ class Command(BaseCommand):
 👤 Nombre: {user.fullName}
 📱 Teléfono: {user.phoneNumber}
 🏷️  Rol: {admin_role}
-✅ Activo: {user.isActive}
+✅ Activo: {user.is_active}
 ✅ Email Confirmado: {user.emailConfirmed}
 
 🌐 Prueba el login en:
