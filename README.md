@@ -15,9 +15,7 @@ Este sistema permite analizar videos de tráfico para:
 - Monitorear tráfico en tiempo real
 - Sistema de notificaciones y alertas
 
-## 🏗️ Arquitectura del ## 📞 Contacto
-
-Para dudas académicas o soporte técnico, contactar al equipo de desarrollo a través de sus perfiles de GitHub.tema
+## 🏗️ Arquitectura del Sistema
 
 El proyecto está estructurado como un **monorepo** con 3 módulos independientes pero interconectados:
 
@@ -30,6 +28,36 @@ SIMPTV/
 ├── .gitignore       # Archivos a ignorar en Git
 └── package.json     # Scripts del monorepo
 ```
+
+### 🔄 Flujo de Sincronización de Modelos
+
+```mermaid
+graph LR
+    A[shared/src/entities/*.ts] -->|TypeScript Interfaces| B[Script Python]
+    B[generate_entities.py] -->|Lee y Parsea| C[entities/models/*.py]
+    C[Modelos Abstractos] -->|Herencia| D[auth_app/models.py]
+    C -->|Herencia| E[traffic_app/models.py]
+    C -->|Herencia| F[plates_app/models.py]
+    C -->|Herencia| G[external_apis/models.py]
+    D -->|Migración| H[(SQL Server/SQLite)]
+    E -->|Migración| H
+    F -->|Migración| H
+    G -->|Migración| H
+```
+
+**Proceso:**
+1. 📝 Desarrollador define interfaces en `shared/src/entities/` (TypeScript)
+2. 🔧 Ejecuta `python manage.py generate_entities`
+3. ✨ Script genera modelos abstractos en `apps/entities/models/`
+4. 🎯 Cada app hereda y extiende los modelos según necesidad
+5. 🗃️ Django crea las tablas en la base de datos
+
+**Ventajas:**
+- ✅ **Single Source of Truth**: Interfaces TypeScript como fuente única
+- ✅ **Sincronización automática**: No hay inconsistencias entre frontend/backend
+- ✅ **Tipo-seguridad**: Validación en TypeScript y Python
+- ✅ **DRY Principle**: No duplicar definiciones de modelos
+- ✅ **Mantenibilidad**: Cambios se propagan automáticamente
 
 ## 📦 Módulos del Sistema
 
@@ -59,6 +87,7 @@ SIMPTV/
 - **Propósito**: API REST robusta con procesamiento de ML y gestión de datos
 - **Framework**: Django 5.2 con Django REST Framework 3.15+
 - **Base de Datos**: SQL Server con mssql-django 1.6
+- **Arquitectura**: **API REST con patrón DLL (Data Layer Library)**
 - **Tecnologías Principales**:
   - **Autenticación**: djangorestframework-simplejwt 5.3+
   - **CORS**: django-cors-headers 4.4+
@@ -69,23 +98,91 @@ SIMPTV/
   ```
   backend/
   ├── apps/
-  │   ├── auth_app/        # Autenticación y usuarios
-  │   ├── entities/        # Modelos DLL abstractos
-  │   ├── plates_app/      # Detección de placas
-  │   ├── external_apis/   # APIs externas
-  │   └── notifications/   # Sistema de notificaciones
-  ├── config/              # Configuración Django
-  ├── logs/                # Archivos de log
-  ├── media/               # Archivos multimedia
-  ├── scripts/             # Scripts utilitarios
-  └── utils/               # Utilidades compartidas
+  │   ├── entities/           # ⭐ DLL - Modelos abstractos generados automáticamente
+  │   │   ├── models/         # Modelos base abstractos (BaseModel, UserEntity, etc.)
+  │   │   ├── constants/      # Constantes compartidas (roles, estados, etc.)
+  │   │   └── management/
+  │   │       └── commands/
+  │   │           └── generate_entities.py  # Script generador de modelos
+  │   ├── auth_app/          # App 1: Autenticación y usuarios (hereda de entities)
+  │   ├── traffic_app/       # App 2: Análisis de tráfico (hereda de entities)
+  │   ├── plates_app/        # App 3: Detección de placas (hereda de entities)
+  │   └── external_apis/     # App 4: Integración con APIs externas
+  ├── config/                 # Configuración Django
+  ├── logs/                   # Archivos de log
+  ├── media/                  # Archivos multimedia
+  ├── scripts/                # Scripts utilitarios
+  └── utils/                  # Utilidades compartidas
   ```
-- **Características**:
-  - Autenticación JWT con refresh tokens
-  - API RESTful con paginación automática
-  - Documentación automática con OpenAPI 3.0
-  - Arquitectura modular con apps separadas
-  - Soporte para SQL Server y SQLite (desarrollo)
+- **Características Arquitectónicas**:
+  - ✅ **API REST pura** (sin templates, solo JSON responses)
+  - ✅ **DLL Pattern**: Modelos abstractos en `entities/`, implementaciones concretas en apps
+  - ✅ **Auto-generación**: Script `generate_entities.py` lee TypeScript de `shared/` y genera modelos Django
+  - ✅ **4 Apps especializadas**: Cada app se enfoca en un dominio específico
+  - ✅ **Herencia de modelos**: Apps heredan de entidades abstractas (`UserEntity`, `TrafficEntity`, etc.)
+  - ✅ **Sincronización automática**: Modelos Python sincronizados con TypeScript interfaces
+  - ✅ **Constantes centralizadas**: Roles, estados y enums en `entities/constants/`
+  - ✅ **Autenticación JWT** con refresh tokens
+  - ✅ **Documentación OpenAPI 3.0** automática
+  - ✅ **Soporte SQL Server y SQLite** (desarrollo)
+
+#### 🔧 **Patrón DLL (Data Layer Library)**
+```python
+# entities/models/auth.py - Modelo abstracto (DLL)
+class UserEntity(BaseModel):
+    """Modelo abstracto generado desde TypeScript"""
+    email = models.EmailField(max_length=255)
+    passwordHash = models.CharField(max_length=255)
+    firstName = models.CharField(max_length=255)
+    lastName = models.CharField(max_length=255)
+    phoneNumber = models.CharField(max_length=20, blank=True, null=True)
+    emailConfirmed = models.BooleanField(default=False)
+    
+    class Meta:
+        abstract = True  # ← Modelo abstracto, no crea tabla
+
+# auth_app/models.py - Implementación concreta (App)
+class User(UserEntity):
+    """Modelo concreto que hereda de UserEntity"""
+    last_login = models.DateTimeField(null=True, blank=True)
+    failed_login_attempts = models.IntegerField(default=0)
+    is_locked_out = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = "auth_users"  # ← Tabla real en BD
+        
+    def __str__(self):
+        return f"{self.firstName} {self.lastName}"
+```
+
+#### 📝 **Generación Automática de Modelos**
+```bash
+# 1. Modelos TypeScript en shared/src/entities/
+interface UserEntity {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    // ...
+}
+
+# 2. Script lee TypeScript y genera Python
+python manage.py generate_entities
+
+# 3. Resultado en apps/entities/models/auth.py
+class UserEntity(BaseModel):
+    email = models.EmailField(max_length=255)
+    firstName = models.CharField(max_length=255)
+    lastName = models.CharField(max_length=255)
+    # Auto-generado ✨
+```
+
+#### 🔗 **Las 4 Apps Internas**
+1. **entities/** - Librería de modelos abstractos (DLL)
+2. **auth_app/** - Autenticación, usuarios, roles y permisos
+3. **traffic_app/** - Análisis de tráfico, videos, métricas
+4. **plates_app/** - Detección de placas, OCR, reportes
+5. **external_apis/** - Integración con servicios externos (Gmail, Twilio, etc.)
 
 ### ⚛️ Frontend (React/TypeScript)
 - **Propósito**: Interfaz web moderna y responsiva para gestión y visualización
@@ -188,16 +285,21 @@ cd frontend && npm install
 ### 3. Configuración de Base de Datos
 
 ```bash
-# Migraciones Django
+# Generar modelos Django desde TypeScript (IMPORTANTE)
 cd backend
+python manage.py generate_entities  # ← Auto-genera entities/models/*.py
+
+# Crear migraciones
 python manage.py makemigrations
+
+# Aplicar migraciones
 python manage.py migrate
 
-# Crear superusuario (opcional)
-python manage.py createsuperuser
+# Crear usuario administrador
+python manage.py seed_admin  # Email: admin@gmail.com, Password: admin123
 
-# Cargar datos de prueba
-python manage.py loaddata fixtures/initial_data.json
+# O crear superusuario personalizado (opcional)
+python manage.py createsuperuser
 ```
 
 ### 4. Ejecutar en Desarrollo
@@ -548,9 +650,9 @@ Servicios:
   "type-check:all": "Verificación TypeScript",
   "test:all": "Ejecutar todos los tests",
   
-  "db:generate": "Generar migraciones Django",
-  "db:push": "Aplicar migraciones",
-  "db:seed": "Cargar datos iniciales",
+  "db:generate": "Generar modelos Django desde TypeScript (generate_entities)",
+  "db:migrate": "Crear y aplicar migraciones Django",
+  "db:seed": "Cargar usuario admin inicial",
   "db:reset": "Reset completo de BD",
   
   "clean:all": "Limpiar archivos generados",
@@ -617,12 +719,16 @@ CI/CD: GitHub Actions (configuración futura)
 ### 🏗️ Arquitectura y Patrones
 ```yaml
 Arquitectura: Monorepo con workspaces
-Patrón Backend: MTV (Model-Template-View) con Django
+Patrón Backend: API REST + DLL (Data Layer Library)
+  - entities/: Modelos abstractos generados desde TypeScript
+  - apps/: 4 apps que heredan de entities (auth, traffic, plates, external_apis)
+  - Auto-generación: Script Python lee shared/ y genera modelos Django
 Patrón Frontend: Componentes funcionales + Custom hooks
 Estado: Server state (React Query) + Client state (Zustand)
 Tipado: Strict TypeScript en todo el stack
 API: RESTful con OpenAPI 3.0 documentation
 Autenticación: JWT stateless con refresh tokens
+Sincronización: Modelos TypeScript ↔ Python Django automática
 ```
 
 ### 🔮 Tecnologías Futuras (Roadmap)
@@ -695,7 +801,7 @@ Este proyecto fue desarrollado por estudiantes de 5to semestre de la carrera de 
 - **Juan Taday** - [@juantadayunemi](https://github.com/juantadayunemi)
 - **Adrian Avila** - [@adrianavila](https://github.com/adrianavila) 
 - **Damian Solari** - [@damsoles](https://github.com/damsoles)
-- **Domenica Janina Piza Arias** - [@domenica-arpi](https://github.com/domenica-arpi)
+- **Domenica Piza** - [@domenica-arpi](https://github.com/domenica-arpi)
 
 ## 🎓 Información Académica
 
