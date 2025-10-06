@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
+// Import images
+import loginDashboardImage from '../../images/images/login_dashboard.svg';
+import logoTraficSmart from '../../images/logo/logo_trafic_smart.svg';
+import { APP_NAME } from '../../config/appConfig';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [mounted, setMounted] = useState(false);
   const { login, isLoading, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Animation mount effect
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
@@ -43,114 +53,169 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Traffic Analysis System
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your account
-          </p>
+    <div className="min-h-screen bg-gray-100 lg:flex lg:relative">
+      {/* Left Side - Traffic Image with Logo Overlay (Full Coverage) */}
+      <div 
+        className="hidden lg:block lg:w-[55%] relative overflow-hidden"
+        style={{
+          backgroundImage: `url(${loginDashboardImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* Dark Overlay for better logo visibility */}
+        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+
+        {/* Logo + Brand Name Overlay - Centered */}
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="flex flex-col items-center">
+            <img
+              src={logoTraficSmart}
+              alt="TrafiSmart Logo"
+              className={`h-80 w-auto filter drop-shadow-2xl transition-transform duration-1000 ease-in-out ${mounted ? 'animate-flip-in' : 'opacity-0'}`}
+            />
+            <h1 className="text-white -mt-8 text-6xl font-bold drop-shadow-2xl">
+               {APP_NAME}
+            </h1>
+          </div>
         </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <Input
-              label="Email address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={errors.email}
-              required
-              placeholder="Enter your email"
+      {/* Right Side - White Card Overlapping Image with Rounded Left Border */}
+      <div 
+        className="w-full lg:w-1/2 lg:-ml-8 relative z-20 bg-white lg:rounded-l-3xl shadow-2xl flex items-center justify-center px-8 py-12 lg:px-16 min-h-screen"
+      >
+        {/* Form Container - No additional card, just content */}
+        <div className="w-full max-w-md">
+          {/* Mobile Logo - Only visible on mobile */}
+          <div className="lg:hidden text-center mb-8">
+            <img
+              src={logoTraficSmart}
+              alt="TrafiSmart Logo"
+              className="mx-auto h-16 w-auto mb-2"
             />
+            <h1 className="text-2xl font-bold text-gray-900">Trafismart</h1>
+          </div>
 
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={errors.password}
-              required
-              placeholder="Enter your password"
-            />
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+              Bienvenido a TrafiSmart
+            </h2>
+            <p className="text-gray-500 text-sm">
+              Inicia sesión en tu cuenta
+            </p>
+          </div>
+
+          {/* Login Form */}
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Dirección de correo electrónico <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrors({ ...errors, email: '' });
+                  }}
+                  error={errors.email}
+                  required
+                  placeholder="Introduce tu correo electrónico"
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Contraseña <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors({ ...errors, password: '' });
+                  }}
+                  error={errors.password}
+                  required
+                  placeholder="Ingresa tu contraseña"
+                  className="w-full"
+                />
+              </div>
+            </div>
 
             {/* Remember Me Checkbox */}
-            <div className="flex items-center">
+            <div className="flex items-center pt-1">
               <input
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              <label 
+                htmlFor="remember-me" 
+                className="ml-2 block text-sm text-gray-600 cursor-pointer"
+              >
                 Recordar mi contraseña
               </label>
             </div>
 
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="flex">
+              <div 
+                className="
+                  bg-red-50 border border-red-200 rounded-lg p-3
+                  animate-shake
+                "
+              >
+                <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <span className="text-red-400">⚠️</span>
+                    <svg 
+                      className="h-5 w-5 text-red-500" 
+                      viewBox="0 0 20 20" 
+                      fill="currentColor"
+                    >
+                      <path 
+                        fillRule="evenodd" 
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" 
+                        clipRule="evenodd" 
+                      />
+                    </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">
-                      Login Failed
-                    </h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      {error}
-                    </div>
+                    <p className="text-sm text-red-800">{error}</p>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-primary-700 hover:bg-primary-500 text-white font-semibold py-3 rounded-button transition-all duration-200 shadow-lg hover:shadow-2xl"
               disabled={isLoading}
               loading={isLoading}
             >
-              Sign in
+              Iniciar sesión
             </Button>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Don't have an account?
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 text-center">
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                Sign up here
-              </Link>
-            </div>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-md">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Account:</h4>
-            <p className="text-xs text-blue-700">
-              Email: admin@gmail.com<br />
-              Password: 123
+          {/* Register Link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              ¿No tienes una cuenta?{' '}
+              <a href="/register" className="text-primary-700 hover:text-primary-600 font-semibold hover:underline">
+                Regístrate aquí
+              </a>
             </p>
           </div>
+
         </div>
       </div>
     </div>

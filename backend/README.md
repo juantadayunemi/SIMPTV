@@ -4,9 +4,6 @@
 # Generar modelos DLL desde TypeScript
 python manage.py generate_entities --organized
 
-# Poblar usuario administrador y roles
-python manage.py seed_admin
-
 # Aplicar migraciones (hacer para cada app)
 python manage.py makemigrations auth_app
 python manage.py makemigrations traffic_app
@@ -15,6 +12,12 @@ python manage.py migrate
 
 # Verificar sistema sin errores
 python manage.py check
+
+
+# Poblar usuario administrador y roles
+python manage.py seed_admin
+
+
 
 # Iniciar servidor de desarrollo
 python manage.py runserver
