@@ -6,9 +6,17 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
-  fullName: string;
+  confirmPassword: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: User;
+  emailSent: boolean;
 }
 
 export interface AuthResponse {
@@ -52,17 +60,20 @@ class AuthService {
   }
 
   // Register user
-  async register(userData: RegisterData): Promise<AuthResponse> {
+  async register(userData: RegisterData): Promise<RegisterResponse> {
     const response = await api.post('/api/auth/register/', userData);
-    const { access_token, refresh_token, user } = response.data;
-    
-    // Store tokens and user
-    localStorage.setItem('access_token', access_token);
-    if (refresh_token) {
-      localStorage.setItem('refresh_token', refresh_token);
-    }
-    localStorage.setItem('user', JSON.stringify(user));
-    
+    return response.data;
+  }
+
+  // Confirm email with token
+  async confirmEmail(token: string): Promise<{ message: string; user: User }> {
+    const response = await api.post('/api/auth/confirm-email/', { token });
+    return response.data;
+  }
+
+  // Resend confirmation email
+  async resendConfirmation(email: string): Promise<{ message: string; emailSent: boolean }> {
+    const response = await api.post('/api/auth/resend-confirmation/', { email });
     return response.data;
   }
 

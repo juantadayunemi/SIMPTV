@@ -87,22 +87,32 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (email: string, password: string, fullName: string) => {
+  const register = async (firstName: string, lastName: string, email: string, password: string, confirmPassword: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const response = await authService.register({ email, password, fullName });
+      const response = await authService.register({ 
+        firstName, 
+        lastName, 
+        email, 
+        password,
+        confirmPassword 
+      });
       
+      // Registration successful, but user needs to confirm email
       setState({
-        user: response.user,
-        isAuthenticated: true,
+        user: null,
+        isAuthenticated: false,
         isLoading: false,
         error: null,
       });
 
       return response;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Registration failed';
+      const errorMessage = error.response?.data?.errors 
+        ? JSON.stringify(error.response.data.errors)
+        : error.response?.data?.error || 'Error al registrar usuario';
+      
       setState(prev => ({
         ...prev,
         isLoading: false,

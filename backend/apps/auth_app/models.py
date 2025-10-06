@@ -18,11 +18,11 @@ class User(UserEntity):
     failed_login_attempts = models.IntegerField(default=0)
     is_locked_out = models.BooleanField(default=False)
     lockout_until = models.DateTimeField(null=True, blank=True)
-  
+
     @property
     def fullName(self):
         return f"{self.firstName} {self.lastName}"
-    
+
     class Meta:
         db_table = "auth_users"
         verbose_name = "User"
@@ -95,3 +95,31 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Reset Token: {self.user.email}"
+
+
+class EmailConfirmationToken(models.Model):
+    """Email confirmation tokens"""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="confirmation_tokens"
+    )
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "auth_email_confirmation_tokens"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Email Confirmation Token: {self.user.email}"
+
+    def is_expired(self):
+        from django.utils import timezone
+
+        return timezone.now() > self.expires_at
+
+    def mark_as_used(self):
+        self.is_used = True
+        self.save()

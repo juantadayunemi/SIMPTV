@@ -4,9 +4,204 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.contrib.auth.hashers import check_password
-from .models import User
-from datetime import timedelta
 from django.utils import timezone
+from datetime import timedelta
+from .models import User, EmailConfirmationToken
+from .serializers import (
+    RegisterSerializer,
+    UserSerializer,
+    EmailConfirmationSerializer,
+    ResendConfirmationSerializer,
+)
+from .email_utils import (
+    generate_confirmation_token,
+    send_confirmation_email,
+    send_welcome_email,
+)
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Register endpoint: POST /api/auth/register/
+    
+    Body: {
+        "firstName": "Juan",
+        "lastName": "Pérez",
+        "email": "juan@example.com",
+        "password": "SecurePass123",
+        "confirmPassword": "SecurePass123"
+    }
+    
+    Returns: {
+        "message": "Usuario registrado exitosamente",
+        "user": {user_data},
+        "emailSent": true
+    }
+    """
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Create user
+            user = serializer.save()
+
+            # Generate confirmation token
+            token = generate_confirmation_token(user)
+
+            # Send confirmation email
+            email_sent = send_confirmation_email(user, token)
+
+            return Response(
+                {
+                    "message": "Usuario registrado exitosamente. Por favor revisa tu correo para confirmar tu cuenta.",
+                    "user": UserSerializer(user).data,
+                    "emailSent": email_sent,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"Error al registrar usuario: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ConfirmEmailView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Confirm Email endpoint: POST /api/auth/confirm-email/
+    
+    Body: {
+        "token": "confirmation_token_here"
+    }
+    
+    Returns: {
+        "message": "Email confirmado exitosamente",
+        "user": {user_data}
+    }
+    """
+
+    def post(self, request):
+        serializer = EmailConfirmationSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        token_string = serializer.validated_data["token"]
+
+        try:
+            # Find token
+            token = EmailConfirmationToken.objects.get(token=token_string)
+
+            # Check if token is expired
+            if token.is_expired():
+                return Response(
+                    {
+                        "error": "El token ha expirado. Por favor solicita un nuevo enlace de confirmación."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Check if token is already used
+            if token.is_used:
+                return Response(
+                    {"error": "Este token ya ha sido utilizado."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Get user and activate account
+            user = token.user
+            user.emailConfirmed = True
+            user.is_active = True
+            user.save()
+
+            # Mark token as used
+            token.mark_as_used()
+
+            # Send welcome email
+            send_welcome_email(user)
+
+            return Response(
+                {
+                    "message": "¡Email confirmado exitosamente! Ya puedes iniciar sesión.",
+                    "user": UserSerializer(user).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except EmailConfirmationToken.DoesNotExist:
+            return Response(
+                {"error": "Token inválido o no encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Error al confirmar email: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ResendConfirmationView(APIView):
+    permission_classes = [AllowAny]
+    """
+    Resend Confirmation endpoint: POST /api/auth/resend-confirmation/
+    
+    Body: {
+        "email": "user@example.com"
+    }
+    
+    Returns: {
+        "message": "Email de confirmación enviado",
+        "emailSent": true
+    }
+    """
+
+    def post(self, request):
+        serializer = ResendConfirmationSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                {"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email=email)
+
+            # Generate new token
+            token = generate_confirmation_token(user)
+
+            # Send confirmation email
+            email_sent = send_confirmation_email(user, token)
+
+            return Response(
+                {
+                    "message": "Email de confirmación enviado exitosamente. Por favor revisa tu correo.",
+                    "emailSent": email_sent,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Error al enviar email: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class LoginView(APIView):
@@ -73,8 +268,8 @@ class LoginView(APIView):
             token_expired_hours = 24  # ← Configurable directamente aquí
 
             # Generar tokens JWT con expiración personalizada
-            refresh = RefreshToken.for_user(user )# type: ignore
-            access_token = AccessToken.for_user(user) # type: ignore
+            refresh = RefreshToken.for_user(user)  # type: ignore
+            access_token = AccessToken.for_user(user)  # type: ignore
 
             # Configurar tiempo de expiración personalizado
             access_token.set_exp(lifetime=timedelta(hours=token_expired_hours))

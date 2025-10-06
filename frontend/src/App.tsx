@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth';
 // Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ConfirmEmailPage from './pages/auth/ConfirmEmailPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
@@ -68,6 +69,10 @@ const App: React.FC = () => {
                 <RegisterPage />
               )
             } 
+          />
+          <Route 
+            path="/confirm-email" 
+            element={<ConfirmEmailPage />} 
           />
 
           {/* Protected Routes */}
