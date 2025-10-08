@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { authService, User } from '../services/auth.service';
+import { authService, User, RegisterResponse } from '../services/auth.service';
 
 interface AuthState {
   user: User | null;
@@ -77,7 +77,10 @@ export const useAuth = () => {
 
       return response;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Login failed';
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.response?.data?.detail || 
+                          'Error al iniciar sesión';
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -87,7 +90,13 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (firstName: string, lastName: string, email: string, password: string, confirmPassword: string) => {
+  const register = async (
+    firstName: string, 
+    lastName: string, 
+    email: string, 
+    password: string, 
+    confirmPassword: string
+  ): Promise<RegisterResponse> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
@@ -109,14 +118,11 @@ export const useAuth = () => {
 
       return response;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.errors 
-        ? JSON.stringify(error.response.data.errors)
-        : error.response?.data?.error || 'Error al registrar usuario';
-      
+      // Don't set error in state - let the component handle it
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: errorMessage,
+        error: null, // Component will handle custom errors
       }));
       throw error;
     }

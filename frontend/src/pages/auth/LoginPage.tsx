@@ -15,7 +15,12 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [mounted, setMounted] = useState(false);
-  const { login, isLoading, error, isAuthenticated } = useAuth();
+  const [showResendActivation, setShowResendActivation] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false); // ← NUEVO: Controlar si ya se intentó login
+  const { login, isLoading, error, isAuthenticated, clearError } = useAuth();
   const navigate = useNavigate();
 
   // Animation mount effect
@@ -23,15 +28,20 @@ export const LoginPage: React.FC = () => {
     setMounted(true);
   }, []);
 
-  // Redirect to dashboard if already authenticated
+  // Redirect to dashboard if already authenticated (SOLO SI NO HAY ERROR ACTIVO)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !error && loginAttempted) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, error, loginAttempted, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Reset states
+    setShowResendActivation(false);
+    setResendSuccess(false);
+    setLoginAttempted(true); // ← Marcar que se intentó login
     
     // Basic validation
     const newErrors: { [key: string]: string } = {};
@@ -40,15 +50,35 @@ export const LoginPage: React.FC = () => {
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setLoginAttempted(false); // ← Resetear si hay errores de validación
       return;
     }
 
     try {
-
       await login(email, password, rememberMe);
       // Successful login - navigation will be handled by useEffect
+    } catch (err: any) {
+      // Check if error is due to unconfirmed email
+      if (err.response?.data?.code === 'EMAIL_NOT_CONFIRMED') {
+        setShowResendActivation(true);
+        setResendEmail(err.response.data.email || email);
+      }
+      // NO resetear loginAttempted aquí - dejar que el error se muestre
+    }
+  };
+  
+  const handleResendActivation = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    
+    try {
+      const authService = (await import('../../services/auth.service')).default;
+      await authService.resendConfirmation(resendEmail);
+      setResendSuccess(true);
     } catch (err) {
-      // Error is handled by useAuth hook
+      console.error('Error resending activation:', err);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -121,6 +151,8 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setErrors({ ...errors, email: '' });
+                    setLoginAttempted(false); // ← Resetear error cuando el usuario edita
+                    clearError(); // ← Limpiar error del hook
                   }}
                   error={errors.email}
                   required
@@ -139,6 +171,8 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setErrors({ ...errors, password: '' });
+                    setLoginAttempted(false); // ← Resetear error cuando el usuario edita
+                    clearError(); // ← Limpiar error del hook
                   }}
                   error={errors.password}
                   required
@@ -190,6 +224,50 @@ export const LoginPage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Resend Activation Section */}
+            {showResendActivation && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 animate-fade-in">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800">
+                      Cuenta no activada
+                    </h3>
+                    {!resendSuccess ? (
+                      <>
+                        <p className="mt-1 text-sm text-yellow-700">
+                          Tu cuenta aún no ha sido confirmada. Revisa tu correo <strong>{resendEmail}</strong> para activarla.
+                        </p>
+                        <p className="mt-2 text-xs text-yellow-600">
+                          ¿No recibiste el correo de activación?
+                        </p>
+                        <button
+                          onClick={handleResendActivation}
+                          disabled={resendLoading}
+                          className="mt-2 text-sm font-medium text-yellow-700 hover:text-yellow-600 underline disabled:opacity-50"
+                        >
+                          {resendLoading ? 'Enviando...' : 'Reenviar correo de activación →'}
+                        </button>
+                      </>
+                    ) : (
+                      <div className="mt-2">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✅ ¡Correo de activación enviado!
+                        </p>
+                        <p className="mt-1 text-xs text-green-600">
+                          Revisa tu bandeja de entrada en <strong>{resendEmail}</strong>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

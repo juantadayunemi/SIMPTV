@@ -18,6 +18,9 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [mounted, setMounted] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [apiError, setApiError] = useState<{ message: string; suggestion?: string; code?: string } | null>(null);
   const { register, isLoading, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -68,6 +71,9 @@ export const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset API error
+    setApiError(null);
+    
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
@@ -75,12 +81,78 @@ export const RegisterPage: React.FC = () => {
     }
 
     try {
-      await register(firstName, lastName, email, password, confirmPassword);
+      const response = await register(firstName, lastName, email, password, confirmPassword);
+      
       // Registration successful - show success message
       setRegistrationSuccess(true);
-    } catch (err) {
-      // Error is handled by useAuth hook
+      setRegistrationMessage(response.message || 'Usuario registrado exitosamente');
+      setEmailSent(response.emailSent || false);
+      
+    } catch (err: any) {
       console.error('Registration error:', err);
+      
+      // Check if it's a structured API error
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        
+        // Check if we have our custom error structure
+        if (errorData.code && errorData.error) {
+          setApiError({
+            message: errorData.error,
+            suggestion: errorData.suggestion || '',
+            code: errorData.code
+          });
+        }
+        // Check if it's a field validation error
+        else if (errorData.errors?.email) {
+          const emailError = Array.isArray(errorData.errors.email) 
+            ? errorData.errors.email[0] 
+            : errorData.errors.email;
+          
+          // Parse error message if it contains our format: [CODE] Message
+          if (typeof emailError === 'string' && emailError.startsWith('[')) {
+            const codeEnd = emailError.indexOf(']');
+            if (codeEnd > 0) {
+              const code = emailError.substring(1, codeEnd);
+              const fullMessage = emailError.substring(codeEnd + 2).trim();
+              
+              // Split into message and suggestion
+              const parts = fullMessage.split('. ');
+              const message = parts[0] + '.';
+              const suggestion = parts.slice(1).join('. ');
+              
+              setApiError({
+                message,
+                suggestion,
+                code
+              });
+            } else {
+              setApiError({
+                message: emailError,
+                code: 'VALIDATION_ERROR'
+              });
+            }
+          } else {
+            setApiError({
+              message: emailError,
+              code: 'VALIDATION_ERROR'
+            });
+          }
+        }
+        // Generic error
+        else {
+          setApiError({
+            message: errorData.error || errorData.message || 'Error al registrar usuario',
+            code: 'UNKNOWN_ERROR'
+          });
+        }
+      } else {
+        // Network error or unexpected error
+        setApiError({
+          message: 'Error de conexión. Por favor verifica tu conexión a internet.',
+          code: 'NETWORK_ERROR'
+        });
+      }
     }
   };
 
@@ -158,7 +230,7 @@ export const RegisterPage: React.FC = () => {
                     Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
                   </p>
                   <p className="mt-2 text-xs text-green-600">
-                    El enlace expirará en 24 horas.
+                    ⏰ El enlace expirará en 24 horas. {!emailSent && 'Si no recibes el correo, podrás solicitar uno nuevo desde el inicio de sesión.'}
                   </p>
                   <button
                     onClick={() => navigate('/login')}
@@ -166,6 +238,53 @@ export const RegisterPage: React.FC = () => {
                   >
                     Ir al inicio de sesión →
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* API Error Messages - Email already exists, invalid domain, etc */}
+          {apiError && (
+            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 animate-shake">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    {apiError.message}
+                  </h3>
+                  {apiError.suggestion && (
+                    <p className="mt-2 text-sm text-yellow-700">
+                      💡 {apiError.suggestion}
+                    </p>
+                  )}
+                  
+                  {/* Show "Forgot Password" link if email exists */}
+                  {apiError.code === 'EMAIL_ALREADY_EXISTS' && (
+                    <div className="mt-3">
+                      <a 
+                        href="/forgot-password" 
+                        className="text-sm font-medium text-yellow-700 hover:text-yellow-600 underline"
+                      >
+                        ¿Olvidaste tu contraseña? →
+                      </a>
+                    </div>
+                  )}
+                  
+                  {/* Show "Resend Activation" link if email not confirmed */}
+                  {apiError.code === 'EMAIL_NOT_CONFIRMED' && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => navigate('/login')}
+                        className="text-sm font-medium text-yellow-700 hover:text-yellow-600 underline"
+                      >
+                        Ir a activar mi cuenta →
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

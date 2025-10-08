@@ -16,12 +16,15 @@ setuptools>=65.0  # For pkg_resources compatibility
 # Development Tools
 django-debug-toolbar==4.3.0
 django-extensions==3.2.3
+werkzeug==3.0.1  # Enhanced auto-reload and debugger for runserver_plus
+# watchdog==4.0.0  # Commented: Not compatible with Python 3.13 yet (use runserver instead)
 
 # API Documentation
 drf-spectacular==0.27.1
 
 # Email
 django-mail-templated==2.6.5
+dnspython==2.6.1  # For email domain validation (MX records)
 
 # Testing
 pytest==8.1.1

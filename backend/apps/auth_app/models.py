@@ -10,31 +10,37 @@ from apps.entities.models import UserEntity, UserRoleEntity
 
 
 class User(UserEntity):
-    """Concrete User model inheriting from entities DLL"""
+    """
+    Concrete User model inheriting from entities DLL
 
-    # All fields are inherited from UserEntity (email, passwordHash, fullName, etc.)
-    # Add authentication-specific fields if needed
-    last_login = models.DateTimeField(null=True, blank=True)
-    failed_login_attempts = models.IntegerField(default=0)
-    is_locked_out = models.BooleanField(default=False)
-    lockout_until = models.DateTimeField(null=True, blank=True)
+    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos
+    """
+
+    # Authentication-specific fields (camelCase)
+    lastLogin = models.DateTimeField(null=True, blank=True, db_column="lastLogin")
+    failedLoginAttempts = models.IntegerField(
+        default=0, db_column="failedLoginAttempts"
+    )
+    isLockedOut = models.BooleanField(default=False, db_column="isLockedOut")
+    lockoutUntil = models.DateTimeField(null=True, blank=True, db_column="lockoutUntil")
 
     @property
     def fullName(self):
+        """Computed property: firstName + lastName"""
         return f"{self.firstName} {self.lastName}"
 
     class Meta:
         db_table = "auth_users"
         verbose_name = "User"
         verbose_name_plural = "Users"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
         return f"{self.fullName} ({self.email})"
 
     @property
     def is_authenticated(self):
-        return self.is_active and not self.is_locked_out
+        return self.isActive and not self.isLockedOut
 
 
 class UserRole(UserRoleEntity):
@@ -60,57 +66,57 @@ class UserRole(UserRoleEntity):
 
 
 class LoginSession(models.Model):
-    """Track user login sessions"""
+    """Track user login sessions - camelCase convention"""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
-    session_key = models.CharField(max_length=40, unique=True)
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
+    sessionKey = models.CharField(max_length=40, unique=True, db_column="sessionKey")
+    ipAddress = models.GenericIPAddressField(db_column="ipAddress")
+    userAgent = models.TextField(db_column="userAgent")
+    createdAt = models.DateTimeField(auto_now_add=True, db_column="createdAt")
+    expiresAt = models.DateTimeField(db_column="expiresAt")
+    isActive = models.BooleanField(default=True, db_column="isActive")
 
     class Meta:
         db_table = "auth_login_sessions"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
-        return f"Session: {self.user.email} - {self.created_at}"
+        return f"Session: {self.user.email} - {self.createdAt}"
 
 
 class PasswordResetToken(models.Model):
-    """Password reset tokens"""
+    """Password reset tokens - camelCase convention"""
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="reset_tokens"
     )
     token = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    is_used = models.BooleanField(default=False)
+    createdAt = models.DateTimeField(auto_now_add=True, db_column="createdAt")
+    expiresAt = models.DateTimeField(db_column="expiresAt")
+    isUsed = models.BooleanField(default=False, db_column="isUsed")
 
     class Meta:
         db_table = "auth_password_reset_tokens"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
         return f"Reset Token: {self.user.email}"
 
 
 class EmailConfirmationToken(models.Model):
-    """Email confirmation tokens"""
+    """Email confirmation tokens - camelCase convention"""
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="confirmation_tokens"
     )
     token = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    is_used = models.BooleanField(default=False)
+    createdAt = models.DateTimeField(auto_now_add=True, db_column="createdAt")
+    expiresAt = models.DateTimeField(db_column="expiresAt")
+    isUsed = models.BooleanField(default=False, db_column="isUsed")
 
     class Meta:
         db_table = "auth_email_confirmation_tokens"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
         return f"Email Confirmation Token: {self.user.email}"
@@ -118,8 +124,8 @@ class EmailConfirmationToken(models.Model):
     def is_expired(self):
         from django.utils import timezone
 
-        return timezone.now() > self.expires_at
+        return timezone.now() > self.expiresAt
 
     def mark_as_used(self):
-        self.is_used = True
+        self.isUsed = True
         self.save()

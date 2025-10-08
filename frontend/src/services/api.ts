@@ -29,8 +29,13 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    // Handle 401 errors (unauthorized)
-    if (error.response?.status === 401 && !original._retry) {
+    // ⚠️ NO intentar refresh si es un error de login explícito
+    // Los endpoints de login/register deben fallar normalmente
+    const isAuthEndpoint = original.url?.includes('/api/auth/login') || 
+                          original.url?.includes('/api/auth/register');
+
+    // Handle 401 errors (unauthorized) - SOLO si NO es un endpoint de autenticación
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       
       const refreshToken = localStorage.getItem('refresh_token');
@@ -50,11 +55,15 @@ api.interceptors.response.use(
           // Refresh failed, redirect to login
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }
       } else {
         // No refresh token, redirect to login
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }

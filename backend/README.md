@@ -3,6 +3,22 @@
 ```bash
 # Generar modelos DLL desde TypeScript
 python manage.py generate_entities --organized
+```
+
+### 1. Vista Previa (Sin Cambios)
+```bash
+python manage.py generate_entities --organized --dry-run
+```
+
+### 2. Sincronización Completa (Recomendado)
+```bash
+python manage.py generate_entities --organized
+```
+
+### 3. Solo Entidades (Sin Constantes)
+```bash
+python manage.py generate_entities --organized --entities-only
+```
 
 # Aplicar migraciones (hacer para cada app)
 python manage.py makemigrations auth_app

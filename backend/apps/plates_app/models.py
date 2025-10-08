@@ -27,11 +27,11 @@ class PlateDetection(LicensePlateEntity):
         db_table = "plates_detections"
         verbose_name = "Plate Detection"
         verbose_name_plural = "Plate Detections"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
         indexes = [
             models.Index(fields=["plateNumber"]),  # Inherited field
             models.Index(fields=["confidence"]),  # Inherited field
-            models.Index(fields=["created_at"]),
+            models.Index(fields=["createdAt"]),
         ]
 
     def __str__(self):
@@ -51,7 +51,7 @@ class PlateAnalysis(PlateAlertEntity):
         db_table = "plates_analyses"
         verbose_name = "Plate Analysis"
         verbose_name_plural = "Plate Analyses"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
         return f"Analysis: {self.detection.plateNumber} - Count: {self.alertType}"
@@ -74,7 +74,7 @@ class VehicleDetection(VehicleDetectionEntity):
         db_table = "plates_vehicles"
         verbose_name = "Vehicle Detection"
         verbose_name_plural = "Vehicle Detections"
-        ordering = ["-created_at"]
+        ordering = ["-createdAt"]
 
     def __str__(self):
         return f"Vehicle: {self.type} - Confidence: {self.confidence}%"
@@ -86,15 +86,15 @@ class VehicleDetection(VehicleDetectionEntity):
 
 
 class CameraLocation(models.Model):
-    """Camera locations for plate detection"""
+    """Camera locations for plate detection - camelCase convention"""
 
     name = models.CharField(max_length=100)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     address = models.TextField()
-    is_active = models.BooleanField(default=True)
-    installation_date = models.DateField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    isActive = models.BooleanField(default=True, db_column="isActive")
+    installationDate = models.DateField(db_column="installationDate")
+    createdAt = models.DateTimeField(auto_now_add=True, db_column="createdAt")
 
     class Meta:
         db_table = "plates_camera_locations"
@@ -105,13 +105,13 @@ class CameraLocation(models.Model):
 
 
 class PlateAlertRule(models.Model):
-    """Rules for plate detection alerts"""
+    """Rules for plate detection alerts - camelCase convention"""
 
     name = models.CharField(max_length=100)
-    plate_pattern = models.CharField(
-        max_length=50, help_text="Regex pattern for plates"
+    platePattern = models.CharField(
+        max_length=50, help_text="Regex pattern for plates", db_column="platePattern"
     )
-    alert_type = models.CharField(
+    alertType = models.CharField(
         max_length=20,
         choices=[
             ("STOLEN", "Stolen Vehicle"),
@@ -119,14 +119,15 @@ class PlateAlertRule(models.Model):
             ("VIP", "VIP Vehicle"),
             ("BLACKLIST", "Blacklisted"),
         ],
+        db_column="alertType",
     )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    isActive = models.BooleanField(default=True, db_column="isActive")
+    createdAt = models.DateTimeField(auto_now_add=True, db_column="createdAt")
+    createdBy = models.ForeignKey(User, on_delete=models.CASCADE, db_column="createdBy")
 
     class Meta:
         db_table = "plates_alert_rules"
         ordering = ["name"]
 
     def __str__(self):
-        return f"Rule: {self.name} ({self.alert_type})"
+        return f"Rule: {self.name} ({self.alertType})"

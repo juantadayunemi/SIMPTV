@@ -1,12 +1,300 @@
 import os
 import re
 import ast
-from typing import Dict, List, Any, Tuple
+import json
+import shutil
+from datetime import datetime
+from typing import Dict, List, Any, Tuple, Set
 from pathlib import Path
 from django.core.management.base import BaseCommand, CommandError
 import logging
 
 logger = logging.getLogger("entities.generator")
+
+
+class ChangeDetector:
+    """Detecta cambios entre modelos TypeScript y Django existentes"""
+
+    def __init__(self):
+        self.changes = {
+            "new_fields": [],  # Campos nuevos agregados en TS
+            "removed_fields": [],  # Campos eliminados de TS
+            "modified_fields": [],  # Campos con tipo cambiado
+            "new_models": [],  # Modelos nuevos en TS
+            "removed_models": [],  # Modelos eliminados de TS (ya no en TS)
+        }
+
+    def detect_changes(
+        self, ts_interfaces: Dict[str, Any], existing_models_path: Path
+    ) -> Dict[str, Any]:
+        """
+        Compara interfaces TypeScript con modelos Django existentes
+
+        Args:
+            ts_interfaces: Diccionario de interfaces parseadas de TypeScript
+            existing_models_path: Path al directorio apps/entities/models/
+
+        Returns:
+            Diccionario con todos los cambios detectados
+        """
+        if not existing_models_path.exists():
+            # Primera vez, todos son nuevos
+            self.changes["new_models"] = list(ts_interfaces.keys())
+            return self.changes
+
+        # Leer modelos Django existentes
+        existing_django_models = self._parse_existing_django_models(
+            existing_models_path
+        )
+
+        # Detectar modelos nuevos y eliminados
+        ts_model_names = set(ts_interfaces.keys())
+        django_model_names = set(existing_django_models.keys())
+
+        self.changes["new_models"] = list(ts_model_names - django_model_names)
+        self.changes["removed_models"] = list(django_model_names - ts_model_names)
+
+        # Detectar cambios en campos de modelos existentes
+        common_models = ts_model_names & django_model_names
+
+        for model_name in common_models:
+            ts_fields = ts_interfaces[model_name].get("properties", {})
+            django_fields = existing_django_models[model_name].get("fields", {})
+
+            ts_field_names = set(ts_fields.keys())
+            django_field_names = set(django_fields.keys())
+
+            # Campos nuevos
+            new_fields = ts_field_names - django_field_names
+            for field_name in new_fields:
+                self.changes["new_fields"].append(
+                    {
+                        "model": model_name,
+                        "field": field_name,
+                        "type": ts_fields[field_name]["type"],
+                        "django_field": ts_fields[field_name]["django_field"][
+                            "field_type"
+                        ],
+                    }
+                )
+
+            # Campos eliminados
+            removed_fields = django_field_names - ts_field_names
+            for field_name in removed_fields:
+                self.changes["removed_fields"].append(
+                    {
+                        "model": model_name,
+                        "field": field_name,
+                        "old_type": django_fields[field_name],
+                    }
+                )
+
+            # Campos modificados (tipo cambiado)
+            common_fields = ts_field_names & django_field_names
+            for field_name in common_fields:
+                ts_type = ts_fields[field_name]["django_field"]["field_type"]
+                django_type = django_fields[field_name]
+
+                if ts_type != django_type:
+                    self.changes["modified_fields"].append(
+                        {
+                            "model": model_name,
+                            "field": field_name,
+                            "old_type": django_type,
+                            "new_type": ts_type,
+                        }
+                    )
+
+        return self.changes
+
+    def _parse_existing_django_models(self, models_path: Path) -> Dict[str, Dict]:
+        """
+        Parsea archivos .py existentes para extraer definiciones de modelos
+
+        Returns:
+            Dict con estructura: {
+                "ModelName": {
+                    "file": "auth.py",
+                    "fields": {"field_name": "FieldType", ...}
+                }
+            }
+        """
+        existing_models = {}
+
+        # Buscar todos los archivos .py excepto __init__ y base
+        for py_file in models_path.glob("*.py"):
+            if py_file.name in ["__init__.py", "base.py"]:
+                continue
+
+            try:
+                with open(py_file, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                # Buscar definiciones de clase
+                class_pattern = r"class\s+(\w+)\(BaseModel\):"
+                class_matches = re.finditer(class_pattern, content)
+
+                for class_match in class_matches:
+                    model_name = class_match.group(1)
+
+                    # Extraer campos del modelo usando regex
+                    # Buscar desde la definición de clase hasta la próxima clase o Meta
+                    class_start = class_match.end()
+                    next_class_match = re.search(r"\nclass\s+", content[class_start:])
+                    next_meta_match = re.search(
+                        r"\n    class Meta:", content[class_start:]
+                    )
+
+                    if next_meta_match:
+                        class_end = class_start + next_meta_match.start()
+                    elif next_class_match:
+                        class_end = class_start + next_class_match.start()
+                    else:
+                        class_end = len(content)
+
+                    class_body = content[class_start:class_end]
+
+                    # Extraer campos (líneas que empiezan con nombre = models.)
+                    field_pattern = r"(\w+)\s*=\s*models\.(\w+)\("
+                    field_matches = re.finditer(field_pattern, class_body)
+
+                    fields = {}
+                    for field_match in field_matches:
+                        field_name = field_match.group(1)
+                        field_type = field_match.group(2)
+                        fields[field_name] = field_type
+
+                    existing_models[model_name] = {
+                        "file": py_file.name,
+                        "fields": fields,
+                    }
+
+            except Exception as e:
+                logger.warning(f"Error parsing existing model file {py_file}: {e}")
+
+        return existing_models
+
+    def generate_report(self, output_path: Path) -> str:
+        """Genera un reporte Markdown con todos los cambios detectados"""
+
+        report_lines = []
+        report_lines.append("# 🔄 TRAFSMART ENTITIES SYNC REPORT")
+        report_lines.append(
+            f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        report_lines.append("")
+        report_lines.append("---")
+        report_lines.append("")
+
+        # Resumen
+        report_lines.append("## 📊 Summary")
+        report_lines.append("")
+        report_lines.append(f"- 🆕 **New Fields:** {len(self.changes['new_fields'])}")
+        report_lines.append(
+            f"- 🗑️ **Removed Fields:** {len(self.changes['removed_fields'])}"
+        )
+        report_lines.append(
+            f"- ✏️ **Modified Fields:** {len(self.changes['modified_fields'])}"
+        )
+        report_lines.append(f"- 🆕 **New Models:** {len(self.changes['new_models'])}")
+        report_lines.append(
+            f"- 🗑️ **Removed Models:** {len(self.changes['removed_models'])}"
+        )
+        report_lines.append("")
+
+        # Campos nuevos
+        if self.changes["new_fields"]:
+            report_lines.append("## 🆕 New Fields Added")
+            report_lines.append("")
+            for change in self.changes["new_fields"]:
+                report_lines.append(f"- **{change['model']}.{change['field']}**")
+                report_lines.append(f"  - TypeScript Type: `{change['type']}`")
+                report_lines.append(f"  - Django Field: `{change['django_field']}`")
+                report_lines.append("")
+
+        # Campos eliminados
+        if self.changes["removed_fields"]:
+            report_lines.append("## 🗑️ Removed Fields")
+            report_lines.append("")
+            report_lines.append(
+                "> ⚠️ **ACTION REQUIRED:** These fields exist in Django but were removed from TypeScript."
+            )
+            report_lines.append("> They have been removed from the generated models.")
+            report_lines.append("")
+            for change in self.changes["removed_fields"]:
+                report_lines.append(f"- **{change['model']}.{change['field']}**")
+                report_lines.append(f"  - Old Django Type: `{change['old_type']}`")
+                report_lines.append("")
+
+        # Campos modificados
+        if self.changes["modified_fields"]:
+            report_lines.append("## ✏️ Modified Fields (Type Changed)")
+            report_lines.append("")
+            report_lines.append("> ⚠️ **ACTION REQUIRED:** Field types have changed.")
+            report_lines.append("> Review migrations carefully to avoid data loss.")
+            report_lines.append("")
+            for change in self.changes["modified_fields"]:
+                report_lines.append(f"- **{change['model']}.{change['field']}**")
+                report_lines.append(f"  - Old Type: `{change['old_type']}`")
+                report_lines.append(f"  - New Type: `{change['new_type']}`")
+                report_lines.append("")
+
+        # Modelos nuevos
+        if self.changes["new_models"]:
+            report_lines.append("## 🆕 New Models Created")
+            report_lines.append("")
+            for model_name in self.changes["new_models"]:
+                report_lines.append(f"- **{model_name}**")
+            report_lines.append("")
+
+        # Modelos eliminados
+        if self.changes["removed_models"]:
+            report_lines.append("## 🗑️ Removed Models")
+            report_lines.append("")
+            report_lines.append(
+                "> ⚠️ **ACTION REQUIRED:** These models exist in Django but not in TypeScript."
+            )
+            report_lines.append(
+                "> They have NOT been deleted automatically. Remove manually if needed."
+            )
+            report_lines.append("")
+            for model_name in self.changes["removed_models"]:
+                report_lines.append(f"- **{model_name}**")
+            report_lines.append("")
+
+        # Próximos pasos
+        report_lines.append("---")
+        report_lines.append("")
+        report_lines.append("## ✅ Next Steps")
+        report_lines.append("")
+        report_lines.append("1. **Review Changes:** Check the changes above")
+        report_lines.append(
+            "2. **Generate Migrations:** Run `python manage.py makemigrations`"
+        )
+        report_lines.append("3. **Review Migrations:** Check generated migration files")
+        report_lines.append("4. **Apply Migrations:** Run `python manage.py migrate`")
+        report_lines.append("5. **Test:** Verify everything works correctly")
+        report_lines.append("")
+
+        report_content = "\n".join(report_lines)
+
+        # Guardar reporte
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(report_content)
+
+        return report_content
+
+    def has_changes(self) -> bool:
+        """Verifica si hay algún cambio detectado"""
+        return any(
+            [
+                self.changes["new_fields"],
+                self.changes["removed_fields"],
+                self.changes["modified_fields"],
+                self.changes["new_models"],
+                self.changes["removed_models"],
+            ]
+        )
 
 
 class TypeScriptEntityParser:
@@ -213,37 +501,8 @@ class TypeScriptEntityParser:
                 "options": {"default": "uuid.uuid4", "editable": False},
                 "import": "from django.db import models",
             }
-        # createdAt/updatedAt para SQL Server
-        if (
-            prop_name.lower() in ["createdat", "updatedat"]
-            and ts_type.lower() == "date"
-        ):
-            return {
-                "field_type": "DateTimeField",
-                "options": {"blank": True, "null": True},
-                "import": "from django.db import models",
-                "note": "En migración SQL Server usar default=getdate()",
-            }
-        elif "email" in prop_name:
-            return {
-                "field_type": "EmailField",
-                "options": {"max_length": 255},
-                "import": "from django.db import models",
-            }
-        elif "phone" in prop_name:
-            return {
-                "field_type": "CharField",
-                "options": {"max_length": 20},
-                "import": "from django.db import models",
-            }
-        elif "price" in prop_name or "amount" in prop_name:
-            return {
-                "field_type": "DecimalField",
-                "options": {"max_digits": 10, "decimal_places": 2},
-                "import": "from django.db import models",
-            }
-
-        # Basic type mappings
+        # ⚡ PRIORITY: Check TypeScript type FIRST before name-based inference
+        # Basic type mappings (TypeScript types have absolute priority!)
         type_mapping = {
             "string": {
                 "field_type": "CharField",
@@ -300,6 +559,39 @@ class TypeScriptEntityParser:
                 "options": {"auto_now_add": False},
                 "import": "from django.db import models",
             }
+
+        # ⚡ Name-based inference (ONLY for 'string' type as fallback)
+        # This ensures boolean/number types are not overridden
+        if ts_type.lower() == "string":
+            # createdAt/updatedAt for timestamps
+            if prop_name.lower() in ["createdat", "updatedat"]:
+                return {
+                    "field_type": "DateTimeField",
+                    "options": {"blank": True, "null": True},
+                    "import": "from django.db import models",
+                    "note": "En migración SQL Server usar default=getdate()",
+                }
+            # Email fields (but NOT boolean fields with "email" in name like emailConfirmed)
+            elif "email" in prop_name.lower():
+                return {
+                    "field_type": "EmailField",
+                    "options": {"max_length": 255},
+                    "import": "from django.db import models",
+                }
+            # Phone fields
+            elif "phone" in prop_name.lower():
+                return {
+                    "field_type": "CharField",
+                    "options": {"max_length": 20},
+                    "import": "from django.db import models",
+                }
+            # Price/amount fields
+            elif "price" in prop_name.lower() or "amount" in prop_name.lower():
+                return {
+                    "field_type": "DecimalField",
+                    "options": {"max_digits": 10, "decimal_places": 2},
+                    "import": "from django.db import models",
+                }
 
         # Check if it's a reference to another interface (relationship)
         if ts_type[0].isupper():  # Capitalized = likely interface reference
@@ -466,43 +758,45 @@ class DjangoModelGenerator:
         return categorized
 
     def _generate_base_file(self) -> str:
-        """Generate the base.py file with BaseModel"""
+        """Generate the base.py file with BaseModel - CONVENCIÓN CAMELCASE"""
         lines = []
         lines.append("from django.db import models")
         lines.append("")
         lines.append("")
         lines.append("class BaseModel(models.Model):")
-        lines.append(
-            '    """Base abstract model with common fields for all entities"""'
-        )
         lines.append('    """')
+        lines.append("    Base abstract model with common fields for all entities")
+        lines.append("")
+        lines.append("    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos")
+        lines.append("    - Consistencia total: TypeScript, Python, Base de Datos")
+        lines.append("    - Sin conversión automática necesaria")
+        lines.append("    - Mismo nombre en DB, backend y frontend")
+        lines.append("")
+        lines.append("    IMPORTANTE: Para SQL Server migrations:")
         lines.append(
-            "    IMPORTANT: For SQL Server migrations, use these field configurations:"
+            "    - createdAt: usar default=models.functions.Now() o raw SQL default=getdate()"
         )
         lines.append(
-            "    - created_at: default=models.functions.Now() or raw SQL default=getdate()"
+            "    - updatedAt: Django lo maneja automáticamente con auto_now=True"
         )
-        lines.append("    - updated_at: will be handled by Django auto_now=True")
         lines.append('    """')
         lines.append("")
+        lines.append("    id = models.BigAutoField(primary_key=True, editable=False)")
+        lines.append("    createdAt = models.DateTimeField(")
         lines.append(
-            "    id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only"
+            '        auto_now_add=True, verbose_name="Created At", db_column="createdAt"'
         )
+        lines.append("    )")
+        lines.append("    updatedAt = models.DateTimeField(")
         lines.append(
-            "    # Para SQL Server: En migración usar default=models.functions.Now() o raw SQL default=getdate()"
+            '        auto_now=True, verbose_name="Updated At", db_column="updatedAt"'
         )
+        lines.append("    )")
+        lines.append("    isActive = models.BooleanField(")
         lines.append(
-            '    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")'
+            '        default=True, verbose_name="Is Active", db_column="isActive"'
         )
-        lines.append(
-            "    # Django manejará automáticamente el update con auto_now=True"
-        )
-        lines.append(
-            '    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")'
-        )
-        lines.append(
-            '    is_active = models.BooleanField(default=True, verbose_name="Is Active")'
-        )
+        lines.append("    )")
         lines.append("")
         lines.append("    class Meta:")
         lines.append("        abstract = True")
@@ -556,7 +850,17 @@ class DjangoModelGenerator:
         elif category == "predictions":
             pass  # Solo usa las comunes
         elif category == "common":
-            common_imports.extend(["NOTIFICATION_TYPES_CHOICES", "USER_ROLES_CHOICES"])
+            # Common necesita TODAS las constantes porque puede tener DTOs de cualquier categoría
+            common_imports.extend(
+                [
+                    "NOTIFICATION_TYPES_CHOICES",
+                    "USER_ROLES_CHOICES",
+                    "ALERT_TYPE_CHOICES",
+                    "PLATE_PROCESSING_STATUS_CHOICES",
+                    "TRACKING_STATUS_CHOICES",
+                    "TRAFFIC_DIRECTION_CHOICES",
+                ]
+            )
 
         # Si es plates, también necesita notification types
         if category == "plates":
@@ -779,14 +1083,18 @@ class DjangoModelGenerator:
         properties = interface_info.get("properties", {})
 
         # Campos que ya están en BaseModel - NO los generes
+        # CONVENCIÓN: Tanto snake_case (legacy) como camelCase (actual)
         base_model_fields = {
             "id",  # Ya está en BaseModel como BigAutoField
-            "created_at",  # Ya está en BaseModel
-            "createdat",  # Variante del anterior
-            "updated_at",  # Ya está en BaseModel
-            "updatedat",  # Variante del anterior
-            "is_active",  # Ya está en BaseModel
-            "isactive",  # Variante del anterior
+            "created_at",  # Legacy snake_case
+            "createdat",  # Variante lowercase
+            "createdAt",  # ✅ ACTUAL: camelCase
+            "updated_at",  # Legacy snake_case
+            "updatedat",  # Variante lowercase
+            "updatedAt",  # ✅ ACTUAL: camelCase
+            "is_active",  # Legacy snake_case
+            "isactive",  # Variante lowercase
+            "isActive",  # ✅ ACTUAL: camelCase
         }
 
         # Filtrar propiedades para evitar duplicación
@@ -1064,6 +1372,15 @@ class Command(BaseCommand):
         entities_only = options["entities_only"]
         organized = options["organized"]
 
+        self.stdout.write(self.style.SUCCESS("=" * 80))
+        self.stdout.write(
+            self.style.SUCCESS(
+                "🔄 TRAFISMART ENTITIES GENERATOR - INTELLIGENT SYNC MODE"
+            )
+        )
+        self.stdout.write(self.style.SUCCESS("=" * 80))
+        self.stdout.write("")
+
         self.stdout.write(f"Looking for TypeScript files in: {shared_path.absolute()}")
 
         if not shared_path.exists():
@@ -1102,6 +1419,7 @@ class Command(BaseCommand):
         entity_parser = TypeScriptEntityParser()
         types_parser = TypeScriptTypesParser()
         model_generator = DjangoModelGenerator()
+        change_detector = ChangeDetector()
 
         all_interfaces = {}
         all_types = {}
@@ -1121,6 +1439,260 @@ class Command(BaseCommand):
                 parsed_data = types_parser.parse_file(ts_file)
                 if parsed_data:
                     all_types[ts_file.stem] = parsed_data
+
+        if not all_interfaces:
+            raise CommandError(
+                f"No interfaces found in TypeScript files at: {shared_path.absolute()}"
+            )
+
+        self.stdout.write("")
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"✅ Found {len(all_interfaces)} interfaces: {', '.join(list(all_interfaces.keys())[:5])}{'...' if len(all_interfaces) > 5 else ''}"
+            )
+        )
+
+        if all_types:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"✅ Found {len(all_types)} type files with constants"
+                )
+            )
+
+        # ============================================================================
+        # CHANGE DETECTION - Detectar cambios entre TS y Django existente
+        # ============================================================================
+        self.stdout.write("")
+        self.stdout.write(
+            self.style.WARNING("🔍 Detecting changes from TypeScript to Django...")
+        )
+
+        existing_models_path = Path("apps/entities/models")
+        changes = change_detector.detect_changes(all_interfaces, existing_models_path)
+
+        if change_detector.has_changes():
+            self.stdout.write("")
+            self.stdout.write(self.style.SUCCESS("📊 CHANGES DETECTED:"))
+            self.stdout.write(f"  🆕 New Fields: {len(changes['new_fields'])}")
+            self.stdout.write(f"  🗑️  Removed Fields: {len(changes['removed_fields'])}")
+            self.stdout.write(
+                f"  ✏️  Modified Fields: {len(changes['modified_fields'])}"
+            )
+            self.stdout.write(f"  🆕 New Models: {len(changes['new_models'])}")
+            self.stdout.write(f"  🗑️  Removed Models: {len(changes['removed_models'])}")
+
+            # Mostrar detalles de cambios importantes
+            if changes["new_fields"]:
+                self.stdout.write("")
+                self.stdout.write(self.style.SUCCESS("  New Fields Added:"))
+                for change in changes["new_fields"][:5]:  # Mostrar primeros 5
+                    self.stdout.write(
+                        f"    • {change['model']}.{change['field']} ({change['django_field']})"
+                    )
+                if len(changes["new_fields"]) > 5:
+                    self.stdout.write(
+                        f"    ... and {len(changes['new_fields']) - 5} more"
+                    )
+
+            if changes["removed_fields"]:
+                self.stdout.write("")
+                self.stdout.write(self.style.WARNING("  ⚠️  Removed Fields:"))
+                for change in changes["removed_fields"][:5]:
+                    self.stdout.write(
+                        f"    • {change['model']}.{change['field']} (was {change['old_type']})"
+                    )
+                if len(changes["removed_fields"]) > 5:
+                    self.stdout.write(
+                        f"    ... and {len(changes['removed_fields']) - 5} more"
+                    )
+
+            if changes["modified_fields"]:
+                self.stdout.write("")
+                self.stdout.write(
+                    self.style.WARNING("  ⚠️  Modified Fields (Type Changed):")
+                )
+                for change in changes["modified_fields"][:5]:
+                    self.stdout.write(
+                        f"    • {change['model']}.{change['field']}: {change['old_type']} → {change['new_type']}"
+                    )
+                if len(changes["modified_fields"]) > 5:
+                    self.stdout.write(
+                        f"    ... and {len(changes['modified_fields']) - 5} more"
+                    )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS("✅ No changes detected - models are in sync!")
+            )
+
+        # --- PATCH: Comment missing imports in models/__init__.py ---
+        models_init_path = Path("apps/entities/models/__init__.py")
+        if models_init_path.exists():
+            try:
+                with open(models_init_path, "r", encoding="utf-8") as f:
+                    init_content = f.read()
+
+                # Check for import errors by trying to parse
+                modified = False
+
+                # Find all import blocks
+                import_pattern = r"from\s+\.(\w+)\s+import\s+\([^)]+\)"
+                matches = list(re.finditer(import_pattern, init_content, re.DOTALL))
+
+                for match in reversed(matches):  # Reverse to preserve positions
+                    module_name = match.group(1)
+                    module_file = Path(f"apps/entities/models/{module_name}.py")
+
+                    # If module file doesn't exist, comment out this import block
+                    if not module_file.exists():
+                        start_pos = match.start()
+                        end_pos = match.end()
+
+                        # Get full block including newlines
+                        block = init_content[start_pos:end_pos]
+
+                        # Comment it out
+                        commented_block = "\n".join(
+                            f"# {line}" if line.strip() else line
+                            for line in block.split("\n")
+                        )
+
+                        init_content = (
+                            init_content[:start_pos]
+                            + f"# AUTO-COMMENTED: Module {module_name}.py not found\n"
+                            + commented_block
+                            + init_content[end_pos:]
+                        )
+                        modified = True
+
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"⚠️  Commented import block for missing module: {module_name}.py"
+                            )
+                        )
+
+                if modified and not dry_run:
+                    with open(models_init_path, "w", encoding="utf-8") as f:
+                        f.write(init_content)
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"✅ Updated {models_init_path} - commented missing imports"
+                        )
+                    )
+
+            except Exception as e:
+                self.stdout.write(
+                    self.style.ERROR(f"❌ Error processing __init__.py: {e}")
+                )
+        # --- END PATCH ---
+
+        # Generate Django code
+        if organized:
+            self.stdout.write("")
+            self.stdout.write(
+                self.style.SUCCESS("🏗️  Generating organized structure...")
+            )
+
+            organized_files = model_generator.generate_organized_structure(
+                {"interfaces": all_interfaces}, all_types, Path("apps/entities")
+            )
+
+            if dry_run:
+                self.stdout.write("")
+                self.stdout.write(
+                    self.style.WARNING("🔍 DRY RUN - No files will be written")
+                )
+                self.stdout.write("")
+                self.stdout.write("Files that would be generated:")
+                for file_path in organized_files.keys():
+                    self.stdout.write(f"  📄 {file_path}")
+            else:
+                # Create backup before overwriting
+                backup_dir = Path("apps/entities/models_backup")
+                if existing_models_path.exists():
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_path = backup_dir / timestamp
+                    backup_path.mkdir(parents=True, exist_ok=True)
+
+                    self.stdout.write("")
+                    self.stdout.write(
+                        self.style.WARNING(f"📦 Creating backup at: {backup_path}")
+                    )
+
+                    for py_file in existing_models_path.glob("*.py"):
+                        shutil.copy2(py_file, backup_path / py_file.name)
+
+                    self.stdout.write(self.style.SUCCESS("✅ Backup created"))
+
+                # Write generated files
+                for file_path, content in organized_files.items():
+                    full_path = Path("apps/entities") / file_path
+                    full_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    with open(full_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+
+                    self.stdout.write(f"✅ Generated: {file_path}")
+
+                self.stdout.write("")
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"✅ Successfully generated {len(organized_files)} files"
+                    )
+                )
+
+                # Generate changes report
+                if change_detector.has_changes():
+                    report_path = Path("ENTITIES_SYNC_REPORT.md")
+                    report_content = change_detector.generate_report(report_path)
+
+                    self.stdout.write("")
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"📄 Generated changes report: {report_path}"
+                        )
+                    )
+                    self.stdout.write("")
+                    self.stdout.write(self.style.WARNING("=" * 80))
+                    self.stdout.write(
+                        self.style.WARNING("⚠️  IMPORTANT: MIGRATION REQUIRED")
+                    )
+                    self.stdout.write(self.style.WARNING("=" * 80))
+                    self.stdout.write("")
+                    self.stdout.write("Changes were detected and applied. You need to:")
+                    self.stdout.write("")
+                    self.stdout.write("  1️⃣  Review changes in: ENTITIES_SYNC_REPORT.md")
+                    self.stdout.write(
+                        "  2️⃣  Generate migrations: python manage.py makemigrations"
+                    )
+                    self.stdout.write("  3️⃣  Review migrations in: apps/*/migrations/")
+                    self.stdout.write("  4️⃣  Apply migrations: python manage.py migrate")
+                    self.stdout.write("")
+        else:
+            # Original single-file generation
+            model_code = model_generator.generate_model_code(
+                {"interfaces": all_interfaces}
+            )
+
+            if dry_run:
+                self.stdout.write("")
+                self.stdout.write(self.style.WARNING("🔍 DRY RUN - Generated code:"))
+                self.stdout.write("")
+                self.stdout.write(model_code[:500] + "...\n[truncated]")
+            else:
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(model_code)
+
+                self.stdout.write("")
+                self.stdout.write(
+                    self.style.SUCCESS(f"✅ Successfully generated: {output_file}")
+                )
+
+        self.stdout.write("")
+        self.stdout.write(self.style.SUCCESS("=" * 80))
+        self.stdout.write(self.style.SUCCESS("✅ GENERATION COMPLETE"))
+        self.stdout.write(self.style.SUCCESS("=" * 80))
 
         if not all_interfaces:
             self.stdout.write(

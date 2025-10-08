@@ -34,6 +34,7 @@ class RegisterView(APIView):
     }
     
     Returns: {
+        "success": true,
         "message": "Usuario registrado exitosamente",
         "user": {user_data},
         "emailSent": true
@@ -41,11 +42,78 @@ class RegisterView(APIView):
     """
 
     def post(self, request):
+        print("\n" + "=" * 80)
+        print("🔍 REGISTRO - Inicio del endpoint")
+        print(f"📥 Datos recibidos: {request.data}")
+        print("=" * 80 + "\n")
+
         serializer = RegisterSerializer(data=request.data)
 
         if not serializer.is_valid():
+            print("\n" + "❌" * 40)
+            print("⚠️ VALIDACIÓN FALLIDA")
+            print(f"📋 Errores del serializer: {serializer.errors}")
+            print("❌" * 40 + "\n")
+
+            # Extract detailed error messages
+            errors = serializer.errors
+
+            # Check if it's our custom email validation error
+            if "email" in errors:
+                email_errors = errors["email"]
+                print(f"📧 Errores de email detectados: {email_errors}")
+                print(f"📧 Tipo de email_errors: {type(email_errors)}")
+
+                if email_errors and len(email_errors) > 0:
+                    error_message = str(email_errors[0])
+                    print(f"📧 Mensaje de error (string): {error_message}")
+                    print(f"📧 ¿Empieza con '['?: {error_message.startswith('[')}")
+
+                    # Parse our custom error format: [CODE] Message
+                    if error_message.startswith("["):
+                        # Extract code and message
+                        code_end = error_message.find("]")
+                        print(f"📧 Posición de ']': {code_end}")
+
+                        if code_end > 0:
+                            code = error_message[1:code_end]
+                            message = error_message[
+                                code_end + 2 :
+                            ].strip()  # +2 to skip '] '
+
+                            print(f"✅ Código extraído: {code}")
+                            print(f"✅ Mensaje extraído: {message}")
+
+                            # Split message and suggestion
+                            parts = message.split(". ", 1)
+                            main_message = parts[0] + "."
+                            suggestion = parts[1] if len(parts) > 1 else ""
+
+                            print(f"✅ Mensaje principal: {main_message}")
+                            print(f"✅ Sugerencia: {suggestion}")
+
+                            response_data = {
+                                "success": False,
+                                "error": main_message,
+                                "suggestion": suggestion,
+                                "code": code,
+                            }
+
+                            print(f"\n📤 Respuesta que se enviará: {response_data}")
+                            print("=" * 80 + "\n")
+
+                            return Response(
+                                response_data,
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+
+            # Return generic error format
+            print(f"\n📤 Enviando errores genéricos: {serializer.errors}")
+            print("=" * 80 + "\n")
+
             return Response(
-                {"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST
+                {"success": False, "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -55,21 +123,35 @@ class RegisterView(APIView):
             # Generate confirmation token
             token = generate_confirmation_token(user)
 
-            # Send confirmation email
+            # Send confirmation email (non-blocking)
             email_sent = send_confirmation_email(user, token)
+
+            if not email_sent:
+                # Email failed but user is created - they can request resend
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Usuario registrado exitosamente.",
+                        "warning": "Hubo un problema al enviar el correo de confirmación. Por favor, solicita un nuevo enlace de activación.",
+                        "user": UserSerializer(user).data,
+                        "emailSent": False,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
 
             return Response(
                 {
+                    "success": True,
                     "message": "Usuario registrado exitosamente. Por favor revisa tu correo para confirmar tu cuenta.",
                     "user": UserSerializer(user).data,
-                    "emailSent": email_sent,
+                    "emailSent": True,
                 },
                 status=status.HTTP_201_CREATED,
             )
 
         except Exception as e:
             return Response(
-                {"error": f"Error al registrar usuario: {str(e)}"},
+                {"success": False, "error": f"Error al registrar usuario: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -122,7 +204,7 @@ class ConfirmEmailView(APIView):
             # Get user and activate account
             user = token.user
             user.emailConfirmed = True
-            user.is_active = True
+            user.isActive = True
             user.save()
 
             # Mark token as used
@@ -238,30 +320,46 @@ class LoginView(APIView):
             )
 
         try:
-            # Buscar usuario por email
-            user = User.objects.get(email=email)
+            # Buscar usuario por email (devuelve None si no existe)
+            user = User.objects.filter(email=email.lower()).first()
+
+            # Si el usuario no existe, credenciales inválidas
+            if not user:
+                return Response(
+                    {
+                        "error": "Usuario o contraseña incorrectos.",
+                        "code": "INVALID_CREDENTIALS",
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
             # Verificar que el email esté confirmado
             if not user.emailConfirmed:
                 return Response(
                     {
-                        "error": "Account not verified",
-                        "message": "Please verify your email before logging in",
-                        "email_confirmed": False,
+                        "error": "Tu cuenta aún no ha sido activada. Por favor revisa tu correo para confirmarla.",
+                        "emailConfirmed": False,
+                        "email": user.email,
+                        "code": "EMAIL_NOT_CONFIRMED",
                     },
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # Verificar contraseña
+            # Verificar contraseña (mismo mensaje si falla - seguridad)
             if not check_password(password, user.passwordHash):
                 return Response(
-                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                    {
+                        "error": "Usuario o contraseña incorrectos.",
+                        "code": "INVALID_CREDENTIALS",
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
                 )
 
             # Verificar que la cuenta esté activa
-            if not user.is_active:
+            if not user.isActive:
                 return Response(
-                    {"error": "Account is inactive"}, status=status.HTTP_403_FORBIDDEN
+                    {"error": "La cuenta está inactiva"},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
             # Configuración manual de expiración del token (configurable aquí)
@@ -274,6 +372,10 @@ class LoginView(APIView):
             # Configurar tiempo de expiración personalizado
             access_token.set_exp(lifetime=timedelta(hours=token_expired_hours))
 
+            # Update last login
+            user.lastLogin = timezone.now()
+            user.save(update_fields=["lastLogin"])
+
             return Response(
                 {
                     "access_token": str(access_token),
@@ -281,19 +383,16 @@ class LoginView(APIView):
                     "token_type": "Bearer",
                     "expires_in_hours": token_expired_hours,
                     "expires_at": timezone.now() + timedelta(hours=token_expired_hours),
-                    "user": {
-                        "id": str(user.pk),
-                        "email": user.email,
-                        "fullName": user.fullName,
-                        "phoneNumber": user.phoneNumber,
-                        "isActive": user.is_active,
-                        "emailConfirmed": user.emailConfirmed,
-                    },
+                    "user": UserSerializer(
+                        user
+                    ).data,  # ✅ Usa el serializer (conversión automática)
                 },
                 status=status.HTTP_200_OK,
             )
 
-        except User.DoesNotExist:
+        except Exception as e:
+            # Capturar cualquier otro error inesperado
             return Response(
-                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+                {"error": f"Error interno del servidor: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

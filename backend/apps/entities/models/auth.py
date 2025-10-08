@@ -20,6 +20,10 @@ class UserEntity(BaseModel):
     lastName = models.CharField(max_length=255)
     phoneNumber = models.CharField(max_length=20, blank=True, null=True)
     emailConfirmed = models.BooleanField(default=False)
+    lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    failedLoginAttempts = models.FloatField(blank=True, null=True)
+    isLockedOut = models.BooleanField(default=False, blank=True, null=True)
+    lockoutUntil = models.DateTimeField(auto_now_add=False, blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -88,7 +92,7 @@ class UserSearchQuery(BaseModel):
 
     """USAGE: Inherit in other apps - class User(UserSearchQuery): pass"""
 
-    email = models.EmailField(max_length=255, blank=True, null=True)
+    email = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(
         max_length=50, choices=USER_ROLES_CHOICES, blank=True, null=True
     )
@@ -111,7 +115,7 @@ class UserInfoDTO(BaseModel):
 
     """USAGE: Inherit in other apps - class User(UserInfoDTO): pass"""
 
-    email = models.EmailField(max_length=255)
+    email = models.CharField(max_length=255)
     fullName = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=255)
     permissions = models.JSONField(default=list)
@@ -141,7 +145,7 @@ class UserPreferencesDTO(BaseModel):
     language = models.CharField(max_length=255)
     timezone = models.CharField(max_length=255)
     notifications = models.TextField(blank=True, null=True)
-    email = models.EmailField(max_length=255)
+    email = models.BooleanField(default=False)
     push = models.BooleanField(default=False)
     sms = models.BooleanField(default=False)
 
@@ -180,7 +184,7 @@ class UserDTO(BaseModel):
 
     """USAGE: Inherit in other apps - class User(UserDTO): pass"""
 
-    email = models.EmailField(max_length=255)
+    email = models.CharField(max_length=255)
     fullName = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES)
     permissions = models.JSONField(default=list)

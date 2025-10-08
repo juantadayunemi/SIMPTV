@@ -12,10 +12,10 @@ def generate_confirmation_token(user):
     token = secrets.token_urlsafe(32)
 
     # Token expires in 24 hours
-    expires_at = timezone.now() + timedelta(hours=24)
+    expiresAt = timezone.now() + timedelta(hours=24)
 
-    # Create token record
-    EmailConfirmationToken.objects.create(user=user, token=token, expires_at=expires_at)
+    # Create token record (camelCase)
+    EmailConfirmationToken.objects.create(user=user, token=token, expiresAt=expiresAt)
 
     return token
 

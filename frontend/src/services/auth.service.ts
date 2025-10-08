@@ -14,9 +14,14 @@ export interface RegisterData {
 }
 
 export interface RegisterResponse {
+  success: boolean;
   message: string;
-  user: User;
-  emailSent: boolean;
+  user?: User;
+  emailSent?: boolean;
+  warning?: string;
+  error?: string;
+  suggestion?: string;
+  code?: string;
 }
 
 export interface AuthResponse {

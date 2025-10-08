@@ -23,8 +23,8 @@ class Command(BaseCommand):
             passwordHash=make_password(password),
             firstName="Admin",
             lastName="User",
-            is_active=True,
-            emailConfirmed=email,  # Es un campo EmailField, no boolean
+            isActive=True, 
+            emailConfirmed=True,
             # createdAt y updatedAt se llenan automáticamente
         )
 
@@ -35,9 +35,9 @@ class Command(BaseCommand):
             userId=user.id,  # UUID del usuario
             role=admin_role,
             assignedBy="SYSTEM",
-            is_active=True,
+            isActive=True,  # ✅ camelCase
             assignedAt=timezone.now(),
-            # created_at, updated_at se llenan automáticamente
+            # createdAt, updatedAt se llenan automáticamente
         )
 
         self.stdout.write(
@@ -50,7 +50,7 @@ class Command(BaseCommand):
 👤 Nombre: {user.fullName}
 📱 Teléfono: {user.phoneNumber}
 🏷️  Rol: {admin_role}
-✅ Activo: {user.is_active}
+✅ Activo: {user.isActive}
 ✅ Email Confirmado: {user.emailConfirmed}
 
 🌐 Prueba el login en:
