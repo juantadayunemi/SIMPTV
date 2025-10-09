@@ -104,6 +104,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
 
     fullName = serializers.ReadOnlyField()
+    profileImageUrl = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -114,11 +115,28 @@ class UserSerializer(serializers.ModelSerializer):
             "lastName",
             "fullName",
             "phoneNumber",
+            "profileImage",
+            "profileImageUrl",
             "isActive",
             "emailConfirmed",
             "createdAt",
         ]
-        read_only_fields = ["id", "email", "emailConfirmed", "createdAt"]
+        read_only_fields = [
+            "id",
+            "email",
+            "emailConfirmed",
+            "createdAt",
+            "profileImageUrl",
+        ]
+
+    def get_profileImageUrl(self, obj):
+        """Return full URL for profile image"""
+        if obj.profileImage:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(f"/media/{obj.profileImage}")
+            return f"/media/{obj.profileImage}"
+        return None
 
 
 class EmailConfirmationSerializer(serializers.Serializer):

@@ -24,6 +24,7 @@ export interface UserEntity {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
+  profileImage?: string;  // Path to profile image (e.g., "profile_images/user_123.jpg")
   isActive: boolean;
   emailConfirmed: boolean;
   lastLogin?: Date;

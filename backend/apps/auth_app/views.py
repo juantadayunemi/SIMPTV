@@ -3,9 +3,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from datetime import timedelta
+import os
+import uuid
 from .models import User, EmailConfirmationToken, PasswordResetToken
 from .serializers import (
     RegisterSerializer,
@@ -64,7 +69,7 @@ class RegisterView(APIView):
 
                         if code_end > 0:
                             code = error_message[1:code_end]
-                            message = error_message[code_end + 2:].strip()
+                            message = error_message[code_end + 2 :].strip()
                             parts = message.split(". ", 1)
                             main_message = parts[0] + "."
                             suggestion = parts[1] if len(parts) > 1 else ""
@@ -114,6 +119,7 @@ class RegisterView(APIView):
         except Exception as e:
             print(f"❌ ERROR REGISTRO: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"success": False, "error": f"Error al registrar usuario: {str(e)}"},
@@ -194,6 +200,7 @@ class ConfirmEmailView(APIView):
         except Exception as e:
             print(f"❌ ERROR CONFIRMACIÓN: {type(e).__name__}: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"error": f"Error al confirmar email: {str(e)}"},
@@ -347,6 +354,7 @@ class LoginView(APIView):
         except Exception as e:
             print(f"❌ ERROR LOGIN [{email}]: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"error": f"Error interno del servidor: {str(e)}"},
@@ -383,7 +391,7 @@ class ForgotPasswordView(APIView):
             user = User.objects.get(email=email)
             token = generate_password_reset_token(user)
             email_sent = send_password_reset_email(user, token)
-            
+
             if not email_sent:
                 print(f"⚠️ Password reset email failed: {email}")
 
@@ -473,6 +481,7 @@ class ResetPasswordView(APIView):
         except Exception as e:
             print(f"❌ ERROR RESET PASSWORD: {type(e).__name__}: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"error": f"Error al restablecer contraseña: {str(e)}"},
@@ -488,19 +497,22 @@ class ProfileView(APIView):
     Returns: {user_data}
 
     PUT - Update user profile
-    Body: {
+    Body (form-data or JSON): {
         "firstName": "Juan",
         "lastName": "Pérez",
-        "phoneNumber": "+593 999 999 999"
+        "phoneNumber": "+593 999 999 999",
+        "profileImage": <file>  // Optional file upload
     }
     Returns: {updated_user_data}
     """
+
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Soporta archivos
 
     def get(self, request):
         """Get current user profile"""
         try:
-            serializer = UserSerializer(request.user)
+            serializer = UserSerializer(request.user, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -512,14 +524,72 @@ class ProfileView(APIView):
 
     def put(self, request):
         """Update user profile"""
+        print("\n" + "=" * 80)
+        print(f"👤 ACTUALIZACIÓN DE PERFIL - Usuario: {request.user.email}")
+        print(f"📥 Datos recibidos: {request.data}")
+        print(f"📁 Archivos recibidos: {request.FILES}")
+        print("=" * 80)
+
         try:
             allowed_fields = ["firstName", "lastName", "phoneNumber"]
             update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
 
-            serializer = UserSerializer(request.user, data=update_data, partial=True)
+            # Manejar subida de imagen de perfil
+            profile_image = request.FILES.get("profileImage")
+            if profile_image:
+                print(f"🖼️ Procesando imagen de perfil: {profile_image.name}")
+
+                # Validar tipo de archivo
+                allowed_extensions = [".jpg", ".jpeg", ".png", ".gif"]
+                file_ext = os.path.splitext(profile_image.name)[1].lower()
+
+                if file_ext not in allowed_extensions:
+                    return Response(
+                        {
+                            "error": f"Formato de imagen no permitido. Use: {', '.join(allowed_extensions)}"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Validar tamaño (máximo 5MB)
+                if profile_image.size > 5 * 1024 * 1024:
+                    return Response(
+                        {"error": "La imagen es demasiado grande. Máximo 5MB."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Generar nombre único para el archivo
+                unique_filename = (
+                    f"user_{request.user.id}_{uuid.uuid4().hex[:8]}{file_ext}"
+                )
+                file_path = f"profile_images/{unique_filename}"
+
+                # Eliminar imagen anterior si existe
+                if request.user.profileImage:
+                    old_path = request.user.profileImage
+                    if default_storage.exists(old_path):
+                        default_storage.delete(old_path)
+                        print(f"🗑️ Imagen anterior eliminada: {old_path}")
+
+                # Guardar nueva imagen
+                saved_path = default_storage.save(
+                    file_path, ContentFile(profile_image.read())
+                )
+                update_data["profileImage"] = saved_path
+                print(f"✅ Imagen guardada en: {saved_path}")
+
+            print(f"📝 Datos a actualizar: {update_data}")
+
+            serializer = UserSerializer(
+                request.user,
+                data=update_data,
+                partial=True,
+                context={"request": request},
+            )
 
             if serializer.is_valid():
                 serializer.save()
+                print(f"✅ Perfil actualizado exitosamente")
                 return Response(
                     {
                         "message": "Perfil actualizado exitosamente",
@@ -528,14 +598,16 @@ class ProfileView(APIView):
                     status=status.HTTP_200_OK,
                 )
             else:
+                print(f"❌ Errores de validación: {serializer.errors}")
                 return Response(
                     {"errors": serializer.errors},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
         except Exception as e:
-            print(f"❌ ERROR UPDATE PROFILE [{request.user.email}]: {str(e)}")
+            print(f"\n❌ ERROR UPDATE PROFILE [{request.user.email}]: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return Response(
                 {"error": f"Error al actualizar perfil: {str(e)}"},

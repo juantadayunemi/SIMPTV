@@ -37,6 +37,11 @@ export const ProfilePage: React.FC = () => {
         phoneNumber: user.phoneNumber || '',
         profileImage: null
       });
+      
+      // Establecer preview de imagen actual si existe
+      if (user.profileImageUrl) {
+        setImagePreview(user.profileImageUrl);
+      }
     }
   }, [user]);
 
@@ -62,18 +67,22 @@ export const ProfilePage: React.FC = () => {
     setErrorMessage('');
 
     try {
-      console.log('📤 Enviando actualización de perfil:', {
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        phoneNumber: profileData.phoneNumber,
-      });
+      console.log('📤 Preparando actualización de perfil con FormData');
+
+      // Crear FormData para enviar archivos
+      const formData = new FormData();
+      formData.append('firstName', profileData.firstName);
+      formData.append('lastName', profileData.lastName);
+      formData.append('phoneNumber', profileData.phoneNumber);
+      
+      // Agregar imagen solo si hay una seleccionada
+      if (profileData.profileImage) {
+        formData.append('profileImage', profileData.profileImage);
+        console.log('🖼️ Imagen agregada al FormData:', profileData.profileImage.name);
+      }
 
       // Llamar al servicio para actualizar el perfil
-      const response = await authService.updateProfile({
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        phoneNumber: profileData.phoneNumber,
-      });
+      const response = await authService.updateProfile(formData);
 
       console.log('✅ Respuesta del backend:', response);
 
@@ -89,6 +98,9 @@ export const ProfilePage: React.FC = () => {
       console.log('✅ Usuario guardado en storage');
 
       setSuccessMessage('✅ Perfil actualizado exitosamente');
+      
+      // Limpiar la selección de imagen después de guardar
+      setProfileData(prev => ({ ...prev, profileImage: null }));
       
       // Limpiar mensaje después de 5 segundos
       setTimeout(() => {
@@ -208,7 +220,7 @@ export const ProfilePage: React.FC = () => {
                     />
                   </div>
                   <p className="text-xs text-gray-500">
-                    JPG, PNG o GIF. Máximo 2MB.
+                    JPG, PNG o GIF. Máximo 5MB.
                   </p>
                 </div>
               </div>

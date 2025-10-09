@@ -19,6 +19,9 @@ class UserEntity(BaseModel):
     firstName = models.CharField(max_length=255)
     lastName = models.CharField(max_length=255)
     phoneNumber = models.CharField(max_length=20, blank=True, null=True)
+    profileImage = models.CharField(
+        max_length=500, blank=True, null=True
+    )  # Path to image
     emailConfirmed = models.BooleanField(default=False)
     lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     failedLoginAttempts = models.FloatField(blank=True, null=True)

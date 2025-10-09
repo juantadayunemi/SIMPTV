@@ -154,11 +154,27 @@ export const Sidebar: React.FC = () => {
           onClick={() => navigate('/profile')}
           className="w-full px-4 py-3 flex items-center text-white/80 hover:bg-primary-600/50 hover:text-white transition-colors text-left"
         >
-          <svg className="w-7 h-7 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
+          {/* Profile Image */}
+          <div className="w-10 h-10 mr-3 flex-shrink-0 rounded-full overflow-hidden bg-white/10 border-2 border-white/20">
+            {user?.profileImageUrl ? (
+              <img
+                src={user.profileImageUrl}
+                alt={user.firstName || 'User'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white font-semibold text-sm">
+                {user?.firstName?.charAt(0) || 'U'}{user?.lastName?.charAt(0) || ''}
+              </div>
+            )}
+          </div>
+          
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-sm font-medium">Admin</span>
+            <span className="text-sm font-medium">
+              {user?.firstName && user?.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : 'Admin'}
+            </span>
             <span className="text-xs text-white/60 truncate">{user?.email || 'No email'}</span>
           </div>
         </button>

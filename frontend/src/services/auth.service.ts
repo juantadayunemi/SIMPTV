@@ -37,6 +37,8 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
+  profileImage?: string;
+  profileImageUrl?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -107,10 +109,14 @@ class AuthService {
     return response.data;
   }
 
-  // Update profile
-  async updateProfile(userData: Partial<User>): Promise<User> {
-    const response = await api.put('/api/auth/profile/', userData);
-    return response.data;
+  // Update profile (supports both JSON and FormData)
+  async updateProfile(userData: Partial<User> | FormData): Promise<User> {
+    const response = await api.put('/api/auth/profile/', userData, {
+      headers: userData instanceof FormData 
+        ? { 'Content-Type': 'multipart/form-data' }
+        : { 'Content-Type': 'application/json' }
+    });
+    return response.data.user || response.data;
   }
 
   // Logout
