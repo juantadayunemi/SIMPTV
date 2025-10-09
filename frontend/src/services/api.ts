@@ -12,7 +12,8 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    // Check both localStorage and sessionStorage for token
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,7 +39,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       
-      const refreshToken = localStorage.getItem('refresh_token');
+      // Check both localStorage and sessionStorage for refresh token
+      const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+      const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage;
+      
       if (refreshToken) {
         try {
           const response = await axios.post(`${api.defaults.baseURL}/api/auth/token/refresh/`, {
@@ -46,7 +50,7 @@ api.interceptors.response.use(
           });
           
           const { access_token } = response.data;
-          localStorage.setItem('access_token', access_token);
+          storage.setItem('access_token', access_token);
           
           // Retry original request with new token
           original.headers.Authorization = `Bearer ${access_token}`;
@@ -56,6 +60,9 @@ api.interceptors.response.use(
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user');
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('user');
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }
@@ -64,6 +71,9 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('user');
         window.location.href = '/login';
       }
     }

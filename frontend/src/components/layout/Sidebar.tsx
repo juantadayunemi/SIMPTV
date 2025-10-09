@@ -79,7 +79,7 @@ const navigationItems = [
 ];
 
 export const Sidebar: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -149,13 +149,19 @@ export const Sidebar: React.FC = () => {
 
       {/* Bottom Section - Admin & Logout */}
       <div className="border-t border-slice border-white/10 bg-primary-700/50">
-        {/* Admin Section */}
-        <div className="px-4 py-3 flex items-center text-white/80">
-          <svg className="w-7 h-7 mr-3" fill="currentColor" viewBox="0 0 24 24">
+        {/* Admin Section - Clickable to go to Profile */}
+        <button
+          onClick={() => navigate('/profile')}
+          className="w-full px-4 py-3 flex items-center text-white/80 hover:bg-primary-600/50 hover:text-white transition-colors text-left"
+        >
+          <svg className="w-7 h-7 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
           </svg>
-          <span className="text-sm font-medium">Admin</span>
-        </div>
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-sm font-medium">Admin</span>
+            <span className="text-xs text-white/60 truncate">{user?.email || 'No email'}</span>
+          </div>
+        </button>
 
         {/* Logout Button */}
         <button

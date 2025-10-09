@@ -83,6 +83,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+    # Custom middleware for token cleanup
+    "apps.auth_app.middleware.TokenCleanupMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

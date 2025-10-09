@@ -102,6 +102,15 @@ class PasswordResetToken(models.Model):
     def __str__(self):
         return f"Reset Token: {self.user.email}"
 
+    def is_expired(self):
+        from django.utils import timezone
+
+        return timezone.now() > self.expiresAt
+
+    def mark_as_used(self):
+        self.isUsed = True
+        self.save()
+
 
 class EmailConfirmationToken(models.Model):
     """Email confirmation tokens - camelCase convention"""

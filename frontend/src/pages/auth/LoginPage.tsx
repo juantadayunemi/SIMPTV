@@ -183,21 +183,33 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Remember Me Checkbox */}
-            <div className="flex items-center pt-1">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
-              />
-              <label 
-                htmlFor="remember-me" 
-                className="ml-2 block text-sm text-gray-600 cursor-pointer"
-              >
-                Recordar mi contraseña
-              </label>
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
+                />
+                <label 
+                  htmlFor="remember-me" 
+                  className="ml-2 block text-sm text-gray-600 cursor-pointer"
+                >
+                  Recordar mi contraseña
+                </label>
+              </div>
+              
+              {/* Forgot Password Link */}
+              <div className="text-sm">
+                <a 
+                  href="/forgot-password" 
+                  className="font-medium text-primary-700 hover:text-primary-600 hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </div>
             </div>
 
             {/* Error Message */}

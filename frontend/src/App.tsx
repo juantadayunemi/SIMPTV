@@ -6,6 +6,8 @@ import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ConfirmEmailPage from './pages/auth/ConfirmEmailPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
@@ -31,7 +33,10 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/register') {
+      const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/confirm-email'];
+      const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
+      
+      if (!isPublicRoute) {
         window.location.href = '/login';
       }
     }
@@ -67,6 +72,26 @@ const App: React.FC = () => {
                 <Navigate to="/dashboard" replace />
               ) : (
                 <RegisterPage />
+              )
+            } 
+          />
+          <Route 
+            path="/forgot-password" 
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <ForgotPasswordPage />
+              )
+            } 
+          />
+          <Route 
+            path="/reset-password" 
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <ResetPasswordPage />
               )
             } 
           />

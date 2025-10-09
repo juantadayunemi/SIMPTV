@@ -18,8 +18,6 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [mounted, setMounted] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  const [registrationMessage, setRegistrationMessage] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
   const [apiError, setApiError] = useState<{ message: string; suggestion?: string; code?: string } | null>(null);
   const { register, isLoading, error, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -81,12 +79,10 @@ export const RegisterPage: React.FC = () => {
     }
 
     try {
-      const response = await register(firstName, lastName, email, password, confirmPassword);
+      await register(firstName, lastName, email, password, confirmPassword);
       
       // Registration successful - show success message
       setRegistrationSuccess(true);
-      setRegistrationMessage(response.message || 'Usuario registrado exitosamente');
-      setEmailSent(response.emailSent || false);
       
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -199,49 +195,51 @@ export const RegisterPage: React.FC = () => {
               alt="TrafiSmart Logo"
               className="mx-auto h-16 w-auto mb-2"
             />
-            <h1 className="text-2xl font-bold text-gray-900">Trafismart</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{APP_NAME}</h1>
           </div>
 
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              ¡Crea tu cuenta!
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Ingrese sus datos completos
-            </p>
-          </div>
-
-          {/* Success Message - Show after registration */}
-          {registrationSuccess && (
-            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 animate-fade-in">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    ¡Registro exitoso!
-                  </h3>
-                  <p className="mt-1 text-sm text-green-700">
-                    Hemos enviado un correo de confirmación a <strong>{email}</strong>. 
-                    Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
-                  </p>
-                  <p className="mt-2 text-xs text-green-600">
-                    ⏰ El enlace expirará en 24 horas. {!emailSent && 'Si no recibes el correo, podrás solicitar uno nuevo desde el inicio de sesión.'}
-                  </p>
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="mt-3 text-sm font-medium text-green-700 hover:text-green-600 underline"
-                  >
-                    Ir al inicio de sesión →
-                  </button>
+          {/* Success Message - Show after registration (CENTERED AND FULL SCREEN) */}
+          {registrationSuccess ? (
+            <div className="flex flex-col items-center justify-center text-center space-y-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 w-full animate-fade-in">
+                <div className="flex flex-col items-center">
+                  <div className="flex-shrink-0 mb-4">
+                    <svg className="h-16 w-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-800 mb-3">
+                      ¡Registro exitoso!
+                    </h3>
+                    <p className="text-base text-green-700 mb-4">
+                      Hemos enviado un correo de confirmación a <strong>{email}</strong>. 
+                      Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
+                    </p>
+                    <p className="text-sm text-green-600 mb-6">
+                      ⏰ El enlace expirará en 3 minutos. Por favor confírmalo de inmediato.
+                    </p>
+                    <button
+                      onClick={() => navigate('/login')}
+                      className="inline-block bg-primary-700 hover:bg-primary-600 text-white font-semibold px-8 py-3 rounded-button transition-all duration-200 shadow-lg hover:shadow-2xl hover:scale-105"
+                    >
+                      Ir al inicio de sesión →
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  ¡Crea tu cuenta!
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  Ingrese sus datos completos
+                </p>
+              </div>
 
           {/* API Error Messages - Email already exists, invalid domain, etc */}
           {apiError && (
@@ -361,6 +359,10 @@ export const RegisterPage: React.FC = () => {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setErrors({ ...errors, password: '' });
+                    // Limpiar error de confirmación si ahora coinciden
+                    if (confirmPassword && e.target.value === confirmPassword) {
+                      setErrors({ ...errors, password: '', confirmPassword: '' });
+                    }
                   }}
                   error={errors.password}
                   required
@@ -379,7 +381,14 @@ export const RegisterPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
-                    setErrors({ ...errors, confirmPassword: '' });
+                    // Limpiar error si ahora coinciden con la contraseña
+                    if (password && e.target.value === password) {
+                      setErrors({ ...errors, confirmPassword: '' });
+                    } else if (password && e.target.value !== password) {
+                      setErrors({ ...errors, confirmPassword: 'Las contraseñas no coinciden' });
+                    } else {
+                      setErrors({ ...errors, confirmPassword: '' });
+                    }
                   }}
                   error={errors.confirmPassword}
                   required
@@ -438,6 +447,8 @@ export const RegisterPage: React.FC = () => {
               </a>
             </p>
           </div>
+            </>
+          )}
 
         </div>
       </div>

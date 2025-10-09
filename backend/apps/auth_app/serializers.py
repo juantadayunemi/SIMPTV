@@ -144,3 +144,51 @@ class ResendConfirmationSerializer(serializers.Serializer):
             )
 
         return value.lower()
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    """Serializer for forgot password request"""
+
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        """Check if user exists"""
+        email_lower = value.lower()
+
+        try:
+            user = User.objects.get(email=email_lower)
+            # Store user in context for later use
+            self.context["user"] = user
+        except User.DoesNotExist:
+            # Por seguridad, no revelamos si el email existe o no
+            # Retornamos el mismo mensaje en ambos casos
+            pass
+
+        return email_lower
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """Serializer for password reset with token"""
+
+    token = serializers.CharField(required=True)
+    password = serializers.CharField(
+        write_only=True, required=True, style={"input_type": "password"}
+    )
+    confirmPassword = serializers.CharField(
+        write_only=True, required=True, style={"input_type": "password"}
+    )
+
+    def validate(self, data):
+        """Validate password match and strength"""
+        if data["password"] != data["confirmPassword"]:
+            raise serializers.ValidationError(
+                {"confirmPassword": "Las contraseñas no coinciden."}
+            )
+
+        # Validate password strength
+        try:
+            validate_password(data["password"])
+        except ValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+
+        return data

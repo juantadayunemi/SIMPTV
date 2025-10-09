@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { authService } from '../../services/auth.service';
 
 export const ProfilePage: React.FC = () => {
-  // Estados para el formulario (sin funcionalidad, solo UI)
+  const { user } = useAuth();
+  
+  // Estados para el formulario
   const [profileData, setProfileData] = useState({
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    email: 'juan.perez@example.com',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
     profileImage: null as File | null
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -17,6 +26,19 @@ export const ProfilePage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Cargar datos del usuario autenticado
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || '',
+        profileImage: null
+      });
+    }
+  }, [user]);
 
   // Función para manejar la selección de imagen
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,11 +55,62 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implementar funcionalidad de guardado
-    console.log('Datos del perfil:', profileData);
-    alert('Funcionalidad pendiente de implementación');
+    setIsLoading(true);
+    setSuccessMessage('');
+    setErrorMessage('');
+
+    try {
+      console.log('📤 Enviando actualización de perfil:', {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phoneNumber: profileData.phoneNumber,
+      });
+
+      // Llamar al servicio para actualizar el perfil
+      const response = await authService.updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phoneNumber: profileData.phoneNumber,
+      });
+
+      console.log('✅ Respuesta del backend:', response);
+
+      // Obtener el usuario actualizado del backend
+      const updatedUser = await authService.getProfile();
+      
+      console.log('✅ Usuario actualizado obtenido:', updatedUser);
+
+      // Actualizar el storage correcto (localStorage o sessionStorage)
+      const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage;
+      storage.setItem('user', JSON.stringify(updatedUser));
+
+      console.log('✅ Usuario guardado en storage');
+
+      setSuccessMessage('✅ Perfil actualizado exitosamente');
+      
+      // Limpiar mensaje después de 5 segundos
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+
+    } catch (err: any) {
+      console.error('❌ Error al actualizar perfil:', err);
+      console.error('❌ Respuesta del error:', err.response);
+      setErrorMessage(
+        err.response?.data?.error || 
+        err.response?.data?.message || 
+        'Error al actualizar el perfil'
+      );
+      
+      // Limpiar mensaje de error después de 5 segundos
+      setTimeout(() => {
+        setErrorMessage('');
+      }, 5000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -192,7 +265,56 @@ export const ProfilePage: React.FC = () => {
                   El correo electrónico no puede ser modificado. Contacta al administrador si necesitas cambiarlo.
                 </p>
               </div>
+
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Teléfono
+                </label>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  value={profileData.phoneNumber}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="+593 999 999 999"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formato sugerido: +593 999 999 999 (opcional)
+                </p>
+              </div>
             </div>
+
+            {/* Success Message */}
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 animate-fade-in">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-800">{successMessage}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 animate-fade-in">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{errorMessage}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="border-t border-gray-200 pt-6">
@@ -205,9 +327,10 @@ export const ProfilePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Guardar Cambios
+                  {isLoading ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
             </div>

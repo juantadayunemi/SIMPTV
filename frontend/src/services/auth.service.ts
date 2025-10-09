@@ -34,6 +34,9 @@ export interface AuthResponse {
 export interface User {
   id: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -79,6 +82,22 @@ class AuthService {
   // Resend confirmation email
   async resendConfirmation(email: string): Promise<{ message: string; emailSent: boolean }> {
     const response = await api.post('/api/auth/resend-confirmation/', { email });
+    return response.data;
+  }
+
+  // Forgot password - request reset link
+  async forgotPassword(email: string): Promise<{ message: string; emailSent: boolean }> {
+    const response = await api.post('/api/auth/forgot-password/', { email });
+    return response.data;
+  }
+
+  // Reset password with token
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<{ message: string }> {
+    const response = await api.post('/api/auth/reset-password/', {
+      token,
+      password,
+      confirmPassword
+    });
     return response.data;
   }
 
