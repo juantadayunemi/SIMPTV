@@ -11,17 +11,20 @@ from ..constants import (
 
 class UserEntity(BaseModel):
     """Abstract DLL model from TypeScript interface UserEntity"""
+
     """USAGE: Inherit in other apps - class User(UserEntity): pass"""
 
-    email = models.CharField(max_length=255)
+    email = models.EmailField(max_length=255)
     passwordHash = models.CharField(max_length=255)
     firstName = models.CharField(max_length=255)
     lastName = models.CharField(max_length=255)
-    phoneNumber = models.CharField(max_length=255, blank=True, null=True)
-    profileImage = models.CharField(max_length=255, blank=True, null=True)
+    phoneNumber = models.CharField(max_length=20, blank=True, null=True)
+    profileImage = models.CharField(
+        max_length=500, blank=True, null=True
+    )  # Path to image
     emailConfirmed = models.BooleanField(default=False)
     lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    failedLoginAttempts = models.FloatField(default=0, blank=True, null=True)
+    failedLoginAttempts = models.FloatField(blank=True, null=True)
     isLockedOut = models.BooleanField(default=False, blank=True, null=True)
     lockoutUntil = models.DateTimeField(auto_now_add=False, blank=True, null=True)
 
@@ -31,10 +34,12 @@ class UserEntity(BaseModel):
         verbose_name_plural = "Abstract UserEntitys"
 
     def __str__(self):
-        return f'UserEntity ({self.pk})'
+        return f"UserEntity ({self.pk})"
+
 
 class UserRoleEntity(BaseModel):
     """Abstract DLL model from TypeScript interface UserRoleEntity"""
+
     """USAGE: Inherit in other apps - class User(UserRoleEntity): pass"""
 
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -48,10 +53,12 @@ class UserRoleEntity(BaseModel):
         verbose_name_plural = "Abstract UserRoleEntitys"
 
     def __str__(self):
-        return f'UserRoleEntity ({self.pk})'
+        return f"UserRoleEntity ({self.pk})"
+
 
 class CustomerEntity(BaseModel):
     """Abstract DLL model from TypeScript interface CustomerEntity"""
+
     """USAGE: Inherit in other apps - class User(CustomerEntity): pass"""
 
     name = models.CharField(max_length=255)
@@ -62,10 +69,12 @@ class CustomerEntity(BaseModel):
         verbose_name_plural = "Abstract CustomerEntitys"
 
     def __str__(self):
-        return f'{self.name} ({self.pk})'
+        return f"{self.name} ({self.pk})"
+
 
 class AuthToken(BaseModel):
     """Abstract DLL model from TypeScript interface AuthToken"""
+
     """USAGE: Inherit in other apps - class User(AuthToken): pass"""
 
     accessToken = models.CharField(max_length=255)
@@ -78,18 +87,22 @@ class AuthToken(BaseModel):
         verbose_name_plural = "Abstract AuthTokens"
 
     def __str__(self):
-        return f'AuthToken ({self.pk})'
+        return f"AuthToken ({self.pk})"
+
 
 class UserSearchQuery(BaseModel):
     """Abstract DLL model from TypeScript interface UserSearchQuery"""
+
     """USAGE: Inherit in other apps - class User(UserSearchQuery): pass"""
 
     email = models.CharField(max_length=255, blank=True, null=True)
-    role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES, blank=True, null=True)
+    role = models.CharField(
+        max_length=50, choices=USER_ROLES_CHOICES, blank=True, null=True
+    )
     createdAfter = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     createdBefore = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
-    offset = models.FloatField(default=0, blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
+    offset = models.FloatField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -97,10 +110,12 @@ class UserSearchQuery(BaseModel):
         verbose_name_plural = "Abstract UserSearchQuerys"
 
     def __str__(self):
-        return f'UserSearchQuery ({self.pk})'
+        return f"UserSearchQuery ({self.pk})"
+
 
 class UserInfoDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UserInfoDTO"""
+
     """USAGE: Inherit in other apps - class User(UserInfoDTO): pass"""
 
     email = models.CharField(max_length=255)
@@ -109,7 +124,12 @@ class UserInfoDTO(BaseModel):
     permissions = models.JSONField(default=list)
     lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     profileImage = models.CharField(max_length=255, blank=True, null=True)
-    preferences = models.JSONField(default=dict, help_text='Reference to UserPreferencesDTO interface', blank=True, null=True)
+    preferences = models.JSONField(
+        default=dict,
+        help_text="Reference to UserPreferencesDTO interface",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -117,10 +137,12 @@ class UserInfoDTO(BaseModel):
         verbose_name_plural = "Abstract UserInfoDTOs"
 
     def __str__(self):
-        return f'UserInfoDTO ({self.pk})'
+        return f"UserInfoDTO ({self.pk})"
+
 
 class UserPreferencesDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UserPreferencesDTO"""
+
     """USAGE: Inherit in other apps - class User(UserPreferencesDTO): pass"""
 
     language = models.CharField(max_length=255)
@@ -136,16 +158,18 @@ class UserPreferencesDTO(BaseModel):
         verbose_name_plural = "Abstract UserPreferencesDTOs"
 
     def __str__(self):
-        return f'UserPreferencesDTO ({self.pk})'
+        return f"UserPreferencesDTO ({self.pk})"
+
 
 class UserQueryDto(BaseModel):
     """Abstract DLL model from TypeScript interface UserQueryDto"""
+
     """USAGE: Inherit in other apps - class User(UserQueryDto): pass"""
 
     search = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=255, blank=True, null=True)
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.FloatField(blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
     sortBy = models.CharField(max_length=255, blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
 
@@ -155,10 +179,12 @@ class UserQueryDto(BaseModel):
         verbose_name_plural = "Abstract UserQueryDtos"
 
     def __str__(self):
-        return f'UserQueryDto ({self.pk})'
+        return f"UserQueryDto ({self.pk})"
+
 
 class UserDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UserDTO"""
+
     """USAGE: Inherit in other apps - class User(UserDTO): pass"""
 
     email = models.CharField(max_length=255)
@@ -173,4 +199,4 @@ class UserDTO(BaseModel):
         verbose_name_plural = "Abstract UserDTOs"
 
     def __str__(self):
-        return f'UserDTO ({self.pk})'
+        return f"UserDTO ({self.pk})"

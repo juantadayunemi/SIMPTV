@@ -16,6 +16,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('📤 Request with auth:', config.method?.toUpperCase(), config.url);
+    } else {
+      console.log('📤 Request without auth:', config.method?.toUpperCase(), config.url);
     }
     return config;
   },
@@ -46,14 +49,14 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const response = await axios.post(`${api.defaults.baseURL}/api/auth/token/refresh/`, {
-            refresh: refreshToken
+            refresh: refreshToken  // Django SimpleJWT espera "refresh" como campo
           });
           
-          const { access_token } = response.data;
-          storage.setItem('access_token', access_token);
+          const { access } = response.data;  // Django SimpleJWT retorna "access" (no "access_token")
+          storage.setItem('access_token', access);
           
           // Retry original request with new token
-          original.headers.Authorization = `Bearer ${access_token}`;
+          original.headers.Authorization = `Bearer ${access}`;
           return api(original);
         } catch (refreshError) {
           // Refresh failed, redirect to login

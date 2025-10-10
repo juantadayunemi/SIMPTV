@@ -503,6 +503,11 @@ class TypeScriptEntityParser:
             }
         # ⚡ PRIORITY: Check TypeScript type FIRST before name-based inference
         # Basic type mappings (TypeScript types have absolute priority!)
+        # 🎯 REGLA: number → FloatField con default=0, EXCEPTO si el nombre contiene "Id"
+        number_options = {}
+        if "id" not in prop_name.lower():  # Si NO es un campo ID
+            number_options["default"] = 0  # Agregar default=0 automáticamente
+
         type_mapping = {
             "string": {
                 "field_type": "CharField",
@@ -511,7 +516,7 @@ class TypeScriptEntityParser:
             },
             "number": {
                 "field_type": "FloatField",
-                "options": {},
+                "options": number_options,  # ✅ Default 0 para números (excepto IDs)
                 "import": "from django.db import models",
             },
             "boolean": {

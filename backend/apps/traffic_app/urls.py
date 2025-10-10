@@ -1,20 +1,25 @@
+"""
+URLs para Traffic Analysis App
+Rutas REST para análisis de tráfico vehicular
+"""
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    LocationViewSet,
+    CameraViewSet,
     TrafficAnalysisViewSet,
-    TrafficReportViewSet,
-    TrafficMonitoringView,
-    TrafficStatisticsView,
-    TrafficUploadVideoView,
+    VehicleViewSet,
+    VehicleFrameViewSet,
 )
 
 router = DefaultRouter()
+router.register(r"locations", LocationViewSet, basename="location")
+router.register(r"cameras", CameraViewSet, basename="camera")
 router.register(r"analysis", TrafficAnalysisViewSet, basename="traffic-analysis")
-router.register(r"reports", TrafficReportViewSet, basename="traffic-report")
+router.register(r"vehicles", VehicleViewSet, basename="vehicle")
+router.register(r"frames", VehicleFrameViewSet, basename="vehicle-frame")
 
 urlpatterns = [
-    path("monitoring/", TrafficMonitoringView.as_view(), name="traffic-monitoring"),
-    path("statistics/", TrafficStatisticsView.as_view(), name="traffic-statistics"),
-    path("upload-video/", TrafficUploadVideoView.as_view(), name="traffic-upload-video"),
     path("", include(router.urls)),
 ]

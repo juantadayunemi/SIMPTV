@@ -70,7 +70,7 @@ export interface TrafficAnalysisEntity {
   duration?: number; // Duración en segundos
   
   // Estadísticas calculadas
-  totalVehicleCount: number; // Total de vehículos únicos detectados
+  totalVehicleCount: number; // Total de vehículos únicos detectados // @default: 0
   avgSpeed?: number; // Velocidad promedio en km/h
   densityLevel: DensityLevelKey; // Nivel de densidad del tráfico
   
@@ -81,12 +81,12 @@ export interface TrafficAnalysisEntity {
   errorMessage?: string; // Mensaje de error si status = FAILED
   
   // Conteos por tipo de vehículo (calculados)
-  carCount: number; // Cantidad de autos
-  truckCount: number; // Cantidad de camiones
-  motorcycleCount: number; // Cantidad de motocicletas
-  busCount: number; // Cantidad de buses
-  bicycleCount: number; // Cantidad de bicicletas
-  otherCount: number; // Cantidad de otros vehículos
+  carCount: number; // Cantidad de autos // @default: 0
+  truckCount: number; // Cantidad de camiones // @default: 0
+  motorcycleCount: number; // Cantidad de motocicletas // @default: 0
+  busCount: number; // Cantidad de buses // @default: 0
+  bicycleCount: number; // Cantidad de bicicletas // @default: 0
+  otherCount: number; // Cantidad de otros vehículos // @default: 0
   
   createdAt: Date; // Fecha de creación del registro
   updatedAt: Date; // Fecha de última actualización
@@ -115,8 +115,8 @@ export interface VehicleEntity {
   lane?: number; // Carril en el que se detectó mayormente (1, 2, 3, etc)
   
   // Frames almacenados
-  totalFrames: number; // Total de frames donde fue detectado
-  storedFrames: number; // Total de frames guardados en BD (muestreo)
+  totalFrames: number; // Total de frames donde fue detectado // @default: 0
+  storedFrames: number; // Total de frames guardados en BD (muestreo) // @default: 0
   
   // Metadatos
   color?: string; // Color del vehículo (si se puede detectar)

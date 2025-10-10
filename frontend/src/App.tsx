@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
+import CamerasPage from './pages/traffic/CamerasPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
 import PredictionsPage from './pages/predictions/PredictionsPage';
 import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
@@ -31,12 +32,19 @@ const App: React.FC = () => {
 
   // Listen for authentication changes and redirect if needed
   React.useEffect(() => {
+    console.log('🔐 App.tsx - Auth check:', { isAuthenticated, isLoading });
+    console.log('🔑 Tokens:', {
+      localStorage: localStorage.getItem('access_token') ? 'SÍ' : 'NO',
+      sessionStorage: sessionStorage.getItem('access_token') ? 'SÍ' : 'NO'
+    });
+    
     if (!isLoading && !isAuthenticated) {
       const currentPath = window.location.pathname;
       const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/confirm-email'];
       const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
       
       if (!isPublicRoute) {
+        console.log('⚠️ Usuario no autenticado, redirigiendo a login desde:', currentPath);
         window.location.href = '/login';
       }
     }
@@ -111,7 +119,8 @@ const App: React.FC = () => {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="traffic" element={<TrafficAnalysisPage />} />
+            <Route path="traffic" element={<CamerasPage />} />
+            <Route path="traffic/analysis" element={<TrafficAnalysisPage />} />
             <Route path="plates" element={<PlateDetectionPage />} />
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />

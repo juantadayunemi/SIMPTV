@@ -18,10 +18,10 @@ class PredictionModelEntity(BaseModel):
     features = models.CharField(max_length=255)
     hyperparameters = models.CharField(max_length=255)
     trainingDataPeriod = models.CharField(max_length=255)
-    accuracy = models.FloatField(default=0)
-    mse = models.FloatField(default=0)
-    mae = models.FloatField(default=0)
-    r2Score = models.FloatField(default=0)
+    accuracy = models.FloatField()
+    mse = models.FloatField()
+    mae = models.FloatField()
+    r2Score = models.FloatField()
     trainedAt = models.DateTimeField(auto_now_add=False)
 
     class Meta:
@@ -42,7 +42,7 @@ class ModelTrainingJobEntity(BaseModel):
     endTime = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     trainingLogs = models.CharField(max_length=255, blank=True, null=True)
     errorMessage = models.CharField(max_length=255, blank=True, null=True)
-    dataPointsUsed = models.FloatField(default=0)
+    dataPointsUsed = models.FloatField()
     validationScore = models.FloatField()
 
     class Meta:
@@ -60,16 +60,16 @@ class TrafficPredictionEntity(BaseModel):
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     predictionDate = models.DateTimeField(auto_now_add=False)
-    predictionHour = models.FloatField(default=0)
-    predictedVehicleCount = models.FloatField(default=0)
-    predictedAvgSpeed = models.FloatField(default=0)
+    predictionHour = models.FloatField()
+    predictedVehicleCount = models.FloatField()
+    predictedAvgSpeed = models.FloatField()
     predictedDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
     confidence = models.FloatField()
-    predictionHorizon = models.FloatField(default=0)
-    actualVehicleCount = models.FloatField(default=0, blank=True, null=True)
-    actualAvgSpeed = models.FloatField(default=0, blank=True, null=True)
+    predictionHorizon = models.FloatField()
+    actualVehicleCount = models.FloatField(blank=True, null=True)
+    actualAvgSpeed = models.FloatField(blank=True, null=True)
     actualDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES, blank=True, null=True)
-    predictionError = models.FloatField(default=0, blank=True, null=True)
+    predictionError = models.FloatField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -87,10 +87,10 @@ class BatchPredictionEntity(BaseModel):
     location = models.CharField(max_length=255)
     predictionStartDate = models.DateTimeField(auto_now_add=False)
     predictionEndDate = models.DateTimeField(auto_now_add=False)
-    totalPredictions = models.FloatField(default=0)
+    totalPredictions = models.FloatField()
     avgConfidence = models.FloatField()
     status = models.CharField(max_length=255)
-    executionTime = models.FloatField(default=0)
+    executionTime = models.FloatField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -107,13 +107,13 @@ class PredictionAccuracyEntity(BaseModel):
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     evaluationPeriod = models.CharField(max_length=255)
-    predictionHorizon = models.FloatField(default=0)
-    totalPredictions = models.FloatField(default=0)
-    correctPredictions = models.FloatField(default=0)
-    accuracy = models.FloatField(default=0)
-    avgError = models.FloatField(default=0)
-    maxError = models.FloatField(default=0)
-    minError = models.FloatField(default=0)
+    predictionHorizon = models.FloatField()
+    totalPredictions = models.FloatField()
+    correctPredictions = models.FloatField()
+    accuracy = models.FloatField()
+    avgError = models.FloatField()
+    maxError = models.FloatField()
+    minError = models.FloatField()
     evaluatedAt = models.DateTimeField(auto_now_add=False)
 
     class Meta:
@@ -129,11 +129,11 @@ class RealTimePredictionEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     location = models.CharField(max_length=255)
-    currentVehicleCount = models.FloatField(default=0)
+    currentVehicleCount = models.FloatField()
     currentDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    next1HourPrediction = models.FloatField(default=0)
-    next6HourPrediction = models.FloatField(default=0)
-    next24HourPrediction = models.FloatField(default=0)
+    next1HourPrediction = models.FloatField()
+    next6HourPrediction = models.FloatField()
+    next24HourPrediction = models.FloatField()
     confidence1Hour = models.FloatField()
     confidence6Hour = models.FloatField()
     confidence24Hour = models.FloatField()

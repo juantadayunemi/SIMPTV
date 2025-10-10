@@ -28,7 +28,7 @@ class LicensePlateEntity(BaseModel):
     validationData = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
     vehicleBrand = models.CharField(max_length=255, blank=True, null=True)
     vehicleModel = models.CharField(max_length=255, blank=True, null=True)
-    vehicleYear = models.FloatField(default=0, blank=True, null=True)
+    vehicleYear = models.FloatField(blank=True, null=True)
     vehicleColor = models.CharField(max_length=255, blank=True, null=True)
     ownerName = models.CharField(max_length=255, blank=True, null=True)
     registrationStatus = models.CharField(max_length=255, blank=True, null=True)
@@ -50,7 +50,7 @@ class PlateAlertEntity(BaseModel):
 
     licensePlateId = models.FloatField()
     alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
-    severity = models.FloatField(default=0)
+    severity = models.FloatField()
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     source = models.CharField(max_length=255)
@@ -101,7 +101,7 @@ class PlateAlertReportDTO(BaseModel):
 
     alertId = models.FloatField()
     alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
-    severity = models.FloatField(default=0)
+    severity = models.FloatField()
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     source = models.CharField(max_length=255)
@@ -115,14 +115,14 @@ class PlateAlertReportDTO(BaseModel):
     vehicleBrand = models.CharField(max_length=255, blank=True, null=True)
     vehicleModel = models.CharField(max_length=255, blank=True, null=True)
     vehicleDirection = models.CharField(max_length=20, choices=TRAFFIC_DIRECTION_CHOICES, blank=True, null=True)
-    vehicleSpeed = models.FloatField(default=0, blank=True, null=True)
-    vehicleLane = models.FloatField(default=0, blank=True, null=True)
+    vehicleSpeed = models.FloatField(blank=True, null=True)
+    vehicleLane = models.FloatField(blank=True, null=True)
     firstDetectedAt = models.DateTimeField(auto_now_add=False)
     lastDetectedAt = models.DateTimeField(auto_now_add=False)
-    totalFrames = models.FloatField(default=0)
+    totalFrames = models.FloatField()
     locationDescription = models.CharField(max_length=255)
-    locationLatitude = models.FloatField(default=0)
-    locationLongitude = models.FloatField(default=0)
+    locationLatitude = models.FloatField()
+    locationLongitude = models.FloatField()
     locationCity = models.CharField(max_length=255, blank=True, null=True)
     cameraId = models.FloatField()
     cameraName = models.CharField(max_length=255)
@@ -130,11 +130,11 @@ class PlateAlertReportDTO(BaseModel):
     analysisStartedAt = models.DateTimeField(auto_now_add=False)
     bestFrameForPlate = models.TextField(blank=True, null=True)
     frameId = models.FloatField()
-    frameNumber = models.FloatField(default=0)
+    frameNumber = models.FloatField()
     timestamp = models.DateTimeField(auto_now_add=False)
     imagePath = models.CharField(max_length=255, blank=True, null=True)
     confidence = models.FloatField()
-    frameQuality = models.FloatField(default=0)
+    frameQuality = models.FloatField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -239,7 +239,7 @@ class PlateAnalysis(BaseModel):
     """USAGE: Inherit in other apps - class User(PlateAnalysis): pass"""
 
     plateNumber = models.CharField(max_length=255)
-    detectionCount = models.FloatField(default=0)
+    detectionCount = models.FloatField()
     firstDetected = models.DateTimeField(auto_now_add=False)
     lastDetected = models.DateTimeField(auto_now_add=False)
     locations = models.JSONField(default=list)
@@ -257,8 +257,8 @@ class PlateStatistics(BaseModel):
     """Abstract DLL model from TypeScript interface PlateStatistics"""
     """USAGE: Inherit in other apps - class User(PlateStatistics): pass"""
 
-    totalDetections = models.FloatField(default=0)
-    uniquePlates = models.FloatField(default=0)
+    totalDetections = models.FloatField()
+    uniquePlates = models.FloatField()
     avgConfidence = models.FloatField()
     detectionsByHour = models.JSONField(default=list)
     topLocations = models.JSONField(default=list)
@@ -281,8 +281,8 @@ class PlateSearchQuery(BaseModel):
     minConfidence = models.FloatField(blank=True, null=True)
     startDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
-    offset = models.FloatField(default=0, blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
+    offset = models.FloatField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -333,7 +333,7 @@ class PlateAlertResponseDTO(BaseModel):
     """USAGE: Inherit in other apps - class User(PlateAlertResponseDTO): pass"""
 
     alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
-    severity = models.FloatField(default=0)
+    severity = models.FloatField()
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     source = models.CharField(max_length=255)
@@ -360,14 +360,14 @@ class PlateAlertFullReportDTO(BaseModel):
     vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
     firstDetectedAt = models.DateTimeField(auto_now_add=False)
     lastDetectedAt = models.DateTimeField(auto_now_add=False)
-    totalFrames = models.FloatField(default=0)
-    avgSpeed = models.FloatField(default=0, blank=True, null=True)
+    totalFrames = models.FloatField()
+    avgSpeed = models.FloatField(blank=True, null=True)
     trackingPath = models.TextField(blank=True, null=True)
-    frameNumber = models.FloatField(default=0)
+    frameNumber = models.FloatField()
     timestamp = models.DateTimeField(auto_now_add=False)
     position = models.TextField(blank=True, null=True)
-    x = models.FloatField(default=0)
-    y = models.FloatField(default=0)
+    x = models.FloatField()
+    y = models.FloatField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -381,14 +381,14 @@ class PlateStatsResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface PlateStatsResponseDTO"""
     """USAGE: Inherit in other apps - class User(PlateStatsResponseDTO): pass"""
 
-    totalDetections = models.FloatField(default=0)
-    uniquePlates = models.FloatField(default=0)
+    totalDetections = models.FloatField()
+    uniquePlates = models.FloatField()
     avgConfidence = models.FloatField()
-    totalAlerts = models.FloatField(default=0)
-    activeAlerts = models.FloatField(default=0)
+    totalAlerts = models.FloatField()
+    activeAlerts = models.FloatField()
     alertsBySeverity = models.TextField(blank=True, null=True)
-    severity = models.FloatField(default=0)
-    count = models.FloatField(default=0)
+    severity = models.FloatField()
+    count = models.FloatField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -425,7 +425,7 @@ class CreatePlateAlertRequestDTO(BaseModel):
 
     licensePlateId = models.FloatField()
     alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
-    severity = models.FloatField(default=0)
+    severity = models.FloatField()
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     source = models.CharField(max_length=255)
@@ -474,7 +474,7 @@ class ValidatePlateRequestDTO(BaseModel):
     validationSource = models.UUIDField(default=uuid.uuid4, editable=False)
     vehicleBrand = models.CharField(max_length=255, blank=True, null=True)
     vehicleModel = models.CharField(max_length=255, blank=True, null=True)
-    vehicleYear = models.FloatField(default=0, blank=True, null=True)
+    vehicleYear = models.FloatField(blank=True, null=True)
     vehicleColor = models.CharField(max_length=255, blank=True, null=True)
     ownerName = models.CharField(max_length=255, blank=True, null=True)
     registrationStatus = models.CharField(max_length=255, blank=True, null=True)
@@ -500,19 +500,19 @@ class PlateSearchQueryDTO(BaseModel):
     endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     vehicleTypes = models.JSONField(default=list, blank=True, null=True)
     directions = models.JSONField(default=list, blank=True, null=True)
-    minSpeed = models.FloatField(default=0, blank=True, null=True)
-    maxSpeed = models.FloatField(default=0, blank=True, null=True)
+    minSpeed = models.FloatField(blank=True, null=True)
+    maxSpeed = models.FloatField(blank=True, null=True)
     minConfidence = models.FloatField(blank=True, null=True)
-    minFrameQuality = models.FloatField(default=0, blank=True, null=True)
+    minFrameQuality = models.FloatField(blank=True, null=True)
     isValidated = models.BooleanField(default=False, blank=True, null=True)
     validationSources = models.JSONField(default=list, blank=True, null=True)
     hasAlerts = models.BooleanField(default=False, blank=True, null=True)
     alertTypes = models.JSONField(default=list, blank=True, null=True)
-    minAlertSeverity = models.FloatField(default=0, blank=True, null=True)
+    minAlertSeverity = models.FloatField(blank=True, null=True)
     onlyActiveAlerts = models.BooleanField(default=False, blank=True, null=True)
     requiresAction = models.BooleanField(default=False, blank=True, null=True)
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.FloatField(blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
     sortBy = models.TextField(blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
 
@@ -529,8 +529,8 @@ class PlateAlertQueryDTO(BaseModel):
     """USAGE: Inherit in other apps - class User(PlateAlertQueryDTO): pass"""
 
     alertTypes = models.JSONField(default=list, blank=True, null=True)
-    minSeverity = models.FloatField(default=0, blank=True, null=True)
-    maxSeverity = models.FloatField(default=0, blank=True, null=True)
+    minSeverity = models.FloatField(blank=True, null=True)
+    maxSeverity = models.FloatField(blank=True, null=True)
     requiresAction = models.BooleanField(default=False, blank=True, null=True)
     wasNotified = models.BooleanField(default=False, blank=True, null=True)
     sources = models.JSONField(default=list, blank=True, null=True)
@@ -542,8 +542,8 @@ class PlateAlertQueryDTO(BaseModel):
     cameraIds = models.JSONField(default=list, blank=True, null=True)
     plateNumbers = models.JSONField(default=list, blank=True, null=True)
     countries = models.JSONField(default=list, blank=True, null=True)
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.FloatField(blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
     sortBy = models.TextField(blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
 
@@ -567,7 +567,7 @@ class PlateStatsQueryDTO(BaseModel):
     includeAlertBreakdown = models.BooleanField(default=False, blank=True, null=True)
     includeLocationStats = models.BooleanField(default=False, blank=True, null=True)
     includeFrequentPlates = models.BooleanField(default=False, blank=True, null=True)
-    maxFrequentPlates = models.FloatField(default=0, blank=True, null=True)
+    maxFrequentPlates = models.FloatField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -587,8 +587,8 @@ class PlateQueryDto(BaseModel):
     startDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     vehicleType = models.CharField(max_length=255, blank=True, null=True)
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.FloatField(blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
     sortBy = models.CharField(max_length=255, blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
 
@@ -609,7 +609,7 @@ class PlateDetectionDTO(BaseModel):
     vehicleType = models.JSONField(default=dict, blank=True, null=True)
     location = models.CharField(max_length=255)
     boundingBox = models.JSONField(default=dict)
-    vehicleSpeed = models.FloatField(default=0, blank=True, null=True)
+    vehicleSpeed = models.FloatField(blank=True, null=True)
     analysisId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:

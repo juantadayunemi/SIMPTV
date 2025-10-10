@@ -153,8 +153,8 @@ class NotificationSearchQuery(BaseModel):
     isRead = models.BooleanField(default=False, blank=True, null=True)
     startDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
     endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
-    offset = models.FloatField(default=0, blank=True, null=True)
+    limit = models.FloatField(blank=True, null=True)
+    offset = models.FloatField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -210,12 +210,12 @@ class NotificationSummaryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSummaryDTO"""
     """USAGE: Inherit in other apps - class User(NotificationSummaryDTO): pass"""
 
-    total = models.FloatField(default=0)
-    unread = models.FloatField(default=0)
+    total = models.FloatField()
+    unread = models.FloatField()
     byType = models.TextField(blank=True, null=True)
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
-    count = models.FloatField(default=0)
-    unreadCount = models.FloatField(default=0)
+    count = models.FloatField()
+    unreadCount = models.FloatField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
