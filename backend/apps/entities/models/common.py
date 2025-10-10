@@ -19,14 +19,14 @@ class WeatherDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
     location = models.CharField(max_length=255)
-    date = models.DateTimeField(auto_now_add=False)
-    hour = models.FloatField(default=0)
-    temperature = models.FloatField(default=0)
-    humidity = models.FloatField()
-    precipitation = models.FloatField(default=0)
-    windSpeed = models.FloatField(default=0)
+    date = models.DateTimeField()
+    hour = models.IntegerField()
+    temperature = models.IntegerField()
+    humidity = models.IntegerField()
+    precipitation = models.IntegerField()
+    windSpeed = models.IntegerField()
     weatherCondition = models.CharField(max_length=255)
-    visibility = models.FloatField(default=0)
+    visibility = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -43,9 +43,9 @@ class EventDataEntity(BaseModel):
     location = models.CharField(max_length=255)
     eventName = models.CharField(max_length=255)
     eventType = models.CharField(max_length=255)
-    startDate = models.DateTimeField(auto_now_add=False)
-    endDate = models.DateTimeField(auto_now_add=False)
-    expectedAttendance = models.FloatField(default=0, blank=True, null=True)
+    startDate = models.DateTimeField()
+    endDate = models.DateTimeField()
+    expectedAttendance = models.IntegerField(blank=True, null=True)
     trafficImpact = models.CharField(max_length=255)
 
     class Meta:
@@ -112,8 +112,8 @@ class TokenPayload(BaseModel):
     sub = models.CharField(max_length=255)
     email = models.CharField(max_length=255)
     role = models.CharField(max_length=255)
-    exp = models.FloatField(default=0)
-    iat = models.FloatField(default=0)
+    exp = models.IntegerField()
+    iat = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -128,7 +128,7 @@ class CharacterDetection(BaseModel):
     """USAGE: Inherit in other apps - class User(CharacterDetection): pass"""
 
     character = models.CharField(max_length=255)
-    confidence = models.FloatField()
+    confidence = models.IntegerField()
     position = models.JSONField(default=dict, help_text='Reference to BoundingBox interface')
 
     class Meta:
@@ -143,8 +143,8 @@ class HourlyDetection(BaseModel):
     """Abstract DLL model from TypeScript interface HourlyDetection"""
     """USAGE: Inherit in other apps - class User(HourlyDetection): pass"""
 
-    hour = models.FloatField(default=0)
-    count = models.FloatField(default=0)
+    hour = models.IntegerField()
+    count = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -173,10 +173,10 @@ class BoundingBox(BaseModel):
     """Abstract DLL model from TypeScript interface BoundingBox"""
     """USAGE: Inherit in other apps - class User(BoundingBox): pass"""
 
-    x = models.FloatField(default=0)
-    y = models.FloatField(default=0)
-    width = models.FloatField()
-    height = models.FloatField(default=0)
+    x = models.IntegerField()
+    y = models.IntegerField()
+    width = models.IntegerField()
+    height = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -192,7 +192,7 @@ class TimeSlot(BaseModel):
 
     startTime = models.CharField(max_length=255)
     endTime = models.CharField(max_length=255)
-    vehicleCount = models.FloatField(default=0)
+    vehicleCount = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -208,7 +208,7 @@ class PredictiveAnalysis(BaseModel):
 
     location = models.CharField(max_length=255)
     predictedTraffic = models.JSONField(default=list)
-    confidence = models.FloatField()
+    confidence = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -222,14 +222,14 @@ class PaginationInfoDTO(BaseModel):
     """Abstract DLL model from TypeScript interface PaginationInfoDTO"""
     """USAGE: Inherit in other apps - class User(PaginationInfoDTO): pass"""
 
-    page = models.FloatField(default=0)
-    limit = models.FloatField(default=0)
-    total = models.FloatField(default=0)
-    totalPages = models.FloatField(default=0)
+    page = models.IntegerField()
+    limit = models.IntegerField()
+    total = models.IntegerField()
+    totalPages = models.IntegerField()
     hasNext = models.BooleanField(default=False)
     hasPrev = models.BooleanField(default=False)
-    startIndex = models.FloatField(default=0)
-    endIndex = models.FloatField(default=0)
+    startIndex = models.IntegerField()
+    endIndex = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -247,8 +247,8 @@ class ApiErrorDTO(BaseModel):
     message = models.CharField(max_length=255)
     details = models.CharField(max_length=255, blank=True, null=True)
     field = models.CharField(max_length=255, blank=True, null=True)
-    statusCode = models.FloatField(default=0)
-    timestamp = models.DateTimeField(auto_now_add=False)
+    statusCode = models.IntegerField()
+    timestamp = models.DateTimeField()
     path = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
@@ -266,7 +266,7 @@ class ValidationErrorDTO(BaseModel):
     field = models.CharField(max_length=255)
     value = models.JSONField(default=dict)
     constraints = models.JSONField(default=list)
-    children = models.JSONField(default=list, blank=True, null=True)
+    children = models.JSONField(default=list)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -281,7 +281,7 @@ class BusinessErrorDTO(BaseModel):
     """USAGE: Inherit in other apps - class User(BusinessErrorDTO): pass"""
 
     businessRule = models.CharField(max_length=255)
-    context = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
+    context = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -295,8 +295,8 @@ class BaseQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface BaseQueryDTO"""
     """USAGE: Inherit in other apps - class User(BaseQueryDTO): pass"""
 
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.IntegerField(blank=True, null=True)
+    limit = models.IntegerField(blank=True, null=True)
     sortBy = models.CharField(max_length=255, blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
     search = models.CharField(max_length=255, blank=True, null=True)
@@ -313,8 +313,8 @@ class DateRangeQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface DateRangeQueryDTO"""
     """USAGE: Inherit in other apps - class User(DateRangeQueryDTO): pass"""
 
-    startDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    startDate = models.DateTimeField(blank=True, null=True)
+    endDate = models.DateTimeField(blank=True, null=True)
     timezone = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
@@ -329,15 +329,14 @@ class RealtimeAnalysisUpdateDTO(BaseModel):
     """Abstract DLL model from TypeScript interface RealtimeAnalysisUpdateDTO"""
     """USAGE: Inherit in other apps - class User(RealtimeAnalysisUpdateDTO): pass"""
 
-    analysisId = models.FloatField()
+    analysisId = models.IntegerField()
     status = models.CharField(max_length=255)
-    progress = models.FloatField(default=0, blank=True, null=True)
-    vehicleCount = models.FloatField(default=0)
+    progress = models.IntegerField(blank=True, null=True)
+    vehicleCount = models.IntegerField()
     newDetections = models.TextField(blank=True, null=True)
-    vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
     vehicleType = models.CharField(max_length=255)
-    confidence = models.FloatField()
-    timestamp = models.DateTimeField(auto_now_add=False)
+    confidence = models.IntegerField()
+    timestamp = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -370,8 +369,8 @@ class LoginResponseDTO(BaseModel):
     accessToken = models.CharField(max_length=255)
     refreshToken = models.CharField(max_length=255)
     user = models.JSONField(default=dict, help_text='Reference to UserInfoDTO interface')
-    expiresAt = models.DateTimeField(auto_now_add=False)
-    tokenType = models.TextField(blank=True, null=True)
+    expiresAt = models.DateTimeField()
+    tokenType = models.TextField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -403,12 +402,11 @@ class DashboardStatsDTO(BaseModel):
     """Abstract DLL model from TypeScript interface DashboardStatsDTO"""
     """USAGE: Inherit in other apps - class User(DashboardStatsDTO): pass"""
 
-    overview = models.TextField(blank=True, null=True)
-    totalAnalyses = models.FloatField(default=0)
-    activeAnalyses = models.FloatField(default=0)
-    totalVehiclesDetected = models.FloatField(default=0)
-    totalPlatesDetected = models.FloatField(default=0)
-    activeAlerts = models.FloatField(default=0)
+    overview = models.TextField()
+    activeAnalyses = models.IntegerField()
+    totalVehiclesDetected = models.IntegerField()
+    totalPlatesDetected = models.IntegerField()
+    activeAlerts = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -425,8 +423,8 @@ class FileUploadRequestDTO(BaseModel):
     file = models.JSONField(default=dict, help_text='Reference to File interface')
     filename = models.CharField(max_length=255)
     mimetype = models.CharField(max_length=255)
-    size = models.FloatField(default=0)
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
+    size = models.IntegerField()
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -443,11 +441,11 @@ class FileUploadResponseDTO(BaseModel):
     filename = models.CharField(max_length=255)
     originalName = models.CharField(max_length=255)
     mimetype = models.CharField(max_length=255)
-    size = models.FloatField(default=0)
+    size = models.IntegerField()
     url = models.CharField(max_length=255)
     publicUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
-    uploadedAt = models.DateTimeField(auto_now_add=False)
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
+    uploadedAt = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -461,14 +459,13 @@ class HealthCheckDTO(BaseModel):
     """Abstract DLL model from TypeScript interface HealthCheckDTO"""
     """USAGE: Inherit in other apps - class User(HealthCheckDTO): pass"""
 
-    status = models.TextField(blank=True, null=True)
-    timestamp = models.DateTimeField(auto_now_add=False)
-    uptime = models.FloatField(default=0)
+    status = models.TextField()
+    timestamp = models.DateTimeField()
+    uptime = models.IntegerField()
     version = models.CharField(max_length=255)
     environment = models.CharField(max_length=255)
-    checks = models.TextField(blank=True, null=True)
-    database = models.TextField(blank=True, null=True)
-    responseTime = models.FloatField(default=0, blank=True, null=True)
+    checks = models.TextField()
+    responseTime = models.IntegerField(blank=True, null=True)
     error = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
@@ -485,12 +482,12 @@ class PlateDetectionResponseDTO(BaseModel):
 
     plateNumber = models.CharField(max_length=255)
     country = models.CharField(max_length=255)
-    confidence = models.FloatField()
-    vehicle = models.TextField(blank=True, null=True)
+    confidence = models.IntegerField()
+    vehicle = models.TextField()
     type = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
-    direction = models.CharField(max_length=20, choices=TRAFFIC_DIRECTION_CHOICES, blank=True, null=True)
-    speed = models.FloatField(default=0, blank=True, null=True)
-    lane = models.FloatField(default=0, blank=True, null=True)
+    direction = models.CharField(max_length=20, choices=TRAFFIC_DIRECTION_CHOICES)
+    speed = models.IntegerField(blank=True, null=True)
+    lane = models.IntegerField(blank=True, null=True)
     color = models.CharField(max_length=255, blank=True, null=True)
     brand = models.CharField(max_length=255, blank=True, null=True)
     model = models.CharField(max_length=255, blank=True, null=True)
@@ -570,8 +567,8 @@ class BaseQuery(BaseModel):
     """Abstract DLL model from TypeScript interface BaseQuery"""
     """USAGE: Inherit in other apps - class User(BaseQuery): pass"""
 
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.IntegerField(blank=True, null=True)
+    limit = models.IntegerField(blank=True, null=True)
     sortBy = models.CharField(max_length=255, blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
     search = models.CharField(max_length=255, blank=True, null=True)
@@ -592,7 +589,7 @@ class ErrorDTO(BaseModel):
     message = models.CharField(max_length=255)
     details = models.CharField(max_length=255, blank=True, null=True)
     field = models.CharField(max_length=255, blank=True, null=True)
-    timestamp = models.DateTimeField(auto_now_add=False)
+    timestamp = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -608,9 +605,8 @@ class TrafficAnalysisResponseDTO(BaseModel):
 
     cameraName = models.CharField(max_length=255)
     locationDescription = models.CharField(max_length=255)
-    locationCoordinates = models.TextField(blank=True, null=True)
-    latitude = models.FloatField(default=0)
-    longitude = models.FloatField(default=0)
+    locationCoordinates = models.TextField()
+    longitude = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

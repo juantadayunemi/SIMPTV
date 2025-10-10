@@ -20,10 +20,10 @@ class UserEntity(BaseModel):
     phoneNumber = models.CharField(max_length=255, blank=True, null=True)
     profileImage = models.CharField(max_length=255, blank=True, null=True)
     emailConfirmed = models.BooleanField(default=False)
-    lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    failedLoginAttempts = models.FloatField(default=0, blank=True, null=True)
+    lastLogin = models.DateTimeField(blank=True, null=True)
+    failedLoginAttempts = models.IntegerField(blank=True, null=True)
     isLockedOut = models.BooleanField(default=False, blank=True, null=True)
-    lockoutUntil = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    lockoutUntil = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -40,7 +40,7 @@ class UserRoleEntity(BaseModel):
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
     role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES)
     assignedBy = models.CharField(max_length=255, blank=True, null=True)
-    assignedAt = models.DateTimeField(auto_now_add=False)
+    assignedAt = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -70,7 +70,7 @@ class AuthToken(BaseModel):
 
     accessToken = models.CharField(max_length=255)
     refreshToken = models.CharField(max_length=255)
-    expiresAt = models.DateTimeField(auto_now_add=False)
+    expiresAt = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -85,11 +85,11 @@ class UserSearchQuery(BaseModel):
     """USAGE: Inherit in other apps - class User(UserSearchQuery): pass"""
 
     email = models.CharField(max_length=255, blank=True, null=True)
-    role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES, blank=True, null=True)
-    createdAfter = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    createdBefore = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
-    offset = models.FloatField(default=0, blank=True, null=True)
+    role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES)
+    createdAfter = models.DateTimeField(blank=True, null=True)
+    createdBefore = models.DateTimeField(blank=True, null=True)
+    limit = models.IntegerField(blank=True, null=True)
+    offset = models.IntegerField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -107,7 +107,7 @@ class UserInfoDTO(BaseModel):
     fullName = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=255)
     permissions = models.JSONField(default=list)
-    lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    lastLogin = models.DateTimeField(blank=True, null=True)
     profileImage = models.CharField(max_length=255, blank=True, null=True)
     preferences = models.JSONField(default=dict, help_text='Reference to UserPreferencesDTO interface', blank=True, null=True)
 
@@ -125,8 +125,7 @@ class UserPreferencesDTO(BaseModel):
 
     language = models.CharField(max_length=255)
     timezone = models.CharField(max_length=255)
-    notifications = models.TextField(blank=True, null=True)
-    email = models.BooleanField(default=False)
+    notifications = models.TextField()
     push = models.BooleanField(default=False)
     sms = models.BooleanField(default=False)
 
@@ -144,8 +143,8 @@ class UserQueryDto(BaseModel):
 
     search = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=255, blank=True, null=True)
-    page = models.FloatField(default=0, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
+    page = models.IntegerField(blank=True, null=True)
+    limit = models.IntegerField(blank=True, null=True)
     sortBy = models.CharField(max_length=255, blank=True, null=True)
     sortOrder = models.TextField(blank=True, null=True)
 
@@ -165,7 +164,7 @@ class UserDTO(BaseModel):
     fullName = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=50, choices=USER_ROLES_CHOICES)
     permissions = models.JSONField(default=list)
-    lastLogin = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    lastLogin = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

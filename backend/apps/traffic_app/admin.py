@@ -26,7 +26,7 @@ class CameraAdmin(admin.ModelAdmin):
         "isActive",
         "createdAt",
     )
-    list_filter = ("isActive", "isMobile", "brand")
+    list_filter = ("isActive", "brand")
     search_fields = ("name", "brand", "model")
     ordering = ("-createdAt",)
 

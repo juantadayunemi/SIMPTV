@@ -24,6 +24,8 @@ from .serializers import (
     VehicleFrameSerializer,
     CreateTrafficAnalysisSerializer,
 )
+from .tasks import process_video_analysis
+from rest_framework.decorators import api_view, parser_classes
 
 
 class LocationViewSet(viewsets.ModelViewSet):
@@ -37,7 +39,31 @@ class LocationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Override create para manejar errores"""
         try:
-            serializer = self.get_serializer(data=request.data)
+            # 🔍 LOG: Ver datos que llegan
+            print("=" * 60)
+            print("📥 DATOS RECIBIDOS EN LOCATION CREATE:")
+            print(f"request.data = {request.data}")
+            print(f"Type of data: {type(request.data)}")
+
+            # Ver específicamente lat/lng
+            if "latitude" in request.data:
+                lat = request.data["latitude"]
+                print(f"latitude = {lat} (type: {type(lat)}, len: {len(str(lat))})")
+            if "longitude" in request.data:
+                lng = request.data["longitude"]
+                print(f"longitude = {lng} (type: {type(lng)}, len: {len(str(lng))})")
+
+            # 🔧 FIX: Redondear coordenadas GPS a 8 decimales
+            data = request.data.copy()
+            if "latitude" in data:
+                data["latitude"] = round(float(data["latitude"]), 8)
+                print(f"✅ latitude redondeada a: {data['latitude']}")
+            if "longitude" in data:
+                data["longitude"] = round(float(data["longitude"]), 8)
+                print(f"✅ longitude redondeada a: {data['longitude']}")
+            print("=" * 60)
+
+            serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
@@ -191,6 +217,165 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
         serializer = TrafficAnalysisListSerializer(recent_analyses, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def start(self, request, pk=None):
+        """
+        Iniciar procesamiento de video
+        Lanza la tarea de Celery para análisis asíncrono
+        """
+        analysis = self.get_object()
+
+        # Validar estado
+        if analysis.status not in ["PENDING", "ERROR"]:
+            return Response(
+                {"error": f"Cannot start analysis in {analysis.status} status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar que el video existe
+        if not analysis.videoPath:
+            return Response(
+                {"error": "No video file associated with this analysis"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        video_full_path = os.path.join(default_storage.location, analysis.videoPath)
+        if not os.path.exists(video_full_path):
+            return Response(
+                {"error": f"Video file not found: {analysis.videoPath}"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            # Lanzar tarea de Celery
+            task = process_video_analysis.delay(analysis.id)
+
+            # Actualizar estado
+            analysis.status = "PROCESSING"
+            analysis.startedAt = timezone.now()
+            analysis.save(update_fields=["status", "startedAt"])
+
+            return Response(
+                {
+                    "message": "Video analysis started",
+                    "analysis_id": analysis.id,
+                    "task_id": task.id,
+                    "status": analysis.status,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ Error starting video analysis: {e}")
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["post"])
+    def pause(self, request, pk=None):
+        """
+        Pausar procesamiento de video
+        TODO: Implementar mecanismo de pausa en Celery task
+        """
+        analysis = self.get_object()
+
+        if analysis.status != "PROCESSING":
+            return Response(
+                {"error": f"Cannot pause analysis in {analysis.status} status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # TODO: Implementar pausa real cuando Celery soporte control de tasks
+        # Por ahora solo cambiar estado
+        analysis.status = "PAUSED"
+        analysis.save(update_fields=["status"])
+
+        return Response(
+            {
+                "message": "Video analysis paused (state change only)",
+                "analysis_id": analysis.id,
+                "status": analysis.status,
+                "note": "Task continues running in background until completion",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def stop(self, request, pk=None):
+        """
+        Detener procesamiento de video
+        Revoca la tarea de Celery si está en ejecución
+        """
+        analysis = self.get_object()
+
+        if analysis.status not in ["PROCESSING", "PAUSED"]:
+            return Response(
+                {"error": f"Cannot stop analysis in {analysis.status} status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # TODO: Revocar tarea de Celery
+            # from celery.task.control import revoke
+            # revoke(task_id, terminate=True)
+
+            # Actualizar estado
+            analysis.status = "STOPPED"
+            analysis.endedAt = timezone.now()
+            analysis.save(update_fields=["status", "endedAt"])
+
+            return Response(
+                {
+                    "message": "Video analysis stopped",
+                    "analysis_id": analysis.id,
+                    "status": analysis.status,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ Error stopping video analysis: {e}")
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["get"])
+    def status_detail(self, request, pk=None):
+        """
+        Obtener estado detallado del procesamiento
+        Incluye progreso, vehículos detectados, etc.
+        """
+        analysis = self.get_object()
+
+        # Contar vehículos por tipo
+        vehicle_counts = (
+            Vehicle.objects.filter(trafficAnalysisId=analysis)
+            .values("vehicleType")
+            .annotate(count=Count("id"))
+        )
+
+        vehicle_breakdown = {v["vehicleType"]: v["count"] for v in vehicle_counts}
+
+        return Response(
+            {
+                "analysis_id": analysis.id,
+                "status": analysis.status,
+                "started_at": analysis.startedAt,
+                "ended_at": analysis.endedAt,
+                "total_frames": analysis.totalFrames,
+                "processed_frames": analysis.processedFrames,
+                "total_vehicles": analysis.totalVehicles,
+                "vehicle_breakdown": vehicle_breakdown,
+                "processing_duration": analysis.processingDuration,
+                "progress_percentage": (
+                    (analysis.processedFrames / analysis.totalFrames * 100)
+                    if analysis.totalFrames > 0
+                    else 0
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class VehicleViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -228,3 +413,134 @@ class VehicleFrameViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = VehicleFrame.objects.all()
     serializer_class = VehicleFrameSerializer
     permission_classes = [AllowAny]  # ⚠️ TEMPORAL: Sin autenticación para debug
+
+
+# ============================================
+# ENDPOINT PARA FRONTEND: Análisis de Video
+# ============================================
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def analyze_video_endpoint(request):
+    """
+    Endpoint combinado para subir video y empezar análisis
+
+    Usado por el frontend TrafficAnalysisPage
+
+    POST /api/traffic/analyze-video/
+
+    FormData:
+      - video: File (video file)
+      - cameraId: int (optional)
+      - locationId: int (optional)
+      - userId: int (optional)
+      - weatherConditions: str (optional)
+
+    Returns:
+      {
+        "id": int,
+        "message": str,
+        "task_id": str,
+        "status": str
+      }
+    """
+    try:
+        # Validar que venga el video
+        if "video" not in request.FILES:
+            return Response(
+                {"error": "No video file provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        video_file = request.FILES["video"]
+
+        # Validar que venga cámara o ubicación
+        camera_id = request.data.get("cameraId")
+        location_id = request.data.get("locationId")
+
+        if not camera_id and not location_id:
+            return Response(
+                {"error": "Either cameraId or locationId is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Si viene cámara, obtener su ubicación
+        if camera_id:
+            try:
+                camera = Camera.objects.get(id=camera_id)
+                location_id = camera.locationId.id
+            except Camera.DoesNotExist:
+                return Response(
+                    {"error": f"Camera with id {camera_id} not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Validar ubicación
+        if location_id:
+            try:
+                location = Location.objects.get(id=location_id)
+            except Location.DoesNotExist:
+                return Response(
+                    {"error": f"Location with id {location_id} not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Guardar video en storage
+        video_name = f"traffic_videos/{timezone.now().strftime('%Y%m%d_%H%M%S')}_{video_file.name}"
+        video_path = default_storage.save(video_name, ContentFile(video_file.read()))
+
+        print(f"✅ Video guardado: {video_path}")
+
+        # Crear análisis
+        analysis = TrafficAnalysis.objects.create(
+            cameraId_id=camera_id if camera_id else None,
+            locationId_id=location_id,
+            userId_id=(
+                request.data.get("userId") if request.data.get("userId") else None
+            ),
+            videoPath=video_path,
+            weatherConditions=request.data.get("weatherConditions", ""),
+            startedAt=timezone.now(),
+            status="PENDING",
+            totalVehicleCount=0,
+            densityLevel="LOW",
+            carCount=0,
+            truckCount=0,
+            motorcycleCount=0,
+            busCount=0,
+            bicycleCount=0,
+            otherCount=0,
+            totalFrames=0,
+            processedFrames=0,
+            totalVehicles=0,
+        )
+
+        print(f"✅ TrafficAnalysis creado: ID={analysis.id}")
+
+        # Lanzar tarea de Celery para procesamiento
+        video_full_path = os.path.join(default_storage.location, video_path)
+        task = process_video_analysis.delay(analysis.id)
+
+        print(f"✅ Celery task iniciado: {task.id}")
+
+        # Actualizar estado
+        analysis.status = "PROCESSING"
+        analysis.save(update_fields=["status"])
+
+        return Response(
+            {
+                "id": analysis.id,
+                "message": "Video uploaded and analysis started successfully",
+                "task_id": task.id,
+                "status": analysis.status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        print(f"❌ Error en analyze_video_endpoint: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

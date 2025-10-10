@@ -11,6 +11,7 @@ from .views import (
     TrafficAnalysisViewSet,
     VehicleViewSet,
     VehicleFrameViewSet,
+    analyze_video_endpoint,
 )
 
 router = DefaultRouter()
@@ -22,4 +23,6 @@ router.register(r"frames", VehicleFrameViewSet, basename="vehicle-frame")
 
 urlpatterns = [
     path("", include(router.urls)),
+    # Endpoint para frontend
+    path("analyze-video/", analyze_video_endpoint, name="analyze-video"),
 ]

@@ -59,6 +59,10 @@ THIRD_PARTY_APPS = [
     "debug_toolbar",
     # API Documentation
     "drf_spectacular",
+    # Async Processing
+    "django_celery_results",
+    # WebSocket
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -347,6 +351,66 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_FROM = config("EMAIL_FROM", default="TrafiSmart <noreply@trafismart.com>")
+
+# ==============================================================================
+# CELERY CONFIGURATION (Async Task Processing)
+# ==============================================================================
+
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = config(
+    "CELERY_RESULT_BACKEND", default="redis://localhost:6379/0"
+)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+
+# ==============================================================================
+# CHANNELS CONFIGURATION (WebSocket)
+# ==============================================================================
+
+ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [config("REDIS_URL", default="redis://localhost:6379/1")],
+        },
+    },
+}
+
+# ==============================================================================
+# VIDEO PROCESSING CONFIGURATION
+# ==============================================================================
+
+# Max video file size: 2GB
+MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024  # 2GB in bytes
+
+# Supported video formats
+SUPPORTED_VIDEO_FORMATS = [".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv"]
+
+# YOLO Model Configuration
+YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov8n.pt"  # Nano model (fast)
+YOLO_CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence for detection
+YOLO_IOU_THRESHOLD = 0.45  # IoU threshold for NMS
+
+# Vehicle Re-identification Configuration
+REIDENTIFICATION_TIME_WINDOW = 60  # seconds (1 minute)
+
+# Frame Storage Configuration
+FRAMES_PER_VEHICLE = 8  # Best 8 frames per vehicle
+FRAME_QUALITY_THRESHOLD = 0.6  # Minimum quality to save frame
+
+# OCR Configuration
+OCR_LANGUAGES = ["en", "es"]  # English and Spanish
+OCR_GPU = config("OCR_GPU", default=False, cast=bool)  # Use GPU if available
+
+# Video Streaming Configuration
+STREAM_RECONNECT_ATTEMPTS = 3
+STREAM_TIMEOUT = 10  # seconds
 
 # Frontend URL for email links
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")

@@ -35,24 +35,22 @@ class Location(LocationEntity):
 class Camera(CameraEntity):
     """
     Cámara de vigilancia de tráfico instalada en una ubicación específica.
+
+    IMPORTANTE: Todos los campos ya están definidos en CameraEntity.
+    - locationId: ForeignKey a Location (se actualiza cuando se mueve la cámara)
+    - name, brand, model, resolution, fps, lanes, coversBothDirections
+    - isActive, notes, createdAt, updatedAt
+
+    NO agregues campos redundantes. Solo sobrescribe ForeignKey para usar instancia concreta.
     """
 
-    # Sobrescribir locationId para usar ForeignKey
+    # Sobrescribir locationId para usar modelo concreto Location
     locationId = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
         related_name="cameras",
         db_column="locationId",
         verbose_name="Location",
-    )
-    currentLocationId = models.ForeignKey(
-        Location,
-        on_delete=models.SET_NULL,
-        related_name="current_cameras",
-        db_column="currentLocationId",
-        null=True,
-        blank=True,
-        verbose_name="Current Location",
     )
 
     class Meta:
@@ -61,7 +59,8 @@ class Camera(CameraEntity):
         verbose_name_plural = "Cameras"
         ordering = ["-createdAt"]
         indexes = [
-            # Para búsquedas por ubicación
+            models.Index(fields=["locationId", "isActive"]),
+            models.Index(fields=["brand"]),
         ]
 
     def __str__(self):
@@ -71,10 +70,18 @@ class Camera(CameraEntity):
 class TrafficAnalysis(TrafficAnalysisEntity):
     """
     Sesión de análisis de tráfico.
-    Contiene estadísticas agregadas de vehículos detectados en un período.
+
+    IMPORTANTE: Todos los campos ya están definidos en TrafficAnalysisEntity.
+    - cameraId: ForeignKey a Camera
+    - locationId: ForeignKey a Location
+    - videoPath, startedAt, endedAt, duration
+    - totalFrames, processedFrames, totalVehicles, processingDuration
+    - status, errorMessage, vehicle counts, etc.
+
+    NO agregues campos redundantes. Solo sobrescribe ForeignKeys para usar instancias concretas.
     """
 
-    # Sobrescribir cameraId y locationId para usar ForeignKey
+    # Sobrescribir cameraId y locationId para usar modelos concretos
     cameraId = models.ForeignKey(
         Camera,
         on_delete=models.CASCADE,
@@ -89,7 +96,7 @@ class TrafficAnalysis(TrafficAnalysisEntity):
         db_column="locationId",
         verbose_name="Location",
     )
-    # userId debería ser ForeignKey a User, pero por ahora lo dejamos como está
+    # userId debería ser ForeignKey a User cuando tengamos auth_app configurado
 
     class Meta:
         db_table = "traffic_analyses"
@@ -97,7 +104,9 @@ class TrafficAnalysis(TrafficAnalysisEntity):
         verbose_name_plural = "Traffic Analyses"
         ordering = ["-startedAt"]
         indexes = [
-            # Para búsquedas por fecha y cámara
+            models.Index(fields=["cameraId", "startedAt"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["startedAt", "endedAt"]),
         ]
 
     def __str__(self):
@@ -107,8 +116,23 @@ class TrafficAnalysis(TrafficAnalysisEntity):
 class Vehicle(VehicleEntity):
     """
     Vehículo único detectado y rastreado durante un análisis.
-    Usa CUID como identificador para tracking entre frames.
+
+    IMPORTANTE: Todos los campos ya están definidos en VehicleEntity.
+    - id: CharField(50) para CUID generado en frontend
+    - trafficAnalysisId: ForeignKey a TrafficAnalysis
+    - vehicleType, confidence, tracking, etc.
+
+    NO agregues campos redundantes aquí. Solo sobrescribe ForeignKeys para usar instancias concretas.
     """
+
+    # Sobrescribir trafficAnalysisId para usar modelo concreto TrafficAnalysis
+    trafficAnalysisId = models.ForeignKey(
+        TrafficAnalysis,
+        on_delete=models.CASCADE,
+        related_name="vehicles",
+        db_column="trafficAnalysisId",
+        verbose_name="Traffic Analysis",
+    )
 
     class Meta:
         db_table = "traffic_vehicles"
@@ -116,7 +140,8 @@ class Vehicle(VehicleEntity):
         verbose_name_plural = "Vehicles"
         ordering = ["-firstDetectedAt"]
         indexes = [
-            # Para búsquedas por análisis y tipo
+            models.Index(fields=["trafficAnalysisId", "vehicleType"]),
+            models.Index(fields=["trackingStatus"]),
         ]
 
     def __str__(self):
@@ -126,8 +151,23 @@ class Vehicle(VehicleEntity):
 class VehicleFrame(VehicleFrameEntity):
     """
     Frame individual de un vehículo detectado.
-    Almacena bounding box, calidad y metadata del frame.
+
+    IMPORTANTE: Todos los campos ya están definidos en VehicleFrameEntity.
+    - vehicleId: ForeignKey a Vehicle
+    - frameNumber, timestamp, boundingBox (X/Y/Width/Height)
+    - confidence, frameQuality, speed, imagePath
+
+    NO agregues campos redundantes. Solo sobrescribe ForeignKey para usar instancia concreta.
     """
+
+    # Sobrescribir vehicleId para usar modelo concreto Vehicle
+    vehicleId = models.ForeignKey(
+        Vehicle,
+        on_delete=models.CASCADE,
+        related_name="frames",
+        db_column="vehicleId",
+        verbose_name="Vehicle",
+    )
 
     class Meta:
         db_table = "traffic_vehicle_frames"
@@ -135,8 +175,9 @@ class VehicleFrame(VehicleFrameEntity):
         verbose_name_plural = "Vehicle Frames"
         ordering = ["frameNumber"]
         indexes = [
-            # Para búsquedas por vehículo y calidad
+            models.Index(fields=["vehicleId", "frameNumber"]),
+            models.Index(fields=["frameQuality"]),
         ]
 
     def __str__(self):
-        return f"Frame {self.frameNumber} - Vehicle {self.vehicleId[:8]}... (Q: {self.frameQuality:.2f})"
+        return f"Frame {self.frameNumber} - Vehicle {self.vehicleId.id[:8]}... (Quality: {self.frameQuality:.2f})"

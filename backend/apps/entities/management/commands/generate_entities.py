@@ -360,41 +360,307 @@ class TypeScriptEntityParser:
 
         return interfaces
 
+    def _extract_annotations_from_comment(self, comment: str) -> Dict[str, Any]:
+        """
+        Extrae anotaciones @db: desde comentarios TypeScript
+
+        Anotaciones soportadas:
+        - @db:primary - Campo primary key
+        - @db:identity - IDENTITY(1,1) autoincremental
+        - @db:foreignKey ModelName - Foreign Key
+        - @db:varchar(n) - VARCHAR(n)
+        - @db:int - INT
+        - @db:bigint - BIGINT
+        - @db:float - FLOAT
+        - @db:decimal(p,s) - DECIMAL
+        - @db:text - TEXT/NVARCHAR(MAX)
+        - @db:datetime - DATETIME2
+        - @default(value) - Valor por defecto
+
+        Returns:
+            Dict con: {
+                'is_primary': bool,
+                'is_identity': bool,
+                'foreign_key': str | None,
+                'db_type': str | None,
+                'default_value': str | None
+            }
+        """
+        annotations = {
+            "is_primary": False,
+            "is_identity": False,
+            "foreign_key": None,
+            "db_type": None,
+            "default_value": None,
+            "max_length": None,
+            "decimal_precision": None,
+            "decimal_scale": None,
+        }
+
+        if not comment:
+            return annotations
+
+        # Detectar @db:primary
+        if "@db:primary" in comment:
+            annotations["is_primary"] = True
+
+        # Detectar @db:identity
+        if "@db:identity" in comment:
+            annotations["is_identity"] = True
+
+        # Detectar @db:foreignKey ModelName
+        fk_match = re.search(r"@db:foreignKey\s+(\w+)", comment)
+        if fk_match:
+            annotations["foreign_key"] = fk_match.group(1)
+
+        # Detectar @db:varchar(n)
+        varchar_match = re.search(r"@db:varchar\((\d+)\)", comment)
+        if varchar_match:
+            annotations["db_type"] = "varchar"
+            annotations["max_length"] = int(varchar_match.group(1))
+
+        # Detectar @db:decimal(p,s)
+        decimal_match = re.search(r"@db:decimal\((\d+),(\d+)\)", comment)
+        if decimal_match:
+            annotations["db_type"] = "decimal"
+            annotations["decimal_precision"] = int(decimal_match.group(1))
+            annotations["decimal_scale"] = int(decimal_match.group(2))
+
+        # Detectar @db:int, @db:bigint, @db:float, @db:text, @db:datetime
+        for db_type in ["int", "bigint", "float", "text", "datetime"]:
+            if f"@db:{db_type}" in comment:
+                annotations["db_type"] = db_type
+                break
+
+        # Detectar @default(value)
+        default_match = re.search(r"@default\(([^)]+)\)", comment)
+        if default_match:
+            annotations["default_value"] = default_match.group(1)
+
+        return annotations
+
     def _parse_interface_properties(self, body: str) -> Dict[str, Dict]:
-        """Parse interface properties from the body content"""
+        """Parse interface properties from the body content WITH comments for annotations"""
         properties = {}
 
-        # Clean up the body
-        body = re.sub(r"//.*?\n", "", body)  # Remove single-line comments
-        body = re.sub(
-            r"/\*.*?\*/", "", body, flags=re.DOTALL
-        )  # Remove multi-line comments
+        # NO eliminar comentarios de una línea (necesitamos leerlos para anotaciones)
+        # Solo eliminar comentarios multilinea
+        body_clean = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)
 
-        # Pattern to match property definitions
-        property_pattern = r"(\w+)(\?)?:\s*([^;,\n]+)"
+        # Pattern to match property definitions CON comentarios inline
+        # Captura: nombre, opcional(?), tipo, PUNTO Y COMA, y comentario después de //
+        # Formato: "propName?: type; // comment"
+        property_pattern = r"(\w+)(\?)?:\s*([^;/]+);(?:\s*//(.*))?(?:\n|$)"
 
-        matches = re.finditer(property_pattern, body)
+        matches = re.finditer(property_pattern, body_clean, re.MULTILINE)
 
         for match in matches:
             prop_name = match.group(1).strip()
             is_optional = match.group(2) == "?"
             prop_type = match.group(3).strip()
+            comment = match.group(4).strip() if match.group(4) else ""
+
+            # Extraer anotaciones del comentario
+            annotations = self._extract_annotations_from_comment(comment)
 
             properties[prop_name] = {
                 "name": prop_name,
                 "type": prop_type,
                 "optional": is_optional,
-                "django_field": self._map_ts_type_to_django_field(prop_type, prop_name),
+                "comment": comment,
+                "annotations": annotations,
+                "django_field": self._map_ts_type_to_django_field(
+                    prop_type, prop_name, is_optional, annotations
+                ),
             }
 
         return properties
 
     def _map_ts_type_to_django_field(
-        self, ts_type: str, prop_name: str = ""
+        self,
+        ts_type: str,
+        prop_name: str = "",
+        is_optional: bool = False,
+        annotations: Dict = None,
     ) -> Dict[str, Any]:
-        """Map TypeScript types to Django model fields"""
+        """
+        Map TypeScript types to Django model fields
+
+        PRIORITY ORDER:
+        1. @db: annotations (highest priority)
+        2. TypeScript type
+        3. Field name patterns (lowest priority)
+        """
         ts_type = ts_type.strip()
-        prop_name = prop_name.lower()
+        prop_name_lower = prop_name.lower()
+        annotations = annotations or {}
+
+        # =====================================================
+        # PRIORITY 1: @db: ANNOTATIONS
+        # =====================================================
+
+        # Handle @db:foreignKey
+        if annotations.get("foreign_key"):
+            related_model = annotations["foreign_key"]
+            field_options = {
+                "on_delete": "models.CASCADE",
+                "related_name": f"%(class)s_set",
+            }
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": "ForeignKey",
+                "options": field_options,
+                "import": "from django.db import models",
+                "related_model": related_model,
+            }
+
+        # Handle @db:primary with specific types
+        if annotations.get("is_primary"):
+            if annotations.get("is_identity"):
+                # IDENTITY(1,1) autoincremental
+                return {
+                    "field_type": "BigAutoField",
+                    "options": {"primary_key": True},
+                    "import": "from django.db import models",
+                }
+            elif annotations.get("db_type") == "varchar" or ts_type.lower() == "string":
+                # Primary key VARCHAR (para CUIDs)
+                max_length = annotations.get("max_length", 50)
+                return {
+                    "field_type": "CharField",
+                    "options": {
+                        "max_length": max_length,
+                        "primary_key": True,
+                        "editable": False,
+                    },
+                    "import": "from django.db import models",
+                }
+
+        # Handle @db:varchar(n)
+        if annotations.get("db_type") == "varchar":
+            max_length = annotations.get("max_length", 255)
+            field_options = {"max_length": max_length}
+
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            if annotations.get("default_value"):
+                default = annotations["default_value"]
+                if default not in ["cuid()", "uuid()", "now()"]:
+                    field_options["default"] = f"'{default}'"
+
+            return {
+                "field_type": "CharField",
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # Handle @db:text
+        if annotations.get("db_type") == "text":
+            field_options = {}
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": "TextField",
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # Handle @db:int or @db:bigint
+        if annotations.get("db_type") in ["int", "bigint"]:
+            field_type = (
+                "BigIntegerField"
+                if annotations["db_type"] == "bigint"
+                else "IntegerField"
+            )
+            field_options = {}
+
+            if annotations.get("default_value"):
+                default_val = annotations["default_value"]
+                if default_val.isdigit():
+                    field_options["default"] = int(default_val)
+
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": field_type,
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # Handle @db:decimal(p,s)
+        if annotations.get("db_type") == "decimal":
+            precision = annotations.get("decimal_precision", 10)
+            scale = annotations.get("decimal_scale", 2)
+            field_options = {
+                "max_digits": precision,
+                "decimal_places": scale,
+            }
+
+            if annotations.get("default_value"):
+                field_options["default"] = annotations["default_value"]
+
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": "DecimalField",
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # Handle @db:float
+        if annotations.get("db_type") == "float":
+            field_options = {}
+
+            if annotations.get("default_value"):
+                default_val = annotations["default_value"]
+                try:
+                    field_options["default"] = float(default_val)
+                except ValueError:
+                    pass
+
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": "FloatField",
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # Handle @db:datetime
+        if annotations.get("db_type") == "datetime":
+            field_options = {}
+
+            if prop_name_lower in ["createdat", "created_at"]:
+                field_options["auto_now_add"] = True
+            elif prop_name_lower in ["updatedat", "updated_at"]:
+                field_options["auto_now"] = True
+
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            return {
+                "field_type": "DateTimeField",
+                "options": field_options,
+                "import": "from django.db import models",
+            }
+
+        # =====================================================
+        # PRIORITY 2: TYPESCRIPT TYPE MAPPING
+        # =====================================================
 
         # Handle array types
         if ts_type.endswith("[]"):
@@ -484,135 +750,97 @@ class TypeScriptEntityParser:
                 "choices_import": "TRAFFIC_DIRECTION_CHOICES",
             }
 
-        # Special handling for common field patterns
-        if prop_name.lower() == "id" and ts_type.lower() == "number":
-            # Heredado de BaseModel como autoincremental
-            return {
-                "field_type": "BigAutoField",
-                "options": {"primary_key": True},
-                "import": "from django.db import models",
-            }
-        # GUID/UUID
-        if (
-            "id" in prop_name.lower() or "guid" in prop_name.lower()
-        ) and ts_type.lower() == "string":
-            return {
-                "field_type": "UUIDField",
-                "options": {"default": "uuid.uuid4", "editable": False},
-                "import": "from django.db import models",
-            }
-        # ⚡ PRIORITY: Check TypeScript type FIRST before name-based inference
-        # Basic type mappings (TypeScript types have absolute priority!)
-        # 🎯 REGLA: number → FloatField con default=0, EXCEPTO si el nombre contiene "Id"
-        number_options = {}
-        if "id" not in prop_name.lower():  # Si NO es un campo ID
-            number_options["default"] = 0  # Agregar default=0 automáticamente
+        # Special handling for common field patterns (SOLO si no hay anotaciones)
+        if not annotations.get("is_primary") and not annotations.get("db_type"):
+            if prop_name_lower == "id" and ts_type.lower() == "number":
+                # Heredado de BaseModel como autoincremental
+                return {
+                    "field_type": "BigAutoField",
+                    "options": {"primary_key": True},
+                    "import": "from django.db import models",
+                }
+            # GUID/UUID (solo si no tiene anotación @db:varchar)
+            if (
+                "id" in prop_name_lower or "guid" in prop_name_lower
+            ) and ts_type.lower() == "string":
+                return {
+                    "field_type": "UUIDField",
+                    "options": {"default": "uuid.uuid4", "editable": False},
+                    "import": "from django.db import models",
+                }
 
+        # Basic type mappings (con soporte para is_optional y @default)
         type_mapping = {
-            "string": {
-                "field_type": "CharField",
-                "options": {"max_length": 255},
-                "import": "from django.db import models",
-            },
-            "number": {
-                "field_type": "FloatField",
-                "options": number_options,  # ✅ Default 0 para números (excepto IDs)
-                "import": "from django.db import models",
-            },
-            "boolean": {
-                "field_type": "BooleanField",
-                "options": {"default": False},
-                "import": "from django.db import models",
-            },
-            "Date": {
-                "field_type": "DateTimeField",
-                "options": {},
-                "import": "from django.db import models",
-            },
-            "any": {
-                "field_type": "JSONField",
-                "options": {"default": dict},
-                "import": "from django.db import models",
-            },
-            "object": {
-                "field_type": "JSONField",
-                "options": {"default": dict},
-                "import": "from django.db import models",
-            },
+            "string": ("CharField", {"max_length": 255}),
+            "number": ("IntegerField", {}),
+            "boolean": ("BooleanField", {"default": False}),
+            "Date": ("DateTimeField", {}),
+            "any": ("JSONField", {"default": dict}),
+            "object": ("JSONField", {"default": dict}),
         }
 
-        # Check for specific patterns
         if ts_type.lower() in type_mapping:
-            return type_mapping[ts_type.lower()]
-        elif ts_type.startswith("Array<"):
+            field_type, base_options = type_mapping[ts_type.lower()]
+            field_options = base_options.copy()
+
+            # Apply optional (nullable) rules
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
+
+            # Apply @default if specified
+            if annotations.get("default_value"):
+                default = annotations["default_value"]
+                if ts_type.lower() == "boolean":
+                    field_options["default"] = default.lower() == "true"
+                elif ts_type.lower() == "number":
+                    if default.isdigit():
+                        field_options["default"] = int(default)
+                elif default not in ["cuid()", "uuid()", "now()"]:
+                    field_options["default"] = f"'{default}'"
+
             return {
-                "field_type": "JSONField",
-                "options": {"default": list},
-                "import": "from django.db import models",
-            }
-        elif ts_type.endswith("[]"):
-            return {
-                "field_type": "JSONField",
-                "options": {"default": list},
+                "field_type": field_type,
+                "options": field_options,
                 "import": "from django.db import models",
             }
 
         # Handle Date types properly
         if ts_type.lower() == "date":
+            field_options = {}
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
             return {
                 "field_type": "DateTimeField",
-                "options": {"auto_now_add": False},
+                "options": field_options,
                 "import": "from django.db import models",
             }
-
-        # ⚡ Name-based inference (ONLY for 'string' type as fallback)
-        # This ensures boolean/number types are not overridden
-        if ts_type.lower() == "string":
-            # createdAt/updatedAt for timestamps
-            if prop_name.lower() in ["createdat", "updatedat"]:
-                return {
-                    "field_type": "DateTimeField",
-                    "options": {"blank": True, "null": True},
-                    "import": "from django.db import models",
-                    "note": "En migración SQL Server usar default=getdate()",
-                }
-            # Email fields (but NOT boolean fields with "email" in name like emailConfirmed)
-            elif "email" in prop_name.lower():
-                return {
-                    "field_type": "EmailField",
-                    "options": {"max_length": 255},
-                    "import": "from django.db import models",
-                }
-            # Phone fields
-            elif "phone" in prop_name.lower():
-                return {
-                    "field_type": "CharField",
-                    "options": {"max_length": 20},
-                    "import": "from django.db import models",
-                }
-            # Price/amount fields
-            elif "price" in prop_name.lower() or "amount" in prop_name.lower():
-                return {
-                    "field_type": "DecimalField",
-                    "options": {"max_digits": 10, "decimal_places": 2},
-                    "import": "from django.db import models",
-                }
 
         # Check if it's a reference to another interface (relationship)
-        if ts_type[0].isupper():  # Capitalized = likely interface reference
+        if ts_type[0].isupper() and not annotations.get("foreign_key"):
+            field_options = {
+                "default": dict,
+                "help_text": f"Reference to {ts_type} interface",
+            }
+            if is_optional:
+                field_options["blank"] = True
+                field_options["null"] = True
             return {
                 "field_type": "JSONField",
-                "options": {
-                    "default": dict,
-                    "help_text": f"Reference to {ts_type} interface",
-                },
+                "options": field_options,
                 "import": "from django.db import models",
             }
 
-        # Default to TextField for unknown types
+        # Default fallback
+        field_options = {}
+        if is_optional:
+            field_options["blank"] = True
+            field_options["null"] = True
+
         return {
             "field_type": "TextField",
-            "options": {"blank": True, "null": True},
+            "options": field_options,
             "import": "from django.db import models",
         }
 
@@ -1103,18 +1331,31 @@ class DjangoModelGenerator:
         }
 
         # Filtrar propiedades para evitar duplicación
-        filtered_properties = {
-            prop_name: prop_info
-            for prop_name, prop_info in properties.items()
-            if prop_name.lower() not in base_model_fields
-        }
+        # PERO: NO filtrar 'id' si tiene anotación @db:primary con tipo custom (CharField para CUID)
+        filtered_properties = {}
+        for prop_name, prop_info in properties.items():
+            if prop_name.lower() in base_model_fields:
+                # Si es 'id' y tiene primary key custom, incluirlo
+                annotations = prop_info.get("annotations", {})
+                if (
+                    prop_name.lower() == "id"
+                    and annotations.get("is_primary")
+                    and not annotations.get("is_identity")
+                ):
+                    filtered_properties[prop_name] = prop_info
+                # Si es otro campo de BaseModel, excluirlo
+                continue
+            else:
+                filtered_properties[prop_name] = prop_info
 
         if not filtered_properties:
             lines.append("    pass")
         else:
             for prop_name, prop_info in filtered_properties.items():
                 field_code = self._generate_field_code(prop_name, prop_info)
-                lines.append(f"    {field_code}")
+                # Solo agregar si el campo no es None (skippeado)
+                if field_code:
+                    lines.append(f"    {field_code}")
 
         # Add Meta class - ABSTRACT MODEL for DLL usage
         lines.append("")
@@ -1147,28 +1388,89 @@ class DjangoModelGenerator:
         field_type = django_field["field_type"]
         options = django_field.get("options", {})
 
-        # Handle optional fields
-        if prop_info["optional"]:
-            options.update({"blank": True, "null": True})
+        # Skip fields that are in BaseModel
+        base_model_fields = {
+            "id",
+            "createdat",
+            "updatedat",
+            "isactive",
+            "created_at",
+            "updated_at",
+            "is_active",
+        }
+        if prop_name.lower() in base_model_fields:
+            # Except if it's explicitly marked as primary with custom type
+            annotations = prop_info.get("annotations", {})
+            if not annotations.get("is_primary"):
+                return None
 
-        # Special handling for id fields - always generate explicit field
-        if prop_name.lower() == "id":
-            ts_type = prop_info["type"].lower()
-            if ts_type == "number":
-                return "id = models.BigAutoField(primary_key=True, editable=False)  # Numeric, auto-increment, read-only"
-            elif ts_type == "string":
-                return "id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # GUID/UUID, read-only"
+        # Handle ForeignKey specially
+        if field_type == "ForeignKey":
+            related_model = django_field.get("related_model", "RelatedModel")
+            option_parts = [f"'{related_model}'"]
 
-        # Build options string
+            for key, value in options.items():
+                if key == "on_delete":
+                    option_parts.append(f"on_delete={value}")
+                elif key == "related_name":
+                    # Reemplazar %(class)s con nombre actual
+                    if "%(class)s" in value:
+                        value = value.replace("%(class)s", prop_name.lower())
+                    option_parts.append(f"related_name='{value}'")
+                elif isinstance(value, bool):
+                    option_parts.append(f"{key}={value}")
+                elif isinstance(value, str) and key not in [
+                    "related_name",
+                    "on_delete",
+                ]:
+                    option_parts.append(f"{key}='{value}'")
+                else:
+                    option_parts.append(f"{key}={value}")
+
+            options_str = ", ".join(option_parts)
+            return f"{prop_name} = models.ForeignKey({options_str})"
+
+        # Special handling for primary key fields with annotations
+        annotations = prop_info.get("annotations", {})
+        if annotations.get("is_primary"):
+            if annotations.get("is_identity"):
+                # Ya está en BaseModel como id
+                return None
+            elif field_type == "CharField":
+                # Primary key VARCHAR para CUIDs
+                option_parts = []
+                for key, value in options.items():
+                    if isinstance(value, bool):
+                        option_parts.append(f"{key}={value}")
+                    elif isinstance(value, (int, float)):
+                        option_parts.append(f"{key}={value}")
+                    elif isinstance(value, str):
+                        option_parts.append(f"{key}='{value}'")
+                    else:
+                        option_parts.append(f"{key}={value}")
+
+                options_str = ", ".join(option_parts)
+                return f"{prop_name} = models.{field_type}({options_str})"
+
+        # Build options string for regular fields
         option_parts = []
         for key, value in options.items():
             if key == "choices" and isinstance(value, str):
-                # Handle choices references
                 option_parts.append(f"{key}={value}")
             elif key == "default" and value == "uuid.uuid4":
                 option_parts.append(f"{key}=uuid.uuid4")
-            elif isinstance(value, str) and key != "choices":
-                option_parts.append(f"{key}='{value}'")
+            elif key == "on_delete":
+                option_parts.append(f"{key}={value}")
+            elif isinstance(value, str) and key not in [
+                "choices",
+                "on_delete",
+                "related_name",
+            ]:
+                # Evitar comillas dobles para valores que ya tienen comillas
+                if value.startswith("'") and value.endswith("'"):
+                    option_parts.append(f"{key}={value}")
+                else:
+                    option_parts.append(f"{key}='{value}'")
             elif isinstance(value, bool):
                 option_parts.append(f"{key}={value}")
             elif value is list:
@@ -1179,7 +1481,6 @@ class DjangoModelGenerator:
                 option_parts.append(f"{key}={value}")
 
         options_str = ", ".join(option_parts)
-
         return f"{prop_name} = models.{field_type}({options_str})"
 
 

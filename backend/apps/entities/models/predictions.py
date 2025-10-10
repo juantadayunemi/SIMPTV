@@ -18,11 +18,11 @@ class PredictionModelEntity(BaseModel):
     features = models.CharField(max_length=255)
     hyperparameters = models.CharField(max_length=255)
     trainingDataPeriod = models.CharField(max_length=255)
-    accuracy = models.FloatField(default=0)
-    mse = models.FloatField(default=0)
-    mae = models.FloatField(default=0)
-    r2Score = models.FloatField(default=0)
-    trainedAt = models.DateTimeField(auto_now_add=False)
+    accuracy = models.IntegerField()
+    mse = models.IntegerField()
+    mae = models.IntegerField()
+    r2Score = models.IntegerField()
+    trainedAt = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -38,12 +38,12 @@ class ModelTrainingJobEntity(BaseModel):
 
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     status = models.CharField(max_length=255)
-    startTime = models.DateTimeField(auto_now_add=False)
-    endTime = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    startTime = models.DateTimeField()
+    endTime = models.DateTimeField(blank=True, null=True)
     trainingLogs = models.CharField(max_length=255, blank=True, null=True)
     errorMessage = models.CharField(max_length=255, blank=True, null=True)
-    dataPointsUsed = models.FloatField(default=0)
-    validationScore = models.FloatField()
+    dataPointsUsed = models.IntegerField()
+    validationScore = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -59,17 +59,17 @@ class TrafficPredictionEntity(BaseModel):
 
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
-    predictionDate = models.DateTimeField(auto_now_add=False)
-    predictionHour = models.FloatField(default=0)
-    predictedVehicleCount = models.FloatField(default=0)
-    predictedAvgSpeed = models.FloatField(default=0)
+    predictionDate = models.DateTimeField()
+    predictionHour = models.IntegerField()
+    predictedVehicleCount = models.IntegerField()
+    predictedAvgSpeed = models.IntegerField()
     predictedDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    confidence = models.FloatField()
-    predictionHorizon = models.FloatField(default=0)
-    actualVehicleCount = models.FloatField(default=0, blank=True, null=True)
-    actualAvgSpeed = models.FloatField(default=0, blank=True, null=True)
-    actualDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES, blank=True, null=True)
-    predictionError = models.FloatField(default=0, blank=True, null=True)
+    confidence = models.IntegerField()
+    predictionHorizon = models.IntegerField()
+    actualVehicleCount = models.IntegerField(blank=True, null=True)
+    actualAvgSpeed = models.IntegerField(blank=True, null=True)
+    actualDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
+    predictionError = models.IntegerField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -85,12 +85,12 @@ class BatchPredictionEntity(BaseModel):
 
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
-    predictionStartDate = models.DateTimeField(auto_now_add=False)
-    predictionEndDate = models.DateTimeField(auto_now_add=False)
-    totalPredictions = models.FloatField(default=0)
-    avgConfidence = models.FloatField()
+    predictionStartDate = models.DateTimeField()
+    predictionEndDate = models.DateTimeField()
+    totalPredictions = models.IntegerField()
+    avgConfidence = models.IntegerField()
     status = models.CharField(max_length=255)
-    executionTime = models.FloatField(default=0)
+    executionTime = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -107,14 +107,14 @@ class PredictionAccuracyEntity(BaseModel):
     modelId = models.UUIDField(default=uuid.uuid4, editable=False)
     location = models.CharField(max_length=255)
     evaluationPeriod = models.CharField(max_length=255)
-    predictionHorizon = models.FloatField(default=0)
-    totalPredictions = models.FloatField(default=0)
-    correctPredictions = models.FloatField(default=0)
-    accuracy = models.FloatField(default=0)
-    avgError = models.FloatField(default=0)
-    maxError = models.FloatField(default=0)
-    minError = models.FloatField(default=0)
-    evaluatedAt = models.DateTimeField(auto_now_add=False)
+    predictionHorizon = models.IntegerField()
+    totalPredictions = models.IntegerField()
+    correctPredictions = models.IntegerField()
+    accuracy = models.IntegerField()
+    avgError = models.IntegerField()
+    maxError = models.IntegerField()
+    minError = models.IntegerField()
+    evaluatedAt = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -129,15 +129,15 @@ class RealTimePredictionEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     location = models.CharField(max_length=255)
-    currentVehicleCount = models.FloatField(default=0)
+    currentVehicleCount = models.IntegerField()
     currentDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    next1HourPrediction = models.FloatField(default=0)
-    next6HourPrediction = models.FloatField(default=0)
-    next24HourPrediction = models.FloatField(default=0)
-    confidence1Hour = models.FloatField()
-    confidence6Hour = models.FloatField()
-    confidence24Hour = models.FloatField()
-    lastUpdated = models.DateTimeField(auto_now_add=False)
+    next1HourPrediction = models.IntegerField()
+    next6HourPrediction = models.IntegerField()
+    next24HourPrediction = models.IntegerField()
+    confidence1Hour = models.IntegerField()
+    confidence6Hour = models.IntegerField()
+    confidence24Hour = models.IntegerField()
+    lastUpdated = models.DateTimeField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

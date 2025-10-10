@@ -4,6 +4,7 @@ import { trafficService } from './traffic.service';
 import { plateService } from './plates.service';
 import { userService } from './users.service';
 import { notificationService } from './notifications.service';
+import { getWebSocketService } from './websocket.service';
 
 // Re-export all services for easy importing
 export { authService } from './auth.service';
@@ -11,6 +12,7 @@ export { trafficService } from './traffic.service';
 export { plateService } from './plates.service';
 export { userService } from './users.service';
 export { notificationService } from './notifications.service';
+export { getWebSocketService } from './websocket.service';
 
 // Re-export types
 export type { User, LoginCredentials, RegisterData } from './auth.service';
@@ -26,6 +28,14 @@ export type {
   CreateTemplateData, 
   NotificationSettings 
 } from './notifications.service';
+export type {
+  WebSocketMessage,
+  WebSocketMessageType,
+  ProgressUpdate,
+  VehicleDetected,
+  ProcessingComplete,
+  LogMessage,
+} from './websocket.service';
 
 // Default export with all services
 const services = {
@@ -33,7 +43,8 @@ const services = {
   traffic: trafficService,
   plates: plateService,
   users: userService,
-  notifications: notificationService
+  notifications: notificationService,
+  websocket: getWebSocketService,
 } as const;
 
 export default services;

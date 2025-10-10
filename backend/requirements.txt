@@ -26,6 +26,34 @@ drf-spectacular==0.27.1
 django-mail-templated==2.6.5
 dnspython==2.6.1  # For email domain validation (MX records)
 
+# Video Processing & AI
+opencv-python==4.10.0.84  # Computer vision
+opencv-contrib-python==4.10.0.84  # Extra OpenCV modules
+ultralytics==8.3.0  # YOLOv8 for object detection
+easyocr==1.7.2  # OCR for license plate detection
+torch>=2.6.0  # PyTorch for deep learning (latest compatible with Python 3.13)
+torchvision>=0.21.0  # Vision models
+pillow==10.4.0  # Image processing
+
+# Video Tracking
+filterpy==1.4.5  # Kalman filter for tracking
+scipy==1.14.1  # Scientific computing
+scikit-learn==1.5.2  # Machine learning utilities
+
+# Async Processing
+celery==5.4.0  # Background task processing
+redis==5.2.0  # Message broker for Celery
+django-celery-results==2.5.1  # Store Celery results in DB
+
+# WebSocket for Real-time Updates
+channels==4.2.0  # WebSocket support for Django
+channels-redis==4.2.1  # Redis channel layer
+daphne==4.1.2  # ASGI server
+
+# Video Streaming
+imageio==2.36.0  # Read/write images and videos
+imageio-ffmpeg==0.5.1  # FFmpeg wrapper for video processing
+
 # Testing
 pytest==8.1.1
 pytest-django==4.8.0

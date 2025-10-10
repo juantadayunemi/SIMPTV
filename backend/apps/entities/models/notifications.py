@@ -17,9 +17,9 @@ class NotificationEntity(BaseModel):
     title = models.CharField(max_length=255)
     message = models.CharField(max_length=255)
     data = models.CharField(max_length=255, blank=True, null=True)
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
+    userId = models.UUIDField(default=uuid.uuid4, editable=False)
     isRead = models.BooleanField(default=False)
-    readAt = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    readAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -57,8 +57,8 @@ class NotificationPayload(BaseModel):
     title = models.CharField(max_length=255)
     message = models.CharField(max_length=255)
     data = models.JSONField(default=dict, blank=True, null=True)
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
-    readAt = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    userId = models.UUIDField(default=uuid.uuid4, editable=False)
+    readAt = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -73,13 +73,13 @@ class EmailNotification(BaseModel):
     """USAGE: Inherit in other apps - class User(EmailNotification): pass"""
 
     to = models.JSONField(default=list)
-    cc = models.JSONField(default=list, blank=True, null=True)
-    bcc = models.JSONField(default=list, blank=True, null=True)
+    cc = models.JSONField(default=list)
+    bcc = models.JSONField(default=list)
     subject = models.CharField(max_length=255)
     htmlContent = models.CharField(max_length=255)
     textContent = models.CharField(max_length=255, blank=True, null=True)
-    templateId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
-    templateData = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
+    templateId = models.UUIDField(default=uuid.uuid4, editable=False)
+    templateData = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -97,7 +97,7 @@ class WhatsAppNotification(BaseModel):
     message = models.CharField(max_length=255)
     mediaUrl = models.CharField(max_length=255, blank=True, null=True)
     templateName = models.CharField(max_length=255, blank=True, null=True)
-    templateVariables = models.JSONField(default=list, blank=True, null=True)
+    templateVariables = models.JSONField(default=list)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -114,7 +114,7 @@ class WebSocketNotification(BaseModel):
     event = models.CharField(max_length=255)
     data = models.JSONField(default=dict)
     room = models.CharField(max_length=255, blank=True, null=True)
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
+    userId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -148,13 +148,13 @@ class NotificationSearchQuery(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSearchQuery"""
     """USAGE: Inherit in other apps - class User(NotificationSearchQuery): pass"""
 
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
-    type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES, blank=True, null=True)
+    userId = models.UUIDField(default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
     isRead = models.BooleanField(default=False, blank=True, null=True)
-    startDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    endDate = models.DateTimeField(auto_now_add=False, blank=True, null=True)
-    limit = models.FloatField(default=0, blank=True, null=True)
-    offset = models.FloatField(default=0, blank=True, null=True)
+    startDate = models.DateTimeField(blank=True, null=True)
+    endDate = models.DateTimeField(blank=True, null=True)
+    limit = models.IntegerField(blank=True, null=True)
+    offset = models.IntegerField(blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -171,10 +171,10 @@ class RealtimeNotificationDTO(BaseModel):
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
     title = models.CharField(max_length=255)
     message = models.CharField(max_length=255)
-    priority = models.TextField(blank=True, null=True)
+    priority = models.TextField()
     actionUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
-    userId = models.UUIDField(default=uuid.uuid4, editable=False, blank=True, null=True)
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
+    userId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -191,11 +191,11 @@ class NotificationDTO(BaseModel):
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
     title = models.CharField(max_length=255)
     message = models.CharField(max_length=255)
-    priority = models.TextField(blank=True, null=True)
+    priority = models.TextField()
     isRead = models.BooleanField(default=False)
-    readAt = models.DateTimeField(auto_now_add=False, blank=True, null=True)
+    readAt = models.DateTimeField(blank=True, null=True)
     actionUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string interface', blank=True, null=True)
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:
@@ -210,12 +210,11 @@ class NotificationSummaryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSummaryDTO"""
     """USAGE: Inherit in other apps - class User(NotificationSummaryDTO): pass"""
 
-    total = models.FloatField(default=0)
-    unread = models.FloatField(default=0)
-    byType = models.TextField(blank=True, null=True)
-    type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
-    count = models.FloatField(default=0)
-    unreadCount = models.FloatField(default=0)
+    total = models.IntegerField()
+    unread = models.IntegerField()
+    byType = models.TextField()
+    count = models.IntegerField()
+    unreadCount = models.IntegerField()
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -229,7 +228,7 @@ class MarkNotificationsReadDTO(BaseModel):
     """Abstract DLL model from TypeScript interface MarkNotificationsReadDTO"""
     """USAGE: Inherit in other apps - class User(MarkNotificationsReadDTO): pass"""
 
-    notificationIds = models.JSONField(default=list, blank=True, null=True)
+    notificationIds = models.JSONField(default=list)
     markAllAsRead = models.BooleanField(default=False, blank=True, null=True)
 
     class Meta:
