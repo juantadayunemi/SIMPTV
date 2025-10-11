@@ -28,6 +28,7 @@ import {
   AnalysisStatusKey, 
   DensityLevelKey, 
   PlateProcessingStatusKey, 
+  StatusCameraKey, 
   TrackingStatusKey, 
   TrafficDirectionKey, 
   VehicleTypeKey 
@@ -64,6 +65,7 @@ export interface CameraEntity {
   fps?: number; // @db:int - Frames por segundo (Ej: 30)
   locationId: number; // @db:foreignKey Location @db:int - FK a Location (se actualiza cuando la cámara se mueve)
   isActive: boolean; // @default(true) - Si la cámara está activa
+  status: StatusCameraKey; // @db:varchar(20) @default(ACTIVE) - Estado de la cámara: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
   lanes: number; // @db:int @default(2) - Número de carriles que cubre (Ej: 2, 4)
   coversBothDirections: boolean; // @default(false) - Si cubre ambas direcciones del tráfico
   notes?: string; // @db:text - Notas adicionales (puede incluir historial de ubicaciones si necesario)

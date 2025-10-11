@@ -1,27 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, MapPin, Wifi, WifiOff, Settings, Eye, MoreVertical, Plus } from 'lucide-react';
+import { Camera, MapPin, Wifi, WifiOff, Settings, Plus } from 'lucide-react';
 import { trafficService, type TrafficAnalysis } from '../../services/traffic.service';
 import TrafficStatusBadge from '../../components/traffic/TrafficStatusBadge';
 import AddCameraModal, { type CameraFormData } from '../../components/traffic/AddCameraModal';
+import EditCameraModal, { type CameraData as EditCameraData } from '../../components/traffic/EditCameraModal';
+import CameraMenuDropdown from '../../components/traffic/CameraMenuDropdown';
+import ConnectPathModal from '../../components/traffic/ConnectPathModal';
+import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
 
-// Mock data para simular cámaras mientras no tengamos un endpoint específico
-interface CameraData {
-  id: string;
-  name: string;
-  location: string;
-  status: 'active' | 'inactive' | 'maintenance';
-  lastAnalysis?: TrafficAnalysis;
-  videoUrl?: string;
+// Tipo extendido para la UI que incluye propiedades adicionales
+interface CameraUIEntity extends CameraEntity {
+  location?: string; // Descripción de ubicación para mostrar
+  lastAnalysis?: TrafficAnalysis; // Último análisis realizado
+  isPlaying?: boolean; // Si está reproduciendo video
+  videoUrl?: string; // URL del video en reproducción
 }
 
 const CamerasPage: React.FC = () => {
   const navigate = useNavigate();
-  const [cameras, setCameras] = useState<CameraData[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'maintenance'>('all');
+  const [cameras, setCameras] = useState<CameraUIEntity[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<number | null>(null);
+  // 'all' es solo para filtrado en UI, no está en la base de datos
+  const [filterStatus, setFilterStatus] = useState<'all' | StatusCameraKey>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showConnectPathModal, setShowConnectPathModal] = useState(false);
+  const [cameraToEdit, setCameraToEdit] = useState<CameraUIEntity | null>(null);
+  const [cameraToConnect, setCameraToConnect] = useState<CameraUIEntity | null>(null);
 
   // Cargar análisis de tráfico y convertirlos a "cámaras"
   useEffect(() => {
@@ -50,15 +57,37 @@ const CamerasPage: React.FC = () => {
       }
       
       // Convertir cámaras del backend al formato de la UI
-      const camerasUI: CameraData[] = camerasData.map((camera) => {
+      const camerasUI: CameraUIEntity[] = camerasData.map((camera) => {
         // Buscar el último análisis de esta cámara (por ahora no filtramos por cameraId porque TrafficAnalysis no lo tiene)
         const lastAnalysis = analyses.length > 0 ? analyses[0] : undefined;
         
+        // Convertir status del backend (string) al tipo StatusCameraKey
+        // El backend devuelve: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
+        let status: StatusCameraKey = StatusCameraKey.INACTIVE;
+        if (camera.status === 'ACTIVE') {
+          status = StatusCameraKey.ACTIVE;
+        } else if (camera.status === 'MAINTENANCE') {
+          status = StatusCameraKey.MAINTENANCE;
+        } else if (camera.status === 'INACTIVE') {
+          status = StatusCameraKey.INACTIVE;
+        }
+        
         return {
-          id: camera.id.toString(),
+          id: camera.id,
           name: camera.name,
-          location: `Lat: ${camerasData.find(c => c.id === camera.id)?.locationId || 'N/A'}`,
-          status: camera.isActive ? 'active' : 'inactive',
+          brand: camera.brand,
+          model: camera.model,
+          resolution: camera.resolution,
+          fps: camera.fps,
+          locationId: camera.locationId,
+          location: `Ubicación ID: ${camera.locationId}`, // Descripción simple, luego podemos mejorar
+          isActive: camera.isActive,
+          status: status,
+          lanes: camera.lanes,
+          coversBothDirections: camera.coversBothDirections,
+          notes: camera.notes,
+          createdAt: new Date(camera.createdAt),
+          updatedAt: new Date(camera.updatedAt),
           lastAnalysis: lastAnalysis
         };
       });
@@ -133,38 +162,113 @@ const CamerasPage: React.FC = () => {
     }
   };
 
+  const handleEditCamera = (camera: CameraEntity) => {
+    setCameraToEdit(camera);
+    setShowEditModal(true);
+  };
+
+  const handleSaveCamera = async (updatedCamera: EditCameraData) => {
+    try {
+      console.log('💾 Guardando cambios de cámara:', updatedCamera);
+      
+      // Preparar datos para el API
+      // El status ya viene en el formato correcto: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
+      const updateData: any = {
+        name: updatedCamera.name,
+        status: updatedCamera.status, // Ya está en mayúsculas desde el enum
+      };
+
+      // Si se seleccionó una ubicación nueva, incluirla
+      if (updatedCamera.locationId) {
+        updateData.locationId = updatedCamera.locationId;
+      }
+
+      // Llamar al API para actualizar
+      const updatedCameraFromApi = await trafficService.updateCamera(updatedCamera.id, updateData);
+      console.log('✅ Cámara actualizada en el servidor:', updatedCameraFromApi);
+
+      // Recargar la lista completa de cámaras para reflejar los cambios
+      await loadCameras();
+      
+      console.log('✅ Lista de cámaras recargada');
+    } catch (error: any) {
+      console.error('❌ Error al guardar cámara:', error);
+      console.error('❌ Detalles del error:', error.response?.data);
+      // En caso de error, mostrar mensaje al usuario
+      alert(`Error al guardar los cambios: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleConnectPath = (camera: CameraEntity) => {
+    setCameraToConnect(camera);
+    setShowConnectPathModal(true);
+  };
+
+  const handleConnectUrl = (camera: CameraEntity) => {
+    // TODO: Implementar modal de URL
+    alert(`Conectar URL para: ${camera.name}\n(Por implementar)`);
+  };
+
+  const handleConnectCamera = (camera: CameraEntity) => {
+    // TODO: Implementar modal de conexión a cámara física
+    alert(`Conectar Cámara física para: ${camera.name}\n(Por implementar)`);
+  };
+
+  const handlePlayVideo = (videoFile: File) => {
+    if (!cameraToConnect) return;
+
+    // Actualizar la cámara para mostrarla como "reproduciendo"
+    setCameras(prev =>
+      prev.map(cam =>
+        cam.id === cameraToConnect.id
+          ? {
+              ...cam,
+              status: StatusCameraKey.ACTIVE,
+              isPlaying: true,
+              videoUrl: URL.createObjectURL(videoFile)
+            }
+          : cam
+      )
+    );
+
+    // No mostrar alert, solo actualizar silenciosamente
+  };
+
   const filteredCameras = cameras.filter(camera => 
     filterStatus === 'all' || camera.status === filterStatus
   );
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: StatusCameraKey) => {
     switch (status) {
-      case 'active':
+      case StatusCameraKey.ACTIVE:
         return <Wifi className="w-4 h-4 text-success-500" />;
-      case 'maintenance':
+      case StatusCameraKey.MAINTENANCE:
         return <Settings className="w-4 h-4 text-warning-500" />;
+      case StatusCameraKey.INACTIVE:
       default:
         return <WifiOff className="w-4 h-4 text-error-500" />;
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: StatusCameraKey) => {
     switch (status) {
-      case 'active':
+      case StatusCameraKey.ACTIVE:
         return 'Activa';
-      case 'maintenance':
-        return 'Procesando';
+      case StatusCameraKey.MAINTENANCE:
+        return 'En Mantenimiento';
+      case StatusCameraKey.INACTIVE:
       default:
         return 'Inactiva';
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: StatusCameraKey) => {
     switch (status) {
-      case 'active':
+      case StatusCameraKey.ACTIVE:
         return 'text-success-600 bg-success-50 border-success-200';
-      case 'maintenance':
+      case StatusCameraKey.MAINTENANCE:
         return 'text-warning-600 bg-warning-50 border-warning-200';
+      case StatusCameraKey.INACTIVE:
       default:
         return 'text-error-600 bg-error-50 border-error-200';
     }
@@ -206,13 +310,13 @@ const CamerasPage: React.FC = () => {
             {/* Filter */}
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | StatusCameraKey)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">Todas las cámaras</option>
-              <option value="active">Activas</option>
-              <option value="maintenance">Procesando</option>
-              <option value="inactive">Inactivas</option>
+              <option value={StatusCameraKey.ACTIVE}>Activas</option>
+              <option value={StatusCameraKey.MAINTENANCE}>En Mantenimiento</option>
+              <option value={StatusCameraKey.INACTIVE}>Inactivas</option>
             </select>
 
             {/* Add Camera Button */}
@@ -244,7 +348,7 @@ const CamerasPage: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Activas</p>
               <p className="text-2xl font-bold text-success-600">
-                {cameras.filter(c => c.status === 'active').length}
+                {cameras.filter(c => c.status === StatusCameraKey.ACTIVE).length}
               </p>
             </div>
             <Wifi className="w-8 h-8 text-success-500" />
@@ -256,7 +360,7 @@ const CamerasPage: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Mantenimiento</p>
               <p className="text-2xl font-bold text-warning-600">
-                {cameras.filter(c => c.status === 'maintenance').length}
+                {cameras.filter(c => c.status === StatusCameraKey.MAINTENANCE).length}
               </p>
             </div>
             <Settings className="w-8 h-8 text-warning-500" />
@@ -268,7 +372,7 @@ const CamerasPage: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Inactivas</p>
               <p className="text-2xl font-bold text-error-600">
-                {cameras.filter(c => c.status === 'inactive').length}
+                {cameras.filter(c => c.status === StatusCameraKey.INACTIVE).length}
               </p>
             </div>
             <WifiOff className="w-8 h-8 text-error-500" />
@@ -302,14 +406,26 @@ const CamerasPage: React.FC = () => {
               >
                 {/* Camera Feed Placeholder */}
                 <div className="aspect-video bg-gray-900 relative">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm opacity-75">
-                        {camera.status === 'active' ? 'Transmisión en vivo' : 'Sin señal'}
-                      </p>
+                  {camera.isPlaying && camera.videoUrl ? (
+                    /* Video Reproduciéndose */
+                    <video
+                      src={camera.videoUrl}
+                      autoPlay
+                      loop
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    /* Placeholder */
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm opacity-75">
+                          {camera.status === StatusCameraKey.ACTIVE ? 'Transmisión en vivo' : 'Sin señal'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
                   {/* Status Indicator */}
                   <div className="absolute top-3 left-3">
@@ -320,7 +436,7 @@ const CamerasPage: React.FC = () => {
                   </div>
 
                   {/* Live Indicator */}
-                  {camera.status === 'active' && (
+                  {camera.status === StatusCameraKey.ACTIVE && (
                     <div className="absolute top-3 right-3">
                       <div className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-medium">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -342,26 +458,27 @@ const CamerasPage: React.FC = () => {
                         {camera.location}
                       </p>
                     </div>
-                    <button 
-                      className="p-1 hover:bg-gray-100 rounded"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // TODO: Menú de opciones
-                      }}
-                    >
-                      <MoreVertical className="w-4 h-4 text-gray-400" />
-                    </button>
+                    <CameraMenuDropdown
+                      onConnectPath={() => handleConnectPath(camera)}
+                      onConnectUrl={() => handleConnectUrl(camera)}
+                      onConnectCamera={() => handleConnectCamera(camera)}
+                      onConfigure={() => handleEditCamera(camera)}
+                    />
                   </div>
 
-                  {analysis && camera.status === 'active' && (
+                  {/* Mostrar estadísticas solo para cámaras ACTIVAS */}
+                  {camera.status === StatusCameraKey.ACTIVE && (
                     <>
                       <div className="flex items-center justify-between mb-3">
                         <TrafficStatusBadge level={trafficLevel} size="sm" />
                         <span className="text-xs text-gray-600">
-                          {new Date(analysis.createdAt).toLocaleTimeString('es-MX', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {analysis 
+                            ? new Date(analysis.createdAt).toLocaleTimeString('es-MX', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : 'Actualizando...'
+                          }
                         </span>
                       </div>
                       
@@ -382,11 +499,12 @@ const CamerasPage: React.FC = () => {
                     </>
                   )}
 
-                  {camera.status !== 'active' && (
+                  {/* Mensajes para cámaras NO ACTIVAS */}
+                  {camera.status !== StatusCameraKey.ACTIVE && (
                     <div className="text-center py-4">
                       <p className="text-sm text-gray-500">
-                        {camera.status === 'maintenance' 
-                          ? 'Procesando análisis de tráfico...'
+                        {camera.status === StatusCameraKey.MAINTENANCE 
+                          ? 'En Mantenimiento - Procesando análisis de tráfico...'
                           : 'Cámara fuera de servicio'
                         }
                       </p>
@@ -424,12 +542,38 @@ const CamerasPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Camera Modal (Placeholder) */}
+      {/* Add Camera Modal */}
       <AddCameraModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddCamera}
       />
+
+      {/* Edit Camera Modal */}
+      {cameraToEdit && (
+        <EditCameraModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setCameraToEdit(null);
+          }}
+          onSave={handleSaveCamera}
+          camera={cameraToEdit}
+        />
+      )}
+
+      {/* Connect Path Modal */}
+      {cameraToConnect && (
+        <ConnectPathModal
+          isOpen={showConnectPathModal}
+          onClose={() => {
+            setShowConnectPathModal(false);
+            setCameraToConnect(null);
+          }}
+          cameraName={cameraToConnect.name}
+          onPlay={handlePlayVideo}
+        />
+      )}
     </div>
   );
 };

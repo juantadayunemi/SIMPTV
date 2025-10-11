@@ -60,7 +60,7 @@ class TrafficPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
     predictedVehicleCount = models.IntegerField(default=0)
@@ -87,7 +87,7 @@ class BatchPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
     totalPredictions = models.IntegerField(default=0)
@@ -109,7 +109,7 @@ class PredictionAccuracyEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     evaluationPeriod = models.CharField(max_length=50)
     predictionHorizon = models.IntegerField()
     totalPredictions = models.IntegerField(default=0)
@@ -133,7 +133,7 @@ class RealTimePredictionEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     currentVehicleCount = models.IntegerField(default=0)
     currentDensityLevel = models.CharField(max_length=20)
     next1HourPrediction = models.IntegerField(default=0)

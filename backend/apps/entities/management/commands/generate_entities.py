@@ -408,8 +408,8 @@ class TypeScriptEntityParser:
         if "@db:identity" in comment:
             annotations["is_identity"] = True
 
-        # Detectar @db:foreignKey ModelName
-        fk_match = re.search(r"@db:foreignKey\s+(\w+)", comment)
+        # Detectar @db:foreignKey ModelName or @db:foreignKey app.ModelName
+        fk_match = re.search(r"@db:foreignKey\s+([\w.]+)", comment)
         if fk_match:
             annotations["foreign_key"] = fk_match.group(1)
 

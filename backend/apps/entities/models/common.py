@@ -19,7 +19,7 @@ class WeatherDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     temperature = models.DecimalField(max_digits=5, decimal_places=2, default='0')
@@ -42,7 +42,7 @@ class EventDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(EventDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     eventName = models.CharField(max_length=200)
     eventType = models.CharField(max_length=50)
     startDate = models.DateTimeField()

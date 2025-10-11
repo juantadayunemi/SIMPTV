@@ -3,87 +3,95 @@
 // ============================================
 
 export const VEHICLE_TYPES = {
-  CAR: 'CAR',
-  TRUCK: 'TRUCK',
-  MOTORCYCLE: 'MOTORCYCLE',
-  BUS: 'BUS',
-  BICYCLE: 'BICYCLE',
-  OTHER: 'OTHER'
+  CAR: 'CAR' as const,
+  TRUCK: 'TRUCK' as const,
+  MOTORCYCLE: 'MOTORCYCLE' as const,
+  BUS: 'BUS' as const,
+  BICYCLE: 'BICYCLE' as const,
+  OTHER: 'OTHER' as const
 } as const;
 
-export type VehicleTypeKey = keyof typeof VEHICLE_TYPES;
+export type VehicleTypeKey = typeof VEHICLE_TYPES[keyof typeof VEHICLE_TYPES];
 
 export const DENSITY_LEVELS = {
-  LOW: 'LOW',       // Flujo libre
-  MEDIUM: 'MEDIUM', // Tráfico moderado
-  HIGH: 'HIGH',     // Tráfico denso
-  HEAVY: 'HEAVY'    // Congestionamiento
+  LOW: 'LOW' as const,       // Flujo libre
+  MEDIUM: 'MEDIUM' as const, // Tráfico moderado
+  HIGH: 'HIGH' as const,     // Tráfico denso
+  HEAVY: 'HEAVY' as const    // Congestionamiento
 } as const;
 
-export type DensityLevelKey = keyof typeof DENSITY_LEVELS;
+export type DensityLevelKey = typeof DENSITY_LEVELS[keyof typeof DENSITY_LEVELS];
+
+export const StatusCameraKey = {
+  ACTIVE: 'ACTIVE' as const,       // active
+  INACTIVE: 'INACTIVE' as const, // inactive
+  MAINTENANCE: 'MAINTENANCE' as const,    // maintenance
+} as const;
+
+export type StatusCameraKey = typeof StatusCameraKey[keyof typeof StatusCameraKey];
 
 export const ANALYSIS_STATUS = {
-  PENDING: 'PENDING',       // En cola
-  PROCESSING: 'PROCESSING', // Procesando
-  COMPLETED: 'COMPLETED',   // Completado
-  FAILED: 'FAILED',         // Falló
-  CANCELLED: 'CANCELLED'    // Cancelado
+  PENDING: 'PENDING' as const,       // En cola
+  PROCESSING: 'PROCESSING' as const, // Procesando
+  COMPLETED: 'COMPLETED' as const,   // Completado
+  FAILED: 'FAILED' as const,         // Falló
+  CANCELLED: 'CANCELLED' as const    // Cancelado
 } as const;
 
-export type AnalysisStatusKey = keyof typeof ANALYSIS_STATUS;
+export type AnalysisStatusKey = typeof ANALYSIS_STATUS[keyof typeof ANALYSIS_STATUS];
 
 export const TRACKING_STATUS = {
-  ACTIVE: 'ACTIVE',   // Vehículo actualmente en campo de visión
-  EXITED: 'EXITED',   // Salió del campo de visión normalmente
-  LOST: 'LOST'        // Se perdió el tracking (oclusión, error)
+  ACTIVE: 'ACTIVE' as const,   // Vehículo actualmente en campo de visión
+  EXITED: 'EXITED' as const,   // Salió del campo de visión normalmente
+  LOST: 'LOST' as const        // Se perdió el tracking (oclusión, error)
 } as const;
 
-export type TrackingStatusKey = keyof typeof TRACKING_STATUS;
+export type TrackingStatusKey = typeof TRACKING_STATUS[keyof typeof TRACKING_STATUS];
 
 export const TRAFFIC_DIRECTION = {
-  NORTH: 'NORTH',
-  SOUTH: 'SOUTH',
-  EAST: 'EAST',
-  WEST: 'WEST',
-  NORTHEAST: 'NORTHEAST',
-  NORTHWEST: 'NORTHWEST',
-  SOUTHEAST: 'SOUTHEAST',
-  SOUTHWEST: 'SOUTHWEST'
+  NORTH: 'NORTH' as const,
+  SOUTH: 'SOUTH' as const,
+  EAST: 'EAST' as const,
+  WEST: 'WEST' as const,
+  NORTHEAST: 'NORTHEAST' as const,
+  NORTHWEST: 'NORTHWEST' as const,
+  SOUTHEAST: 'SOUTHEAST' as const,
+  SOUTHWEST: 'SOUTHWEST' as const
 } as const;
 
-export type TrafficDirectionKey = keyof typeof TRAFFIC_DIRECTION;
+export type TrafficDirectionKey = typeof TRAFFIC_DIRECTION[keyof typeof TRAFFIC_DIRECTION];
 
 export const PLATE_PROCESSING_STATUS = {
-  PENDING: 'PENDING',       // En cola para procesamiento
-  PROCESSING: 'PROCESSING', // Procesando OCR
-  DETECTED: 'DETECTED',     // Placa detectada exitosamente
-  NOT_DETECTED: 'NOT_DETECTED', // No se pudo detectar placa
-  FAILED: 'FAILED'          // Error en el procesamiento
+  PENDING: 'PENDING' as const,       // En cola para procesamiento
+  PROCESSING: 'PROCESSING' as const, // Procesando OCR
+  DETECTED: 'DETECTED' as const,     // Placa detectada exitosamente
+  NOT_DETECTED: 'NOT_DETECTED' as const, // No se pudo detectar placa
+  FAILED: 'FAILED' as const          // Error en el procesamiento
 } as const;
 
-export type PlateProcessingStatusKey = keyof typeof PLATE_PROCESSING_STATUS;
+export type PlateProcessingStatusKey = typeof PLATE_PROCESSING_STATUS[keyof typeof PLATE_PROCESSING_STATUS];
 
 export const ALERT_TYPE = {
-  STOLEN: 'STOLEN',           // Vehículo reportado como robado
-  WANTED: 'WANTED',           // Vehículo buscado
-  EXPIRED: 'EXPIRED',         // Documentos vencidos
-  VIOLATION: 'VIOLATION',     // Multas pendientes
-  OTHER: 'OTHER'              // Otros tipos de alerta
+  STOLEN: 'STOLEN' as const,           // Vehículo reportado como robado
+  WANTED: 'WANTED' as const,           // Vehículo buscado
+  EXPIRED: 'EXPIRED' as const,         // Documentos vencidos
+  VIOLATION: 'VIOLATION' as const,     // Multas pendientes
+  OTHER: 'OTHER' as const              // Otros tipos de alerta
 } as const;
 
-export type AlertTypeKey = keyof typeof ALERT_TYPE;
+export type AlertTypeKey = typeof ALERT_TYPE[keyof typeof ALERT_TYPE];
 
 // Notification Types
 export const NOTIFICATION_TYPES = {
-  TRAFFIC_ALERT: 'TRAFFIC_ALERT',
-  PLATE_DETECTION: 'PLATE_DETECTION',
-  SYSTEM_ALERT: 'SYSTEM_ALERT',
-  USER_ACTION: 'USER_ACTION',
-  ANALYSIS_COMPLETE: 'ANALYSIS_COMPLETE',
-  ERROR_NOTIFICATION: 'ERROR_NOTIFICATION'
+  TRAFFIC_ALERT: 'TRAFFIC_ALERT' as const,
+  PLATE_DETECTION: 'PLATE_DETECTION' as const,
+  SYSTEM_ALERT: 'SYSTEM_ALERT' as const,
+  USER_ACTION: 'USER_ACTION' as const,
+  ANALYSIS_COMPLETE: 'ANALYSIS_COMPLETE' as const,
+  ERROR_NOTIFICATION: 'ERROR_NOTIFICATION' as const
 } as const;
 
-export type NotificationTypeKey = keyof typeof NOTIFICATION_TYPES;
+export type NotificationTypeKey = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
 
 // API Endpoints
 export const API_ENDPOINTS = {

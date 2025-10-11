@@ -16,7 +16,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     dayOfWeek = models.IntegerField()
@@ -41,7 +41,7 @@ class LocationTrafficPatternEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationTrafficPatternEntity"""
     """USAGE: Inherit in other apps - class User(LocationTrafficPatternEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     patternType = models.CharField(max_length=20)
     patternData = models.TextField()
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
@@ -86,6 +86,7 @@ class CameraEntity(BaseModel):
     resolution = models.CharField(max_length=20, blank=True, null=True)
     fps = models.IntegerField(blank=True, null=True)
     locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    status = models.CharField(max_length=20, default='ACTIVE')
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
     notes = models.TextField(blank=True, null=True)

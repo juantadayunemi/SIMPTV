@@ -26,7 +26,7 @@ import { DensityLevelKey, VehicleTypeKey } from "../types/trafficTypes";
  */
 export interface TrafficHistoricalDataEntity {
   id: number; // @db:primary @db:identity - ID autoincremental
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación de la cámara)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la cámara)
   date: Date; // @db:datetime - Fecha del registro histórico
   hour: number; // @db:int - Hora del día (0-23)
   dayOfWeek: number; // @db:int - Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)
@@ -47,7 +47,7 @@ export interface TrafficHistoricalDataEntity {
  */
 export interface LocationTrafficPatternEntity {
   id: number; // @db:primary @db:identity - ID autoincremental
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación de la cámara)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la cámara)
   patternType: string; // @db:varchar(20) - Tipo de patrón: 'hourly' (por hora), 'daily' (diario), 'weekly' (semanal), 'monthly' (mensual)
   patternData: string; // @db:text - JSON serializado con datos del patrón detectado
   confidence: number; // @db:decimal(5,4) - Nivel de confianza del patrón (0-1, donde 1 = 100% confiable)
@@ -67,7 +67,7 @@ export interface PredictionModelEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID único del modelo
   modelName: string; // @db:varchar(100) - Nombre descriptivo del modelo (Ej: "LSTM-LOC001-2024")
   modelType: string; // @db:varchar(50) - Tipo de modelo: 'linear_regression', 'arima', 'lstm', 'random_forest'
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación para la que fue entrenado)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación para la que fue entrenado)
   features: string; // @db:text - JSON array de nombres de features usadas en el modelo
   hyperparameters: string; // @db:text - JSON serializado con configuración del modelo (ej: learning_rate, epochs, etc.)
   trainingDataPeriod: string; // @db:varchar(50) - Período de datos de entrenamiento (Ej: "2024-01-01_2024-12-31")
@@ -107,7 +107,7 @@ export interface ModelTrainingJobEntity {
 export interface TrafficPredictionEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID único de la predicción
   modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo usado para predecir
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación de la predicción)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la predicción)
   predictionDate: Date; // @db:datetime - Fecha/hora para la que se hizo la predicción
   predictionHour: number; // @db:int - Hora específica predicha (0-23)
   predictedVehicleCount: number; // @db:int @default(0) - Cantidad predicha de vehículos
@@ -130,7 +130,7 @@ export interface TrafficPredictionEntity {
 export interface BatchPredictionEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del lote de predicciones
   modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo usado
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación del batch)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación del batch)
   predictionStartDate: Date; // @db:datetime - Fecha de inicio del rango de predicción
   predictionEndDate: Date; // @db:datetime - Fecha de fin del rango de predicción
   totalPredictions: number; // @db:int @default(0) - Total de predicciones generadas en el batch
@@ -149,7 +149,7 @@ export interface BatchPredictionEntity {
 export interface PredictionAccuracyEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del registro de precisión
   modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo evaluado
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación evaluada)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación evaluada)
   evaluationPeriod: string; // @db:varchar(50) - Período de evaluación (Ej: "2024-01-01_2024-01-31")
   predictionHorizon: number; // @db:int - Horizonte evaluado en horas adelante (1, 6, 24, etc.)
   totalPredictions: number; // @db:int @default(0) - Total de predicciones evaluadas
@@ -167,7 +167,7 @@ export interface PredictionAccuracyEntity {
  */
 export interface RealTimePredictionEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID de la predicción en tiempo real
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación de la predicción)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la predicción)
   currentVehicleCount: number; // @db:int @default(0) - Cantidad actual de vehículos (última medición)
   currentDensityLevel: DensityLevelKey; // @db:varchar(20) - Nivel de densidad actual
   next1HourPrediction: number; // @db:int @default(0) - Predicción para la próxima 1 hora
@@ -188,7 +188,7 @@ export interface RealTimePredictionEntity {
  */
 export interface WeatherDataEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del registro de clima
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación del registro climático)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación del registro climático)
   date: Date; // @db:datetime - Fecha/hora del registro
   hour: number; // @db:int - Hora del registro (0-23)
   temperature: number; // @db:decimal(5,2) @default(0) - Temperatura en grados Celsius
@@ -206,7 +206,7 @@ export interface WeatherDataEntity {
  */
 export interface EventDataEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del evento
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación del evento)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación del evento)
   eventName: string; // @db:varchar(200) - Nombre del evento (Ej: "Concierto Estadio Monumental")
   eventType: string; // @db:varchar(50) - Tipo: 'sports' (deportivo), 'concert' (concierto), 'holiday' (feriado), 'accident' (accidente), 'construction' (construcción)
   startDate: Date; // @db:datetime - Fecha/hora de inicio del evento

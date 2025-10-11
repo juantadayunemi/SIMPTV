@@ -61,23 +61,7 @@ export interface Location {
   updatedAt: string;
 }
 
-export interface Camera {
-  id: number;
-  name: string;
-  brand?: string;
-  model?: string;
-  resolution?: string;
-  fps?: number;
-  locationId: number;
-  currentLocationId?: number;
-  isActive: boolean;
-  isMobile: boolean;
-  lanes: number;
-  coversBothDirections: boolean;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 export interface CreateLocationData {
   description: string;
@@ -229,6 +213,24 @@ class TrafficService {
     const response = await api.get('/api/traffic/statistics', {
       params: { location }
     });
+    return response.data;
+  }
+
+  // Update camera (status, name, location)
+  async updateCamera(cameraId: string | number, data: Partial<{
+    name: string;
+    location: string;
+    status: 'active' | 'inactive' | 'maintenance';
+    locationId?: number;
+    brand?: string;
+    model?: string;
+    resolution?: string;
+    fps?: number;
+    lanes?: number;
+    coversBothDirections?: boolean;
+    notes?: string;
+  }>): Promise<Camera> {
+    const response = await api.patch(`/api/traffic/cameras/${cameraId}/`, data);
     return response.data;
   }
 }

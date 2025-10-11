@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
+import RealTimeAnalysisPage from './pages/traffic/RealTimeAnalysisPage';
 import CamerasPage from './pages/traffic/CamerasPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
 import PredictionsPage from './pages/predictions/PredictionsPage';
@@ -121,6 +122,7 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="traffic" element={<CamerasPage />} />
             <Route path="traffic/analysis" element={<TrafficAnalysisPage />} />
+            <Route path="traffic/realtime" element={<RealTimeAnalysisPage />} />
             <Route path="plates" element={<PlateDetectionPage />} />
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />

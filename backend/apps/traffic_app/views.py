@@ -110,6 +110,51 @@ class CameraViewSet(viewsets.ModelViewSet):
         serializer = TrafficAnalysisListSerializer(analyses, many=True)
         return Response(serializer.data)
 
+    def update(self, request, *args, **kwargs):
+        """Actualizar configuración de cámara (PUT completo)"""
+        try:
+            partial = kwargs.pop("partial", False)
+            instance = self.get_object()
+
+            # 🔍 LOG: Ver datos que llegan
+            print("=" * 60)
+            print("📥 DATOS RECIBIDOS EN CAMERA UPDATE (PUT):")
+            print(f"Camera ID: {instance.id}")
+            print(f"request.data = {request.data}")
+
+            serializer = self.get_serializer(
+                instance, data=request.data, partial=partial
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            print(f"✅ Cámara actualizada exitosamente")
+            print("=" * 60)
+
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"❌ Error actualizando cámara: {str(e)}")
+            print("=" * 60)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Actualización parcial de cámara (PATCH)"""
+        try:
+            instance = self.get_object()
+
+            # 🔍 LOG: Ver datos que llegan
+            print("=" * 60)
+            print("📥 DATOS RECIBIDOS EN CAMERA PARTIAL UPDATE (PATCH):")
+            print(f"Camera ID: {instance.id}")
+            print(f"request.data = {request.data}")
+
+            kwargs["partial"] = True
+            return self.update(request, *args, **kwargs)
+        except Exception as e:
+            print(f"❌ Error en partial_update: {str(e)}")
+            print("=" * 60)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class TrafficAnalysisViewSet(viewsets.ModelViewSet):
     """
