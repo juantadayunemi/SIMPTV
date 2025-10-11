@@ -1,8 +1,15 @@
-# Django Backend Requirements for Development
+# ============================================================================
+# TRAFISMART - Backend Requirements
+# Python 3.13 Compatible
+# ============================================================================
+# NOTA: Para instalación de producción, usar requirements_production.txt
+# Este archivo usa versiones flexibles para desarrollo
+# ============================================================================
+
 # Core Django and Database
 Django==5.2
 mssql-django==1.6
-pyodbc>=3.0
+pyodbc==5.2.0
 
 # Django REST Framework
 djangorestframework==3.15.2

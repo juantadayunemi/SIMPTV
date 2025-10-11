@@ -495,9 +495,7 @@ def analyze_video_endpoint(request):
         analysis = TrafficAnalysis.objects.create(
             cameraId_id=camera_id if camera_id else None,
             locationId_id=location_id,
-            userId_id=(
-                request.data.get("userId") if request.data.get("userId") else None
-            ),
+            userId=request.data.get("userId") if request.data.get("userId") else None,
             videoPath=video_path,
             weatherConditions=request.data.get("weatherConditions", ""),
             startedAt=timezone.now(),

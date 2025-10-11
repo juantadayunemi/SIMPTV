@@ -16,16 +16,16 @@ class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
-    location = models.CharField(max_length=255)
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     dayOfWeek = models.IntegerField()
     month = models.IntegerField()
-    vehicleCount = models.IntegerField()
-    avgSpeed = models.IntegerField()
-    densityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    weatherConditions = models.CharField(max_length=255, blank=True, null=True)
-    temperature = models.IntegerField(blank=True, null=True)
+    vehicleCount = models.IntegerField(default=0)
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    densityLevel = models.CharField(max_length=20)
+    weatherConditions = models.CharField(max_length=100, blank=True, null=True)
+    temperature = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     isHoliday = models.BooleanField(default=False)
     isWeekend = models.BooleanField(default=False)
 
@@ -41,10 +41,10 @@ class LocationTrafficPatternEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationTrafficPatternEntity"""
     """USAGE: Inherit in other apps - class User(LocationTrafficPatternEntity): pass"""
 
-    location = models.CharField(max_length=255)
-    patternType = models.CharField(max_length=255)
-    patternData = models.CharField(max_length=255)
-    confidence = models.IntegerField()
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    patternType = models.CharField(max_length=20)
+    patternData = models.TextField()
+    confidence = models.DecimalField(max_digits=5, decimal_places=4)
     validFrom = models.DateTimeField()
     validTo = models.DateTimeField()
 
@@ -85,7 +85,7 @@ class CameraEntity(BaseModel):
     model = models.CharField(max_length=50, blank=True, null=True)
     resolution = models.CharField(max_length=20, blank=True, null=True)
     fps = models.IntegerField(blank=True, null=True)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_set')
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
     notes = models.TextField(blank=True, null=True)
@@ -102,8 +102,8 @@ class TrafficAnalysisEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficAnalysisEntity"""
     """USAGE: Inherit in other apps - class User(TrafficAnalysisEntity): pass"""
 
-    cameraId = models.ForeignKey('Camera', on_delete=models.CASCADE, related_name='cameraid_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_set')
+    cameraId = models.ForeignKey('Camera', on_delete=models.CASCADE, related_name='cameraid_camera_set')
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     videoPath = models.CharField(max_length=500, blank=True, null=True)
     userId = models.IntegerField(blank=True, null=True)
     startedAt = models.DateTimeField()
@@ -140,7 +140,7 @@ class VehicleEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(VehicleEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    trafficAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='trafficanalysisid_set')
+    trafficAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='trafficanalysisid_trafficanalysis_set')
     vehicleType = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
     firstDetectedAt = models.DateTimeField()
@@ -169,7 +169,7 @@ class VehicleFrameEntity(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleFrameEntity"""
     """USAGE: Inherit in other apps - class User(VehicleFrameEntity): pass"""
 
-    vehicleId = models.ForeignKey('Vehicle', on_delete=models.CASCADE, related_name='vehicleid_set')
+    vehicleId = models.ForeignKey('Vehicle', on_delete=models.CASCADE, related_name='vehicleid_vehicle_set')
     frameNumber = models.IntegerField()
     timestamp = models.DateTimeField()
     boundingBoxX = models.IntegerField()

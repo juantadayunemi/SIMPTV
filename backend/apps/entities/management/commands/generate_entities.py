@@ -502,9 +502,16 @@ class TypeScriptEntityParser:
         # Handle @db:foreignKey
         if annotations.get("foreign_key"):
             related_model = annotations["foreign_key"]
+            # Use field name in related_name to avoid conflicts when multiple fields reference same model
+            # Example: locationId -> related_name="%(class)s_location_set"
+            # Remove 'Id' suffix from field name for cleaner related_name
+            clean_field_name = prop_name.replace("Id", "").replace("id", "").lower()
+            if not clean_field_name:
+                clean_field_name = prop_name.lower()
+
             field_options = {
                 "on_delete": "models.CASCADE",
-                "related_name": f"%(class)s_set",
+                "related_name": f"%(class)s_{clean_field_name}_set",
             }
             if is_optional:
                 field_options["blank"] = True
@@ -2018,53 +2025,6 @@ class Command(BaseCommand):
                     f"Found types in {len(all_types)} files: {', '.join(all_types.keys())}"
                 )
             )
-
-        # --- PATCH: Comment missing imports in models/__init__.py ---
-        models_init_path = Path("apps/entities/models/__init__.py")
-        if models_init_path.exists():
-            with open(models_init_path, "r", encoding="utf-8") as f:
-                init_lines = f.readlines()
-            new_lines = []
-            block = []
-            block_missing = False
-            for line in init_lines:
-                # Detect start of import block
-                if line.strip().startswith("from .") and "import (" in line:
-                    block = [line]
-                    block_missing = False
-                    # Extract category
-                    import_match = re.match(
-                        r"from \.([a-zA-Z_]+) import \(", line.strip()
-                    )
-                    if import_match:
-                        category = import_match.group(1)
-                        model_file = Path(f"apps/entities/models/{category}.py")
-                        if not model_file.exists():
-                            block_missing = True
-                    continue
-                # Detect end of import block
-                elif block and line.strip() == ")":
-                    block.append(line)
-                    if block_missing:
-                        for bline in block:
-                            new_lines.append(
-                                f"# {bline}" if not bline.startswith("#") else bline
-                            )
-                    else:
-                        new_lines.extend(block)
-                    block = []
-                    block_missing = False
-                    continue
-                # Collect lines inside import block
-                elif block:
-                    block.append(line)
-                    continue
-                else:
-                    new_lines.append(line)
-            # Write the commented version
-            with open(models_init_path, "w", encoding="utf-8") as f:
-                f.writelines(new_lines)
-        # --- END PATCH ---
 
         # Generate Django code
         if organized:

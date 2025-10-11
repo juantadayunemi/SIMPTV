@@ -62,8 +62,8 @@ export class TrafficWebSocketService {
       
       // Construir URL del WebSocket
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = import.meta.env.VITE_WS_URL || 'localhost:8000';
-      const wsUrl = `${protocol}//${host}/ws/traffic_analysis/${analysisId}/`;
+      const host = import.meta.env.VITE_WS_URL || 'localhost:8001';
+      const wsUrl = `${protocol}//${host}/ws/traffic/analysis/${analysisId}/`;
 
       console.log(`🔌 Conectando a WebSocket: ${wsUrl}`);
 

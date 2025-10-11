@@ -71,6 +71,7 @@ LOCAL_APPS = [
     "apps.auth_app",  # Auth API (concrete)
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
+    "apps.predictions_app",  # Traffic Predictions & ML
     # "apps.external_apis",  # External APIs
     # "apps.notifications",  # Notifications
 ]
@@ -245,6 +246,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:5173",  # Vite dev server
     "http://127.0.0.1:5173",
+    "http://localhost:5174",  # Vite dev server (alternate port)
+    "http://127.0.0.1:5174",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

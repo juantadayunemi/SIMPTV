@@ -1,6 +1,5 @@
 from django.db import models
 from .base import BaseModel
-import uuid
 from ..constants import (
     ANALYSIS_STATUS_CHOICES,
     DENSITY_LEVELS_CHOICES,
@@ -12,16 +11,17 @@ class PredictionModelEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionModelEntity"""
     """USAGE: Inherit in other apps - class User(PredictionModelEntity): pass"""
 
-    modelName = models.CharField(max_length=255)
-    modelType = models.CharField(max_length=255)
-    location = models.CharField(max_length=255)
-    features = models.CharField(max_length=255)
-    hyperparameters = models.CharField(max_length=255)
-    trainingDataPeriod = models.CharField(max_length=255)
-    accuracy = models.IntegerField()
-    mse = models.IntegerField()
-    mae = models.IntegerField()
-    r2Score = models.IntegerField()
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    modelName = models.CharField(max_length=100)
+    modelType = models.CharField(max_length=50)
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    features = models.TextField()
+    hyperparameters = models.TextField()
+    trainingDataPeriod = models.CharField(max_length=50)
+    accuracy = models.DecimalField(max_digits=5, decimal_places=4)
+    mse = models.DecimalField(max_digits=12, decimal_places=6)
+    mae = models.DecimalField(max_digits=12, decimal_places=6)
+    r2Score = models.DecimalField(max_digits=5, decimal_places=4)
     trainedAt = models.DateTimeField()
 
     class Meta:
@@ -36,14 +36,15 @@ class ModelTrainingJobEntity(BaseModel):
     """Abstract DLL model from TypeScript interface ModelTrainingJobEntity"""
     """USAGE: Inherit in other apps - class User(ModelTrainingJobEntity): pass"""
 
-    modelId = models.UUIDField(default=uuid.uuid4, editable=False)
-    status = models.CharField(max_length=255)
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
+    status = models.CharField(max_length=20)
     startTime = models.DateTimeField()
     endTime = models.DateTimeField(blank=True, null=True)
-    trainingLogs = models.CharField(max_length=255, blank=True, null=True)
-    errorMessage = models.CharField(max_length=255, blank=True, null=True)
-    dataPointsUsed = models.IntegerField()
-    validationScore = models.IntegerField()
+    trainingLogs = models.TextField(blank=True, null=True)
+    errorMessage = models.TextField(blank=True, null=True)
+    dataPointsUsed = models.IntegerField(default=0)
+    validationScore = models.DecimalField(max_digits=5, decimal_places=4, default='0')
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -57,19 +58,20 @@ class TrafficPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficPredictionEntity"""
     """USAGE: Inherit in other apps - class User(TrafficPredictionEntity): pass"""
 
-    modelId = models.UUIDField(default=uuid.uuid4, editable=False)
-    location = models.CharField(max_length=255)
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
-    predictedVehicleCount = models.IntegerField()
-    predictedAvgSpeed = models.IntegerField()
-    predictedDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    confidence = models.IntegerField()
+    predictedVehicleCount = models.IntegerField(default=0)
+    predictedAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    predictedDensityLevel = models.CharField(max_length=20)
+    confidence = models.DecimalField(max_digits=5, decimal_places=4)
     predictionHorizon = models.IntegerField()
     actualVehicleCount = models.IntegerField(blank=True, null=True)
-    actualAvgSpeed = models.IntegerField(blank=True, null=True)
-    actualDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    predictionError = models.IntegerField(blank=True, null=True)
+    actualAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    actualDensityLevel = models.CharField(max_length=20, blank=True, null=True)
+    predictionError = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -83,14 +85,15 @@ class BatchPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface BatchPredictionEntity"""
     """USAGE: Inherit in other apps - class User(BatchPredictionEntity): pass"""
 
-    modelId = models.UUIDField(default=uuid.uuid4, editable=False)
-    location = models.CharField(max_length=255)
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
-    totalPredictions = models.IntegerField()
-    avgConfidence = models.IntegerField()
-    status = models.CharField(max_length=255)
-    executionTime = models.IntegerField()
+    totalPredictions = models.IntegerField(default=0)
+    avgConfidence = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    status = models.CharField(max_length=20)
+    executionTime = models.IntegerField(default=0)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -104,16 +107,17 @@ class PredictionAccuracyEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionAccuracyEntity"""
     """USAGE: Inherit in other apps - class User(PredictionAccuracyEntity): pass"""
 
-    modelId = models.UUIDField(default=uuid.uuid4, editable=False)
-    location = models.CharField(max_length=255)
-    evaluationPeriod = models.CharField(max_length=255)
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    evaluationPeriod = models.CharField(max_length=50)
     predictionHorizon = models.IntegerField()
-    totalPredictions = models.IntegerField()
-    correctPredictions = models.IntegerField()
-    accuracy = models.IntegerField()
-    avgError = models.IntegerField()
-    maxError = models.IntegerField()
-    minError = models.IntegerField()
+    totalPredictions = models.IntegerField(default=0)
+    correctPredictions = models.IntegerField(default=0)
+    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    avgError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
+    maxError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
+    minError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
     evaluatedAt = models.DateTimeField()
 
     class Meta:
@@ -128,15 +132,16 @@ class RealTimePredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface RealTimePredictionEntity"""
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
-    location = models.CharField(max_length=255)
-    currentVehicleCount = models.IntegerField()
-    currentDensityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
-    next1HourPrediction = models.IntegerField()
-    next6HourPrediction = models.IntegerField()
-    next24HourPrediction = models.IntegerField()
-    confidence1Hour = models.IntegerField()
-    confidence6Hour = models.IntegerField()
-    confidence24Hour = models.IntegerField()
+    id = models.CharField(max_length=50, primary_key=True, editable=False)
+    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    currentVehicleCount = models.IntegerField(default=0)
+    currentDensityLevel = models.CharField(max_length=20)
+    next1HourPrediction = models.IntegerField(default=0)
+    next6HourPrediction = models.IntegerField(default=0)
+    next24HourPrediction = models.IntegerField(default=0)
+    confidence1Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    confidence6Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    confidence24Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
     lastUpdated = models.DateTimeField()
 
     class Meta:
