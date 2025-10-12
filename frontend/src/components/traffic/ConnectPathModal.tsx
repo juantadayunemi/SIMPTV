@@ -6,6 +6,9 @@ interface ConnectPathModalProps {
   isOpen: boolean;
   onClose: () => void;
   cameraName: string;
+  cameraId: number;
+  locationId: number;
+  userId: number;
   onPlay: (videoFile: File, analysisId: number) => void;
 }
 
@@ -13,6 +16,9 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
   isOpen,
   onClose,
   cameraName,
+  cameraId,
+  locationId,
+  userId,
   onPlay,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -52,31 +58,41 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
     }
   };
 
-  // Simula la subida en chunks y cierra el modal tras el primer chunk
-  // Subida real por chunks y disparo de análisis
+  // Subida real por chunks con análisis incremental
   const handlePlay = async () => {
     if (!selectedFile) return;
     setIsProcessing(true);
     setProgress(0);
     uploadRef.current.cancel = false;
 
-    // Subir el archivo completo al endpoint correcto
-    const formData = new FormData();
-    formData.append('video_file', selectedFile);
-    let analysisId: number | null = null;
     try {
-      const response = await trafficService.startVideoAnalysis(formData);
-      analysisId = response.id;
-    } catch (err) {
-      alert('Error subiendo el video.');
+      // Usar el nuevo método de subida por chunks
+      const result = await trafficService.uploadVideoInChunks(
+        selectedFile,
+        cameraId,
+        locationId,
+        userId,
+        '', // weatherConditions - opcional
+        (progress, message) => {
+          setProgress(progress);
+          console.log(`Progress: ${progress}% - ${message}`);
+        },
+        (chunkIndex, response) => {
+          console.log(`Chunk ${chunkIndex} uploaded:`, response);
+        }
+      );
+
+      console.log('Upload completed:', result);
       setIsProcessing(false);
-      return;
+      setSelectedFile(null);
+      onPlay(selectedFile, parseInt(result.analysisId));
+      onClose();
+
+    } catch (err) {
+      console.error('Error uploading video:', err);
+      alert('Error subiendo el video en chunks.');
+      setIsProcessing(false);
     }
-    setProgress(100);
-    setIsProcessing(false);
-    setSelectedFile(null);
-    onPlay(selectedFile, analysisId!);
-    onClose();
   };
 
   // Si el modal se cierra manualmente, cancela la subida simulada
@@ -173,7 +189,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-900">
-                    Subiendo video al backend...
+                    Subiendo video por chunks y analizando en tiempo real...
                   </p>
                   <div className="w-full bg-blue-100 rounded-full h-2 mt-2">
                     <div
@@ -181,7 +197,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-blue-700 mt-1">{progress}%</p>
+                  <p className="text-xs text-blue-700 mt-1">{progress}% completado</p>
                 </div>
               </div>
             </div>

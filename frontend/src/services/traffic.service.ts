@@ -85,6 +85,23 @@ export interface CreateCameraData {
   notes?: string;
 }
 
+export interface Camera {
+  id: number;
+  name: string;
+  brand?: string;
+  model?: string;
+  resolution?: string;
+  fps?: number;
+  locationId: number;
+  status: string;
+  lanes: number;
+  coversBothDirections: boolean;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class TrafficService {
   // ============================================
   // LOCATIONS
@@ -152,6 +169,74 @@ class TrafficService {
       },
     });
     return response.data;
+  }
+
+  // Upload video in chunks with real-time analysis
+  async uploadVideoInChunks(
+    file: File,
+    cameraId: number,
+    locationId: number,
+    userId: number,
+    weatherConditions: string = '',
+    onProgress?: (progress: number, message: string) => void,
+    onChunkComplete?: (chunkIndex: number, response: any) => void
+  ): Promise<{ analysisId: string; finalResponse: any }> {
+    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const analysisId = crypto.randomUUID(); // Generate unique analysis ID
+
+    onProgress?.(0, `Iniciando subida de ${totalChunks} chunks...`);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append('analysisId', analysisId);
+      formData.append('chunkIndex', chunkIndex.toString());
+      formData.append('totalChunks', totalChunks.toString());
+      formData.append('file', chunk, `chunk_${chunkIndex}.mp4`);
+      formData.append('cameraId', cameraId.toString());
+      formData.append('locationId', locationId.toString());
+      formData.append('userId', userId.toString());
+      formData.append('weatherConditions', weatherConditions);
+
+      try {
+        const response = await api.post('/api/traffic/upload-chunk/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+        const message = chunkIndex === 0 
+          ? 'Primer chunk enviado - análisis iniciado!' 
+          : `Chunk ${chunkIndex + 1}/${totalChunks} completado`;
+
+        onProgress?.(progress, message);
+        onChunkComplete?.(chunkIndex, response.data);
+
+        // Small delay between chunks to avoid overwhelming the server
+        if (chunkIndex < totalChunks - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+      } catch (error) {
+        console.error(`Error uploading chunk ${chunkIndex}:`, error);
+        throw new Error(`Failed to upload chunk ${chunkIndex}: ${error}`);
+      }
+    }
+
+    // Get final analysis status
+    try {
+      const finalResponse = await this.getAnalysis(analysisId);
+      onProgress?.(100, 'Análisis completado!');
+      return { analysisId, finalResponse };
+    } catch (error) {
+      console.warn('Could not get final analysis status:', error);
+      return { analysisId, finalResponse: null };
+    }
   }
 
   // Get all traffic analyses

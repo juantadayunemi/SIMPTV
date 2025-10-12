@@ -616,6 +616,9 @@ const CamerasPage: React.FC = () => {
             setCameraToConnect(null);
           }}
           cameraName={cameraToConnect.name}
+          cameraId={cameraToConnect.id}
+          locationId={cameraToConnect.locationId}
+          userId={1} // TODO: Obtener del contexto de autenticación
           onPlay={handlePlayVideo}
         />
       )}

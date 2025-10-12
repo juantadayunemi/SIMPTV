@@ -95,6 +95,12 @@ class CameraViewSet(viewsets.ModelViewSet):
     serializer_class = CameraSerializer
     permission_classes = [AllowAny]  # ⚠️ TEMPORAL: Sin autenticación para debug
 
+    def list(self, request, *args, **kwargs):
+        print("[DEBUG] GET /api/traffic/cameras/ llamada recibida")
+        response = super().list(request, *args, **kwargs)
+        print(f"[DEBUG] Se retornaron {len(response.data)} cámaras")
+        return response
+
     @action(detail=False, methods=["get"])
     def active(self, request):
         """Obtener solo cámaras activas"""
