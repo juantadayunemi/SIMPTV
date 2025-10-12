@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera, MapPin, Wifi, WifiOff, Settings, Plus } from 'lucide-react';
 import { trafficService, type TrafficAnalysis } from '../../services/traffic.service';
+import { getWebSocketService, ProgressUpdate,  ProcessingComplete } from '../../services/websocket.service';
 import TrafficStatusBadge from '../../components/traffic/TrafficStatusBadge';
 import AddCameraModal, { type CameraFormData } from '../../components/traffic/AddCameraModal';
-import EditCameraModal, { type CameraData as EditCameraData } from '../../components/traffic/EditCameraModal';
+import EditCameraModal from '../../components/traffic/EditCameraModal';
 import CameraMenuDropdown from '../../components/traffic/CameraMenuDropdown';
 import ConnectPathModal from '../../components/traffic/ConnectPathModal';
 import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
@@ -18,9 +18,16 @@ interface CameraUIEntity extends CameraEntity {
 }
 
 const CamerasPage: React.FC = () => {
-  const navigate = useNavigate();
+
   const [cameras, setCameras] = useState<CameraUIEntity[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState<number | null>(null);
+  // Para almacenar datos de análisis en tiempo real por cámara
+  const [liveAnalysis, setLiveAnalysis] = useState<Record<number, {
+    vehicleCount: number;
+    avgSpeed: number;
+    congestion: number;
+    lastUpdate: number;
+  }>>({});
+  const wsRef = useRef<any>(null);
   // 'all' es solo para filtrado en UI, no está en la base de datos
   const [filterStatus, setFilterStatus] = useState<'all' | StatusCameraKey>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -167,7 +174,7 @@ const CamerasPage: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const handleSaveCamera = async (updatedCamera: EditCameraData) => {
+  const handleSaveCamera = async (updatedCamera: CameraEntity) => {
     try {
       console.log('💾 Guardando cambios de cámara:', updatedCamera);
       
@@ -214,7 +221,7 @@ const CamerasPage: React.FC = () => {
     alert(`Conectar Cámara física para: ${camera.name}\n(Por implementar)`);
   };
 
-  const handlePlayVideo = (videoFile: File) => {
+  const handlePlayVideo = (videoFile: File, analysisId: number) => {
     if (!cameraToConnect) return;
 
     // Actualizar la cámara para mostrarla como "reproduciendo"
@@ -231,7 +238,39 @@ const CamerasPage: React.FC = () => {
       )
     );
 
-    // No mostrar alert, solo actualizar silenciosamente
+    // Usar analysisId real generado para la sesión de análisis
+    const ws = getWebSocketService();
+    wsRef.current = ws;
+  ws.connect(analysisId).then(() => {
+      // Escuchar progreso de análisis
+      ws.on('progress_update', (data: ProgressUpdate) => {
+        setLiveAnalysis(prev => ({
+          ...prev,
+          [cameraToConnect.id]: {
+            vehicleCount: data.vehicles_detected,
+            avgSpeed: Math.max(10, 80 - data.vehicles_detected * 1.2),
+            congestion: Math.min(100, Math.round((data.vehicles_detected / 100) * 100)),
+            lastUpdate: Date.now(),
+          }
+        }));
+      });
+      // Escuchar finalización
+      ws.on('processing_complete', (data: ProcessingComplete) => {
+        setLiveAnalysis(prev => ({
+          ...prev,
+          [cameraToConnect.id]: {
+            vehicleCount: data.total_vehicles,
+            avgSpeed: Math.max(10, 80 - data.total_vehicles * 1.2),
+            congestion: Math.min(100, Math.round((data.total_vehicles / 100) * 100)),
+            lastUpdate: Date.now(),
+          }
+        }));
+        // Desconectar WebSocket tras finalizar
+        setTimeout(() => ws.disconnect(), 2000);
+      });
+    }).catch((err) => {
+      console.error('WebSocket error:', err);
+    });
   };
 
   const filteredCameras = cameras.filter(camera => 
@@ -392,17 +431,18 @@ const CamerasPage: React.FC = () => {
       {!isLoading && filteredCameras.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCameras.map((camera) => {
+            // Si hay datos en vivo, usarlos; si no, usar el último análisis
+            const live = liveAnalysis[camera.id];
             const analysis = camera.lastAnalysis;
-            const vehicleCount = analysis?.vehicleCount || 0;
+            const vehicleCount = live?.vehicleCount ?? analysis?.vehicleCount ?? 0;
             const trafficLevel = getTrafficLevel(vehicleCount);
-            const congestionPercentage = getCongestionPercentage(vehicleCount);
-            const averageSpeed = getAverageSpeed(vehicleCount);
+            const congestionPercentage = live?.congestion ?? getCongestionPercentage(vehicleCount);
+            const averageSpeed = live?.avgSpeed ?? getAverageSpeed(vehicleCount);
             
             return (
               <div
                 key={camera.id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedCamera(camera.id)}
               >
                 {/* Camera Feed Placeholder */}
                 <div className="aspect-video bg-gray-900 relative">
@@ -436,11 +476,11 @@ const CamerasPage: React.FC = () => {
                   </div>
 
                   {/* Live Indicator */}
-                  {camera.status === StatusCameraKey.ACTIVE && (
+                  {camera.status === StatusCameraKey.ACTIVE && camera.isPlaying && camera.videoUrl && (
                     <div className="absolute top-3 right-3">
                       <div className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-medium">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        <span>EN VIVO</span>
+                        <span>ANÁLISIS EN VIVO</span>
                       </div>
                     </div>
                   )}
@@ -452,6 +492,11 @@ const CamerasPage: React.FC = () => {
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 text-sm leading-tight">
                         {camera.name}
+                        {camera.isPlaying && (
+                          <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded animate-pulse">
+                            Analizando en tiempo real...
+                          </span>
+                        )}
                       </h3>
                       <p className="text-xs text-gray-600 flex items-center mt-1">
                         <MapPin className="w-3 h-3 mr-1" />
@@ -467,7 +512,7 @@ const CamerasPage: React.FC = () => {
                   </div>
 
                   {/* Mostrar estadísticas solo para cámaras ACTIVAS */}
-                  {camera.status === StatusCameraKey.ACTIVE && (
+                  {camera.status === StatusCameraKey.ACTIVE && camera.isPlaying && camera.videoUrl && (
                     <>
                       <div className="flex items-center justify-between mb-3">
                         <TrafficStatusBadge level={trafficLevel} size="sm" />

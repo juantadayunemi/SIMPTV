@@ -1,11 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { trafficService } from '../../services/traffic.service';
 import { X, Upload, Play, Loader2 } from 'lucide-react';
 
 interface ConnectPathModalProps {
   isOpen: boolean;
   onClose: () => void;
   cameraName: string;
-  onPlay: (videoFile: File) => void;
+  onPlay: (videoFile: File, analysisId: number) => void;
 }
 
 export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
@@ -17,6 +18,8 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const uploadRef = useRef<{ cancel: boolean }>({ cancel: false });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -49,18 +52,39 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
     }
   };
 
+  // Simula la subida en chunks y cierra el modal tras el primer chunk
+  // Subida real por chunks y disparo de análisis
   const handlePlay = async () => {
     if (!selectedFile) return;
-
     setIsProcessing(true);
+    setProgress(0);
+    uploadRef.current.cancel = false;
 
-    // Simular envío al backend (4 segundos)
-    await new Promise(resolve => setTimeout(resolve, 4000));
-
+    // Subir el archivo completo al endpoint correcto
+    const formData = new FormData();
+    formData.append('video_file', selectedFile);
+    let analysisId: number | null = null;
+    try {
+      const response = await trafficService.startVideoAnalysis(formData);
+      analysisId = response.id;
+    } catch (err) {
+      alert('Error subiendo el video.');
+      setIsProcessing(false);
+      return;
+    }
+    setProgress(100);
     setIsProcessing(false);
-    onPlay(selectedFile);
-    onClose();
     setSelectedFile(null);
+    onPlay(selectedFile, analysisId!);
+    onClose();
+  };
+
+  // Si el modal se cierra manualmente, cancela la subida simulada
+  const handleClose = () => {
+    uploadRef.current.cancel = true;
+    setIsProcessing(false);
+    setProgress(0);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -75,7 +99,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
             <p className="text-sm text-gray-600 mt-1">Cámara: {cameraName}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isProcessing}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
@@ -142,18 +166,22 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
             </div>
           )}
 
-          {/* Processing State */}
+          {/* Barra de progreso y estado de subida */}
           {isProcessing && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center space-x-3">
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-blue-900">
-                    Enviando video al backend...
+                    Subiendo video al backend...
                   </p>
-                  <p className="text-sm text-blue-700">
-                    Por favor espera, esto puede tomar unos segundos
-                  </p>
+                  <div className="w-full bg-blue-100 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-1">{progress}%</p>
                 </div>
               </div>
             </div>
@@ -163,7 +191,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isProcessing}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -177,7 +205,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
             {isProcessing ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Procesando...
+                Subiendo...
               </>
             ) : (
               <>

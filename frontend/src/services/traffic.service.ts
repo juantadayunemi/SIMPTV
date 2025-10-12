@@ -136,19 +136,7 @@ class TrafficService {
     return response.data;
   }
 
-  // Upload video file
-  async uploadVideo(analysisId: string, videoFile: File): Promise<{ message: string; file_path: string }> {
-    const formData = new FormData();
-    formData.append('video_file', videoFile);
-
-    const response = await api.post(`/api/traffic/upload-video/${analysisId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
-  }
+  // (Eliminado: uploadVideo, ya no se usa para este flujo)
 
   // Start video analysis
   async analyzeVideo(analysisId: string): Promise<TrafficAnalysis> {

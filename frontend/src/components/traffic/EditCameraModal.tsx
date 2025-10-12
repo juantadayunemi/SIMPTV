@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera, MapPin, Settings } from 'lucide-react';
 import { trafficService, type Location } from '../../services/traffic.service';
-import { StatusCameraKey } from '@traffic-analysis/shared';
-
-export interface CameraData {
-  id: string | number;
-  name: string;
-  location?: string;
-  locationId?: number;
-  status: StatusCameraKey;
-}
+import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
 
 interface EditCameraModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (cameraData: CameraData) => Promise<void>;
-  camera: CameraData;
+  onSave: (cameraData: CameraEntity) => Promise<void>;
+  camera: CameraEntity;
 }
 
 const EditCameraModal: React.FC<EditCameraModalProps> = ({
@@ -24,7 +16,7 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
   onSave,
   camera,
 }) => {
-  const [formData, setFormData] = useState<CameraData>(camera);
+  const [formData, setFormData] = useState<CameraEntity>(camera);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -69,14 +61,14 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
     }
   };
 
-  const handleChange = (field: keyof CameraData, value: string) => {
+  const handleChange = (field: keyof CameraEntity, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleMaintenanceToggle = () => {
     setFormData(prev => ({
       ...prev,
-      status: prev.status === StatusCameraKey.MAINTENANCE ? StatusCameraKey.ACTIVE : StatusCameraKey.MAINTENANCE
+      status: prev.status === 'MAINTENANCE' ? 'ACTIVE' : 'MAINTENANCE'
     }));
   };
 
@@ -180,9 +172,9 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 required
               >
-                <option value={StatusCameraKey.ACTIVE}>✅ Activa - En funcionamiento</option>
-                <option value={StatusCameraKey.MAINTENANCE}>🔧 En Mantenimiento - Temporalmente fuera de servicio</option>
-                <option value={StatusCameraKey.INACTIVE}>❌ Inactiva - Deshabilitada</option>
+                <option value="ACTIVE">✅ Activa - En funcionamiento</option>
+                <option value="MAINTENANCE">🔧 En Mantenimiento - Temporalmente fuera de servicio</option>
+                <option value="INACTIVE">❌ Inactiva - Deshabilitada</option>
               </select>
               
               {/* Checkbox de Mantenimiento Rápido */}
@@ -190,7 +182,7 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.status === StatusCameraKey.MAINTENANCE}
+                    checked={formData.status === 'MAINTENANCE'}
                     onChange={handleMaintenanceToggle}
                     className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
                   />
@@ -205,17 +197,17 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
               
               {/* Explicación del estado seleccionado */}
               <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                {formData.status === StatusCameraKey.ACTIVE && (
+                {formData.status === 'ACTIVE' && (
                   <p className="text-xs text-gray-600">
                     <strong>Activa:</strong> La cámara está funcionando normalmente y procesando videos.
                   </p>
                 )}
-                {formData.status === StatusCameraKey.MAINTENANCE && (
+                {formData.status === 'MAINTENANCE' && (
                   <p className="text-xs text-gray-600">
                     <strong>En Mantenimiento:</strong> La cámara está temporalmente fuera de servicio para reparación o mantenimiento preventivo.
                   </p>
                 )}
-                {formData.status === StatusCameraKey.INACTIVE && (
+                {formData.status === 'INACTIVE' && (
                   <p className="text-xs text-gray-600">
                     <strong>Inactiva:</strong> La cámara está deshabilitada y no se utilizará para análisis.
                   </p>
