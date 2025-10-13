@@ -10,6 +10,7 @@ import os
 from decouple import config
 from django.core.exceptions import ImproperlyConfigured
 import sys
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -69,9 +70,9 @@ LOCAL_APPS = [
     # Core apps
     "apps.entities",  # DLL models (abstract)
     "apps.auth_app",  # Auth API (concrete)
+    "apps.predictions_app",  # Traffic Predictions & ML
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
-    "apps.predictions_app",  # Traffic Predictions & ML
     # "apps.external_apis",  # External APIs
     # "apps.notifications",  # Notifications
 ]
@@ -128,7 +129,7 @@ else:
         "default": {
             "ENGINE": "mssql",  # Correcto: usa mssql-django
             "NAME": config("DB_NAME", default="UrbiaDb"),
-            "USER": config("DB_USER", default="jsofuseradmin"),
+            "USER": config("DB_USER", default="usr_develop"),
             "PASSWORD": config("DB_PASSWORD", default="1234567890"),
             "HOST": config("DB_HOST", default="."),
             "PORT": config("DB_PORT", default="1433"),
@@ -371,6 +372,16 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+
+# Periodic Task Scheduling at 10-minute intervals
+CELERY_BEAT_SCHEDULE = {
+    "aggregate-prediction-data": {
+        "task": "apps.predictions_app.tasks.aggregate_prediction_data",
+        "schedule": crontab(minute="*/10"),
+    },
+}
+
+
 
 # ==============================================================================
 # CHANNELS CONFIGURATION (WebSocket)

@@ -151,22 +151,3 @@ class RealTimePredictionEntity(BaseModel):
 
     def __str__(self):
         return f'RealTimePredictionEntity ({self.pk})'
-
-class PredictionSourceEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface PredictionSourceEntity"""
-    """USAGE: Inherit in other apps - class User(PredictionSourceEntity): pass"""
-
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
-    cameraId = models.ForeignKey('traffic_app.Camera', on_delete=models.CASCADE, related_name='cameraid_camera_set')
-    startedAt = models.DateTimeField()
-    endedAt = models.DateTimeField()
-    totalVehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract PredictionSourceEntity"
-        verbose_name_plural = "Abstract PredictionSourceEntitys"
-
-    def __str__(self):
-        return f'PredictionSourceEntity ({self.pk})'

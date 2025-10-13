@@ -215,3 +215,16 @@ export interface EventDataEntity {
   trafficImpact: string; // @db:varchar(20) - Impacto en el tráfico: 'low' (bajo), 'medium' (medio), 'high' (alto), 'critical' (crítico)
   createdAt: Date; // @db:datetime - Fecha de creación del registro
 }
+
+
+export interface PredictionSourceEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la cámara)
+  cameraId: number; // @db:foreignKey traffic_app.Camera @db:int - FK a Camera (cámara específica)
+  startedAt: Date; // @db:datetime - Fecha/hora de inicio del análisis
+  endedAt: Date; // @db:datetime - Fecha/hora de fin del análisis
+  totalVehicleCount: number; // @db:int @default(0) - Total de vehículos analizados
+  avgSpeed: number; // @db:decimal(6,2) @default(0) - Velocidad promedio en km/h
+  isActive: boolean; // @default(true) - Si la fuente está activa
+}
