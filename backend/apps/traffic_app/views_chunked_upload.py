@@ -6,16 +6,78 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
 import os
+import json
 
 # ⚠️ Importar TrafficAnalysis solo cuando se usa, para evitar referencias circulares
 
 CHUNKS_DIR = os.path.join(settings.MEDIA_ROOT, "temp_uploads")
+UUID_MAPPING_FILE = os.path.join(CHUNKS_DIR, "uuid_mapping.json")
 
 
 class TrafficChunkedUploadView(APIView):
     def __init__(self, *args, **kwargs):
         print("[DEBUG] TrafficChunkedUploadView inicializada")
         super().__init__(*args, **kwargs)
+
+    def _load_uuid_mapping(self):
+        """Carga el mapping de UUIDs a IDs de análisis"""
+        try:
+            if os.path.exists(UUID_MAPPING_FILE):
+                with open(UUID_MAPPING_FILE, 'r') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            print(f"[UUID_MAPPING] Error cargando mapping: {e}")
+            return {}
+
+    def _save_uuid_mapping(self, mapping):
+        """Guarda el mapping de UUIDs a IDs de análisis"""
+        try:
+            os.makedirs(os.path.dirname(UUID_MAPPING_FILE), exist_ok=True)
+            with open(UUID_MAPPING_FILE, 'w') as f:
+                json.dump(mapping, f)
+        except Exception as e:
+            print(f"[UUID_MAPPING] Error guardando mapping: {e}")
+
+    def _get_or_create_analysis(self, analysis_id, camera_id, location_id, user_id, weather, chunk_index):
+        """Obtiene o crea análisis según el chunk_index"""
+        from .models import TrafficAnalysis
+
+        # Cargar mapping existente
+        uuid_mapping = self._load_uuid_mapping()
+
+        if chunk_index == 0:
+            # PRIMER CHUNK: Crear nuevo análisis
+            with transaction.atomic():
+                header = TrafficAnalysis.objects.create(
+                    cameraId_id=camera_id,
+                    locationId_id=location_id,
+                    userId=user_id,
+                    startedAt=timezone.now(),
+                    status="UPLOADING",
+                    densityLevel="",
+                    weatherConditions=weather,
+                )
+
+                # Guardar mapping UUID -> ID
+                uuid_mapping[analysis_id] = header.id
+                self._save_uuid_mapping(uuid_mapping)
+
+                print(f"[UPLOAD] Creado nuevo TrafficAnalysis: ID={header.id} (UUID: {analysis_id})")
+                return header
+
+        else:
+            # CHUNKS SIGUIENTES: Buscar análisis existente
+            if analysis_id not in uuid_mapping:
+                raise ValueError(f"No se encontró análisis para UUID: {analysis_id}")
+
+            analysis_db_id = uuid_mapping[analysis_id]
+            try:
+                header = TrafficAnalysis.objects.get(id=analysis_db_id)
+                print(f"[UPLOAD] Usando TrafficAnalysis existente: ID={header.id} (UUID: {analysis_id})")
+                return header
+            except TrafficAnalysis.DoesNotExist:
+                raise ValueError(f"Análisis no encontrado en DB: ID={analysis_db_id}")
 
     def _start_incremental_analysis(self, header, chunk_path, chunk_index):
         """🚀 Inicia análisis incremental apenas llega el primer chunk"""
@@ -248,24 +310,16 @@ class TrafficChunkedUploadView(APIView):
 
         # Crear o actualizar registro de análisis
         try:
-            with transaction.atomic():
-                # Crear nuevo análisis para cada subida (no usar analysis_id como id del modelo)
-                header = TrafficAnalysis.objects.create(
-                    cameraId_id=camera_id,
-                    locationId_id=location_id,
-                    userId=user_id,
-                    startedAt=timezone.now(),
-                    status="UPLOADING",
-                    densityLevel="",
-                    weatherConditions=weather,
-                )
+            header = self._get_or_create_analysis(
+                analysis_id, camera_id, location_id, user_id, weather, chunk_index
+            )
 
-                print(
-                    f"[UPLOAD] Creado nuevo TrafficAnalysis: ID={header.id} (UUID: {analysis_id})"
-                )
-
+            if chunk_index == 0:
                 # 🚀 PRIMER CHUNK: Lanzar análisis inmediato
                 self._start_incremental_analysis(header, chunk_path, chunk_index)
+            else:
+                # � CHUNKS SIGUIENTES: Continuar análisis incremental
+                self._continue_incremental_analysis(header, chunk_path, chunk_index)
 
         except Exception as e:
             print(f"[CHUNKED_UPLOAD][ERROR] Error creando/obteniendo análisis: {e}")
