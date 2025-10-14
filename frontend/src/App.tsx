@@ -12,6 +12,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import RealTimeAnalysisPage from './pages/traffic/RealTimeAnalysisPage';
 import CamerasPage from './pages/traffic/CamerasPage';
+import CameraLiveAnalysisPage from './pages/traffic/CameraLiveAnalysisPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
 import PredictionsPage from './pages/predictions/PredictionsPage';
 import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
@@ -123,6 +124,7 @@ const App: React.FC = () => {
             <Route path="traffic" element={<CamerasPage />} />
             <Route path="traffic/analysis" element={<TrafficAnalysisPage />} />
             <Route path="traffic/realtime" element={<RealTimeAnalysisPage />} />
+            <Route path="camera/:id" element={<CameraLiveAnalysisPage />} />
             <Route path="plates" element={<PlateDetectionPage />} />
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />

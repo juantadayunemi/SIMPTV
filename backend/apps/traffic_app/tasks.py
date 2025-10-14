@@ -91,7 +91,7 @@ def process_video_analysis(self, analysis_id: int):
 
     try:
         # 1. Cargar análisis de DB
-        analysis = TrafficAnalysis.objects.select_related("camera").get(pk=analysis_id)
+        analysis = TrafficAnalysis.objects.select_related("cameraId").get(pk=analysis_id)
 
         # Enviar evento de inicio
         self.send_event(
@@ -99,7 +99,7 @@ def process_video_analysis(self, analysis_id: int):
             "analysis_started",
             {
                 "analysis_id": analysis_id,
-                "camera_name": analysis.camera.name,
+                "camera_name": analysis.cameraId.name if analysis.cameraId else "Unknown",
                 "started_at": timezone.now().isoformat(),
             },
         )
@@ -166,15 +166,61 @@ def process_video_analysis(self, analysis_id: int):
                 )
 
         def vehicle_callback(vehicle_data: Dict):
-            """Callback cuando se detecta un nuevo vehículo"""
+            """Callback cuando se detecta un nuevo vehículo (con o sin placa)"""
+            detection_data = {
+                "track_id": vehicle_data["track_id"],
+                "vehicle_type": vehicle_data["class_name"],
+                "first_seen_frame": vehicle_data.get("first_frame", 0),
+                "timestamp": datetime.now().isoformat(),
+                "confidence": vehicle_data.get("confidence", 0.0),
+            }
+            
+            # Agregar información de placa si fue detectada
+            if "plate_number" in vehicle_data and vehicle_data["plate_number"]:
+                detection_data["plate_number"] = vehicle_data["plate_number"]
+                detection_data["plate_confidence"] = vehicle_data.get("plate_confidence", 0.0)
+                
+                # Enviar evento específico de placa detectada
+                self.send_event(
+                    analysis_id,
+                    "plate_detected",
+                    {
+                        "track_id": vehicle_data["track_id"],
+                        "vehicle_type": vehicle_data["class_name"],
+                        "plate_number": vehicle_data["plate_number"],
+                        "confidence": vehicle_data.get("plate_confidence", 0.0),
+                        "timestamp": datetime.now().isoformat(),
+                    },
+                )
+                
+                # Log de placa detectada
+                self.send_log(
+                    analysis_id,
+                    f"🔤 Placa detectada: {vehicle_data['plate_number']} "
+                    f"(Vehículo: {vehicle_data['class_name']}, "
+                    f"Confianza: {vehicle_data.get('plate_confidence', 0)*100:.1f}%)"
+                )
+            
+            # Enviar evento de vehículo detectado
             self.send_event(
                 analysis_id,
                 "vehicle_detected",
+                detection_data,
+            )
+            
+            # Enviar evento de detección en tiempo real (formato unificado)
+            self.send_event(
+                analysis_id,
+                "realtime_detection",
                 {
-                    "track_id": vehicle_data["track_id"],
-                    "vehicle_type": vehicle_data["class_name"],
-                    "first_seen_frame": vehicle_data.get("first_frame", 0),
                     "timestamp": datetime.now().isoformat(),
+                    "frameNumber": vehicle_data.get("first_frame", 0),
+                    "vehicleType": vehicle_data["class_name"],
+                    "plateNumber": vehicle_data.get("plate_number"),
+                    "confidence": vehicle_data.get("confidence", 0.0),
+                    "plateConfidence": vehicle_data.get("plate_confidence"),
+                    "trackId": vehicle_data["track_id"],
+                    "bbox": vehicle_data.get("bbox", {}),
                 },
             )
 
@@ -183,15 +229,38 @@ def process_video_analysis(self, analysis_id: int):
                 f"Vehículo detectado: {vehicle_data['track_id']} ({vehicle_data['class_name']})",
             )
 
-        def frame_callback(frame_number: int, detections: list):
+        # Variable para rastrear el frame actual
+        current_frame_number = [0]  # Usar lista para permitir modificación en closure
+        
+        def frame_callback(frame, detections: list):
             """Callback para cada frame procesado con detecciones"""
-            # Solo enviar si hay detecciones (evitar spam)
+            current_frame_number[0] += 1
+            
+            # Dibujar detecciones en el frame
+            annotated_frame = processor.draw_detections(frame, detections)
+            
+            # Codificar frame a base64 (enviar cada 3 frames para no saturar el WebSocket)
+            if current_frame_number[0] % 3 == 0:  # Enviar ~10 FPS si el video es 30 FPS
+                frame_base64 = processor.encode_frame_to_base64(annotated_frame, quality=70)
+                
+                # Enviar frame procesado
+                self.send_event(
+                    analysis_id,
+                    "frame_update",
+                    {
+                        "frame_number": current_frame_number[0],
+                        "frame_data": frame_base64,
+                        "detections_count": len(detections),
+                    },
+                )
+            
+            # Enviar info de detecciones (siempre, pero ligero)
             if detections:
                 self.send_event(
                     analysis_id,
                     "frame_processed",
                     {
-                        "frame_number": frame_number,
+                        "frame_number": current_frame_number[0],
                         "detections_count": len(detections),
                         "detections": [
                             {
@@ -457,14 +526,14 @@ def generate_analysis_report(analysis_id: int) -> Dict:
         Dict con reporte completo
     """
     try:
-        analysis = TrafficAnalysis.objects.prefetch_related("vehicles__frames").get(
+        analysis = TrafficAnalysis.objects.prefetch_related("vehicles__frames").select_related("cameraId").get(
             pk=analysis_id
         )
 
         # Estadísticas básicas
         report = {
             "analysis_id": analysis_id,
-            "camera_name": analysis.camera.name,
+            "camera_name": analysis.cameraId.name if analysis.cameraId else "Unknown",
             "status": analysis.status,
             "started_at": (
                 analysis.startedAt.isoformat() if analysis.startedAt else None

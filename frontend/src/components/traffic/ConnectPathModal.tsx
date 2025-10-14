@@ -6,13 +6,15 @@ interface ConnectPathModalProps {
   isOpen: boolean;
   onClose: () => void;
   cameraName: string;
-  onPlay: (videoFile: File, analysisId: number) => void;
+  cameraId: number;
+  onPlay: (videoFile: File, analysisId: number, cameraId: number) => void;
 }
 
 export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
   isOpen,
   onClose,
   cameraName,
+  cameraId,
   onPlay,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -52,31 +54,53 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
     }
   };
 
-  // Simula la subida en chunks y cierra el modal tras el primer chunk
-  // Subida real por chunks y disparo de análisis
+  // Subir video y crear análisis asociado a la cámara
   const handlePlay = async () => {
     if (!selectedFile) return;
     setIsProcessing(true);
     setProgress(0);
     uploadRef.current.cancel = false;
 
-    // Subir el archivo completo al endpoint correcto
-    const formData = new FormData();
-    formData.append('video_file', selectedFile);
-    let analysisId: number | null = null;
     try {
+      // Crear FormData con video y cameraId
+      const formData = new FormData();
+      formData.append('video', selectedFile); // Backend espera 'video', no 'video_file'
+      formData.append('cameraId', cameraId.toString());
+
+      console.log('📤 Subiendo video para cámara:', cameraId);
+      console.log('📦 FormData contenido:', {
+        video: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type,
+        cameraId: cameraId
+      });
+
+      // Subir video y crear análisis
       const response = await trafficService.startVideoAnalysis(formData);
-      analysisId = response.id;
-    } catch (err) {
-      alert('Error subiendo el video.');
+      const analysisId = response.id;
+
+      console.log('✅ Análisis creado:', analysisId);
+      console.log('📊 Response completa:', response);
+
+      setProgress(100);
       setIsProcessing(false);
-      return;
+      setSelectedFile(null);
+
+      // Llamar callback con los datos del análisis
+      onPlay(selectedFile, analysisId, cameraId);
+      onClose();
+    } catch (err: any) {
+      console.error('❌ Error subiendo video:', err);
+      console.error('❌ Error response:', err.response?.data);
+      console.error('❌ Error status:', err.response?.status);
+      
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          'Error desconocido al subir el video';
+      
+      alert(`Error subiendo el video: ${errorMessage}\n\nPor favor intenta nuevamente.`);
+      setIsProcessing(false);
     }
-    setProgress(100);
-    setIsProcessing(false);
-    setSelectedFile(null);
-    onPlay(selectedFile, analysisId!);
-    onClose();
   };
 
   // Si el modal se cierra manualmente, cancela la subida simulada

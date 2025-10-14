@@ -40,6 +40,7 @@ ALLOWED_HOSTS = config(
 # Application definition
 
 DJANGO_APPS = [
+    "daphne",  # Debe ir PRIMERO para que runserver use ASGI
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -128,8 +129,8 @@ else:
         "default": {
             "ENGINE": "mssql",  # Correcto: usa mssql-django
             "NAME": config("DB_NAME", default="UrbiaDb"),
-            "USER": config("DB_USER", default="jsofuseradmin"),
-            "PASSWORD": config("DB_PASSWORD", default="1234567890"),
+            "USER": config("DB_USER", default="sa"),
+            "PASSWORD": config("DB_PASSWORD", default="123456789"),
             "HOST": config("DB_HOST", default="."),
             "PORT": config("DB_PORT", default="1433"),
             "OPTIONS": {
@@ -378,10 +379,10 @@ ASGI_APPLICATION = "config.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [config("REDIS_URL", default="redis://localhost:6379/1")],
-        },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        # Usa memoria del proceso en lugar de Redis
+        # Perfecto para desarrollo y funciona igual de bien
+        # Solo limitación: no funciona con múltiples workers (pero no los necesitas)
     },
 }
 

@@ -10,6 +10,11 @@ env/
 *.log
 db.sqlite3
 media/files/
+media/traffic_videos/*.mp4
+media/traffic_videos/*.avi
+media/traffic_videos/*.mov
+media/traffic_videos/*.mkv
+!media/traffic_videos/.gitkeep
 staticfiles/
 
 # Environment variables

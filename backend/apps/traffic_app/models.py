@@ -52,6 +52,28 @@ class Camera(CameraEntity):
         db_column="locationId",
         verbose_name="Location",
     )
+    
+    # Video asignado actualmente a esta cámara
+    currentVideoPath = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        db_column="currentVideoPath",
+        verbose_name="Current Video Path",
+        help_text="Ruta del video actualmente asignado a esta cámara"
+    )
+    
+    # Análisis activo de esta cámara
+    currentAnalysisId = models.ForeignKey(
+        'TrafficAnalysis',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="active_camera",
+        db_column="currentAnalysisId",
+        verbose_name="Current Analysis",
+        help_text="Análisis activo asociado a esta cámara"
+    )
 
     class Meta:
         db_table = "traffic_cameras"

@@ -22,10 +22,15 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         self.analysis_id = self.scope["url_route"]["kwargs"]["analysis_id"]
         self.room_group_name = f"traffic_analysis_{self.analysis_id}"
 
+        print(f"🔌 WebSocket: Cliente conectando al análisis {self.analysis_id}")
+        print(f"   Group name: {self.room_group_name}")
+
         # Unirse al grupo de la sala
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         await self.accept()
+        
+        print(f"✅ WebSocket: Cliente aceptado, grupo {self.room_group_name}")
 
         # Enviar mensaje de conexión exitosa
         await self.send(
@@ -72,6 +77,13 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         await self.send(
             text_data=json.dumps({"type": "frame_processed", "data": event["data"]})
         )
+    
+    async def frame_update(self, event):
+        """Frame procesado con imagen (base64)"""
+        print(f"🌐 Consumer enviando frame_update: frame #{event['data'].get('frame_number')}")
+        await self.send(
+            text_data=json.dumps({"type": "frame_update", "data": event["data"]})
+        )
 
     async def stats_update(self, event):
         """Actualización de estadísticas"""
@@ -83,6 +95,12 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         """Mensaje de log para mostrar en UI"""
         await self.send(
             text_data=json.dumps({"type": "log_message", "data": event["data"]})
+        )
+    
+    async def loading_progress(self, event):
+        """Progreso de carga de modelos (YOLOv8, EasyOCR)"""
+        await self.send(
+            text_data=json.dumps({"type": "loading_progress", "data": event["data"]})
         )
 
     async def analysis_completed(self, event):
@@ -107,4 +125,36 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         """Error durante el análisis"""
         await self.send(
             text_data=json.dumps({"type": "analysis_error", "data": event["data"]})
+        )
+
+    async def plate_detected(self, event):
+        """Placa vehicular detectada por OCR"""
+        await self.send(
+            text_data=json.dumps({"type": "plate_detected", "data": event["data"]})
+        )
+
+    async def realtime_detection(self, event):
+        """Detección en tiempo real (vehículo + placa)"""
+        await self.send(
+            text_data=json.dumps({"type": "realtime_detection", "data": event["data"]})
+        )
+
+    async def analysis_paused(self, event):
+        """Análisis pausado"""
+        await self.send(
+            text_data=json.dumps({
+                "type": "analysis_paused",
+                "message": event.get("message", "Analysis paused"),
+                "analysis_id": event.get("analysis_id")
+            })
+        )
+
+    async def analysis_resumed(self, event):
+        """Análisis reanudado"""
+        await self.send(
+            text_data=json.dumps({
+                "type": "analysis_resumed",
+                "message": event.get("message", "Analysis resumed"),
+                "analysis_id": event.get("analysis_id")
+            })
         )

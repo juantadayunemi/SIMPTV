@@ -184,6 +184,59 @@ class TrafficService {
     return response.data;
   }
 
+  // ============================================
+  // ANALYSIS CONTROL (Play/Pause/Resume)
+  // ============================================
+
+  // Start analysis (iniciar procesamiento)
+  async startAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    task_id: string;
+    status: string;
+    isPlaying: boolean;
+    isPaused: boolean;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/start/`);
+    return response.data;
+  }
+
+  // Pause analysis (pausar procesamiento)
+  async pauseAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    status: string;
+    isPaused: boolean;
+    isPlaying: boolean;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/pause/`);
+    return response.data;
+  }
+
+  // Resume analysis (reanudar procesamiento)
+  async resumeAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    task_id: string;
+    status: string;
+    isPaused: boolean;
+    isPlaying: boolean;
+    resumeFrom: number;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/resume/`);
+    return response.data;
+  }
+
+  // Stop analysis (detener procesamiento)
+  async stopAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    status: string;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/stop/`);
+    return response.data;
+  }
+
   // Get traffic predictions
   async getPredictions(location: string, hoursAhead: number = 24): Promise<{
     location: string;

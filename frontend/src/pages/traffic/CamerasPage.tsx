@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Camera, MapPin, Wifi, WifiOff, Settings, Plus } from 'lucide-react';
 import { trafficService, type TrafficAnalysis } from '../../services/traffic.service';
 import { getWebSocketService, ProgressUpdate,  ProcessingComplete } from '../../services/websocket.service';
@@ -18,6 +19,7 @@ interface CameraUIEntity extends CameraEntity {
 }
 
 const CamerasPage: React.FC = () => {
+  const navigate = useNavigate();
 
   const [cameras, setCameras] = useState<CameraUIEntity[]>([]);
   // Para almacenar datos de análisis en tiempo real por cámara
@@ -221,7 +223,7 @@ const CamerasPage: React.FC = () => {
     alert(`Conectar Cámara física para: ${camera.name}\n(Por implementar)`);
   };
 
-  const handlePlayVideo = (videoFile: File, analysisId: number) => {
+  const handlePlayVideo = (videoFile: File, analysisId: number, cameraId: number) => {
     if (!cameraToConnect) return;
 
     // Actualizar la cámara para mostrarla como "reproduciendo"
@@ -237,6 +239,13 @@ const CamerasPage: React.FC = () => {
           : cam
       )
     );
+
+    // Redirigir a la página de análisis en vivo con analysisId
+    navigate(`/camera/${cameraId}`, {
+      state: {
+        analysisId, // El análisis contiene el videoPath
+      }
+    });
 
     // Usar analysisId real generado para la sesión de análisis
     const ws = getWebSocketService();
@@ -616,6 +625,7 @@ const CamerasPage: React.FC = () => {
             setCameraToConnect(null);
           }}
           cameraName={cameraToConnect.name}
+          cameraId={cameraToConnect.id}
           onPlay={handlePlayVideo}
         />
       )}

@@ -6,6 +6,7 @@
 export type WebSocketMessageType = 
   | 'progress_update'
   | 'vehicle_detected'
+  | 'frame_update'
   | 'processing_complete'
   | 'processing_error'
   | 'log_message';

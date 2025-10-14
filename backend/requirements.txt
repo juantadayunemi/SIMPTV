@@ -37,9 +37,19 @@ dnspython==2.6.1  # For email domain validation (MX records)
 opencv-python==4.10.0.84  # Computer vision
 opencv-contrib-python==4.10.0.84  # Extra OpenCV modules
 ultralytics==8.3.0  # YOLOv8 for object detection
-easyocr==1.7.2  # OCR for license plate detection
-torch>=2.6.0  # PyTorch for deep learning (latest compatible with Python 3.13)
-torchvision>=0.21.0  # Vision models
+
+# OCR para detección de placas vehiculares - SOLO PADDLEOCR
+paddleocr==2.8.1  # PaddleOCR - Motor OCR ÚNICO (más rápido que EasyOCR)
+paddlepaddle==3.0.0  # PaddlePaddle framework (CPU optimizado)
+shapely==2.0.6  # Geometría de polígonos (requerido por PaddleOCR)
+
+# PyTorch with CUDA 11.8 support (for GPU acceleration - SOLO para YOLO)
+# Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Note: Standard pip install won't include CUDA. Use the command above for GPU support.
+torch==2.7.1+cu118  # PyTorch with CUDA 11.8
+torchvision==0.22.1+cu118  # Vision models with CUDA 11.8
+torchaudio==2.7.1+cu118  # Audio processing with CUDA 11.8
+
 pillow==10.4.0  # Image processing
 
 # Video Tracking

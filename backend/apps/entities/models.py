@@ -252,7 +252,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     dayOfWeek = models.IntegerField()
@@ -277,7 +277,7 @@ class LocationTrafficPatternEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationTrafficPatternEntity"""
     """USAGE: Inherit in other apps - class User(LocationTrafficPatternEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     patternType = models.CharField(max_length=20)
     patternData = models.TextField()
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
@@ -299,7 +299,7 @@ class PredictionModelEntity(BaseModel):
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelName = models.CharField(max_length=100)
     modelType = models.CharField(max_length=50)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     features = models.TextField()
     hyperparameters = models.TextField()
     trainingDataPeriod = models.CharField(max_length=50)
@@ -345,7 +345,7 @@ class TrafficPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
     predictedVehicleCount = models.IntegerField(default=0)
@@ -372,7 +372,7 @@ class BatchPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
     totalPredictions = models.IntegerField(default=0)
@@ -394,7 +394,7 @@ class PredictionAccuracyEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     evaluationPeriod = models.CharField(max_length=50)
     predictionHorizon = models.IntegerField()
     totalPredictions = models.IntegerField(default=0)
@@ -418,7 +418,7 @@ class RealTimePredictionEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     currentVehicleCount = models.IntegerField(default=0)
     currentDensityLevel = models.CharField(max_length=20)
     next1HourPrediction = models.IntegerField(default=0)
@@ -442,7 +442,7 @@ class WeatherDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     temperature = models.DecimalField(max_digits=5, decimal_places=2, default='0')
@@ -465,7 +465,7 @@ class EventDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(EventDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     eventName = models.CharField(max_length=200)
     eventType = models.CharField(max_length=50)
     startDate = models.DateTimeField()
@@ -511,9 +511,11 @@ class CameraEntity(BaseModel):
     resolution = models.CharField(max_length=20, blank=True, null=True)
     fps = models.IntegerField(blank=True, null=True)
     locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
-    status = models.CharField(max_length=20, default=''ACTIVE'')
+    status = models.CharField(max_length=20, default='ACTIVE')
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
+    currentVideoPath = models.CharField(max_length=500, blank=True, null=True)
+    currentAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='currentanalysisid_currentanalysis_set', blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -539,6 +541,9 @@ class TrafficAnalysisEntity(BaseModel):
     processedFrames = models.IntegerField(default=0)
     totalVehicles = models.IntegerField(default=0)
     processingDuration = models.IntegerField(default=0)
+    isPlaying = models.BooleanField(default=False)
+    isPaused = models.BooleanField(default=False)
+    currentTimestamp = models.IntegerField(default=0)
     totalVehicleCount = models.IntegerField(default=0)
     avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     densityLevel = models.CharField(max_length=10)
@@ -569,6 +574,8 @@ class VehicleEntity(BaseModel):
     trafficAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='trafficanalysisid_trafficanalysis_set')
     vehicleType = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
+    detectedPlate = models.CharField(max_length=20, blank=True, null=True)
+    plateConfidence = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
     firstDetectedAt = models.DateTimeField()
     lastDetectedAt = models.DateTimeField()
     trackingStatus = models.CharField(max_length=20)
@@ -2691,13 +2698,13 @@ DENSITY_LEVELS_CHOICES = (
     ("HEAVY", "Heavy"),
 )
 
-class CAMERA_STATUS:
-    """Constants from TypeScript CAMERA_STATUS"""
+class StatusCameraKey:
+    """Constants from TypeScript StatusCameraKey"""
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
     MAINTENANCE = "MAINTENANCE"
 
-CAMERA_STATUS_CHOICES = (
+StatusCameraKey_CHOICES = (
     ("ACTIVE", "Active"),
     ("INACTIVE", "Inactive"),
     ("MAINTENANCE", "Maintenance"),
@@ -2859,6 +2866,20 @@ class SYSTEM_LIMITS:
     """Constants from TypeScript SYSTEM_LIMITS"""
 
 SYSTEM_LIMITS_CHOICES = (
+)
+
+class ANALYSIS_PLAYBACK_STATUS:
+    """Constants from TypeScript ANALYSIS_PLAYBACK_STATUS"""
+    IDLE = "IDLE"
+    PLAYING = "PLAYING"
+    PAUSED = "PAUSED"
+    STOPPED = "STOPPED"
+
+ANALYSIS_PLAYBACK_STATUS_CHOICES = (
+    ("IDLE", "Idle"),
+    ("PLAYING", "Playing"),
+    ("PAUSED", "Paused"),
+    ("STOPPED", "Stopped"),
 )
 
 
@@ -3116,7 +3137,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     dayOfWeek = models.IntegerField()
@@ -3141,7 +3162,7 @@ class LocationTrafficPatternEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationTrafficPatternEntity"""
     """USAGE: Inherit in other apps - class User(LocationTrafficPatternEntity): pass"""
 
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     patternType = models.CharField(max_length=20)
     patternData = models.TextField()
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
@@ -3163,7 +3184,7 @@ class PredictionModelEntity(BaseModel):
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelName = models.CharField(max_length=100)
     modelType = models.CharField(max_length=50)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     features = models.TextField()
     hyperparameters = models.TextField()
     trainingDataPeriod = models.CharField(max_length=50)
@@ -3209,7 +3230,7 @@ class TrafficPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
     predictedVehicleCount = models.IntegerField(default=0)
@@ -3236,7 +3257,7 @@ class BatchPredictionEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
     totalPredictions = models.IntegerField(default=0)
@@ -3258,7 +3279,7 @@ class PredictionAccuracyEntity(BaseModel):
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     evaluationPeriod = models.CharField(max_length=50)
     predictionHorizon = models.IntegerField()
     totalPredictions = models.IntegerField(default=0)
@@ -3282,7 +3303,7 @@ class RealTimePredictionEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     currentVehicleCount = models.IntegerField(default=0)
     currentDensityLevel = models.CharField(max_length=20)
     next1HourPrediction = models.IntegerField(default=0)
@@ -3306,7 +3327,7 @@ class WeatherDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     temperature = models.DecimalField(max_digits=5, decimal_places=2, default='0')
@@ -3329,7 +3350,7 @@ class EventDataEntity(BaseModel):
     """USAGE: Inherit in other apps - class User(EventDataEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     eventName = models.CharField(max_length=200)
     eventType = models.CharField(max_length=50)
     startDate = models.DateTimeField()
@@ -3375,9 +3396,11 @@ class CameraEntity(BaseModel):
     resolution = models.CharField(max_length=20, blank=True, null=True)
     fps = models.IntegerField(blank=True, null=True)
     locationId = models.ForeignKey('Location', on_delete=models.CASCADE, related_name='locationid_location_set')
-    status = models.CharField(max_length=20, default=''ACTIVE'')
+    status = models.CharField(max_length=20, default='ACTIVE')
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
+    currentVideoPath = models.CharField(max_length=500, blank=True, null=True)
+    currentAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='currentanalysisid_currentanalysis_set', blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -3403,6 +3426,9 @@ class TrafficAnalysisEntity(BaseModel):
     processedFrames = models.IntegerField(default=0)
     totalVehicles = models.IntegerField(default=0)
     processingDuration = models.IntegerField(default=0)
+    isPlaying = models.BooleanField(default=False)
+    isPaused = models.BooleanField(default=False)
+    currentTimestamp = models.IntegerField(default=0)
     totalVehicleCount = models.IntegerField(default=0)
     avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     densityLevel = models.CharField(max_length=10)
@@ -3433,6 +3459,8 @@ class VehicleEntity(BaseModel):
     trafficAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='trafficanalysisid_trafficanalysis_set')
     vehicleType = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
+    detectedPlate = models.CharField(max_length=20, blank=True, null=True)
+    plateConfidence = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
     firstDetectedAt = models.DateTimeField()
     lastDetectedAt = models.DateTimeField()
     trackingStatus = models.CharField(max_length=20)

@@ -261,6 +261,35 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
         recent_analyses = self.queryset.order_by("-startedAt")[:10]
         serializer = TrafficAnalysisListSerializer(recent_analyses, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=["post"])
+    def reset(self, request, pk=None):
+        """
+        🔧 ENDPOINT DE UTILIDAD: Resetear análisis a estado PENDING
+        Útil para debugging cuando un análisis queda atascado
+        """
+        analysis = self.get_object()
+        
+        print("=" * 60)
+        print(f"🔄 RESET ANALYSIS REQUEST - ID: {analysis.id}")
+        print(f"   Estado anterior: {analysis.status}")
+        print("=" * 60)
+        
+        # Resetear a PENDING
+        analysis.status = "PENDING"
+        analysis.isPlaying = False
+        analysis.isPaused = False
+        analysis.currentTimestamp = 0
+        analysis.save(update_fields=["status", "isPlaying", "isPaused", "currentTimestamp"])
+        
+        print(f"✅ Análisis reseteado a PENDING")
+        print("=" * 60)
+        
+        return Response({
+            "message": "Analysis reset to PENDING",
+            "analysis_id": analysis.id,
+            "status": analysis.status
+        })
 
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
@@ -269,18 +298,43 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
         Lanza la tarea de Celery para análisis asíncrono
         """
         analysis = self.get_object()
+        
+        # 🔍 LOG: Estado actual del análisis
+        print("=" * 60)
+        print(f"🎬 START ANALYSIS REQUEST - ID: {analysis.id}")
+        print(f"   Estado actual: {analysis.status}")
+        print(f"   isPlaying: {analysis.isPlaying}")
+        print(f"   isPaused: {analysis.isPaused}")
+        print(f"   videoPath: {analysis.videoPath}")
+        print("=" * 60)
 
-        # Validar estado
-        if analysis.status not in ["PENDING", "ERROR"]:
+        # ✅ FIX: Auto-resetear si está en estado inválido (PAUSED, PROCESSING)
+        if analysis.status in ["PAUSED", "PROCESSING"]:
+            print(f"⚠️ Análisis en estado {analysis.status} - Auto-reseteando a PENDING...")
+            analysis.status = "PENDING"
+            analysis.isPlaying = False
+            analysis.isPaused = False
+            analysis.currentTimestamp = 0
+            analysis.save(update_fields=["status", "isPlaying", "isPaused", "currentTimestamp"])
+            print(f"✅ Auto-reset completado: PENDING")
+
+        # Validar estado (ahora más permisivo)
+        if analysis.status not in ["PENDING", "ERROR", "COMPLETED"]:
+            error_msg = f"Cannot start analysis in {analysis.status} status"
+            print(f"❌ VALIDACIÓN FALLIDA: {error_msg}")
+            print("=" * 60)
             return Response(
-                {"error": f"Cannot start analysis in {analysis.status} status"},
+                {"error": error_msg},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Validar que el video existe
         if not analysis.videoPath:
+            error_msg = "No video file associated with this analysis"
+            print(f"❌ VALIDACIÓN FALLIDA: {error_msg}")
+            print("=" * 60)
             return Response(
-                {"error": "No video file associated with this analysis"},
+                {"error": error_msg},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -292,26 +346,63 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            # Lanzar tarea de Celery
-            task = process_video_analysis.delay(analysis.id)
-
-            # Actualizar estado
+            # Actualizar estado PRIMERO
             analysis.status = "PROCESSING"
             analysis.startedAt = timezone.now()
-            analysis.save(update_fields=["status", "startedAt"])
+            analysis.isPlaying = True
+            analysis.isPaused = False
+            analysis.currentTimestamp = 0
+            analysis.save(update_fields=["status", "startedAt", "isPlaying", "isPaused", "currentTimestamp"])
+            
+            # 🎬 PROCESAMIENTO DIRECTO (SIN REDIS/CELERY)
+            print(f"🚀 Lanzando procesamiento DIRECTO para análisis {analysis.id}")
+            import threading
+            
+            def run_processing():
+                print(f"🔄 run_processing() iniciado para análisis {analysis.id}")
+                # ✅ EJECUTAR DIRECTAMENTE (sin Celery)
+                print(f"🎬 Ejecutando runner standalone para análisis {analysis.id}...")
+                try:
+                    from .services.video_analysis_runner import run_video_analysis_standalone
+                    print(f"✅ Módulo runner importado correctamente")
+                    run_video_analysis_standalone(analysis.id)
+                    print(f"✅ Runner standalone completado")
+                except Exception as runner_error:
+                    print(f"❌ Error en runner standalone: {runner_error}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # 🔥 RESETEAR estado a ERROR si falla
+                    try:
+                        from .models import TrafficAnalysis as TA
+                        failed_analysis = TA.objects.get(pk=analysis.id)
+                        failed_analysis.status = "ERROR"
+                        failed_analysis.isPlaying = False
+                        failed_analysis.save(update_fields=["status", "isPlaying"])
+                        print(f"⚠️ Análisis {analysis.id} marcado como ERROR")
+                    except Exception as e:
+                        print(f"❌ No se pudo resetear análisis: {e}")
+            
+            # Ejecutar en thread separado para no bloquear el response
+            thread = threading.Thread(target=run_processing, daemon=True)
+            thread.start()
+            print(f"✅ Thread de procesamiento iniciado")
 
             return Response(
                 {
                     "message": "Video analysis started",
                     "analysis_id": analysis.id,
-                    "task_id": task.id,
                     "status": analysis.status,
+                    "isPlaying": analysis.isPlaying,
+                    "isPaused": analysis.isPaused,
                 },
                 status=status.HTTP_200_OK,
             )
 
         except Exception as e:
             print(f"❌ Error starting video analysis: {e}")
+            import traceback
+            traceback.print_exc()
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -319,8 +410,8 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def pause(self, request, pk=None):
         """
-        Pausar procesamiento de video
-        TODO: Implementar mecanismo de pausa en Celery task
+        Pausar análisis de video en tiempo real
+        Actualiza el estado y notifica via WebSocket
         """
         analysis = self.get_object()
 
@@ -330,20 +421,106 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # TODO: Implementar pausa real cuando Celery soporte control de tasks
-        # Por ahora solo cambiar estado
+        # Actualizar estado
         analysis.status = "PAUSED"
-        analysis.save(update_fields=["status"])
+        analysis.isPaused = True
+        analysis.isPlaying = False
+        analysis.save(update_fields=["status", "isPaused", "isPlaying"])
+
+        # Notificar via WebSocket a los clientes conectados
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'traffic_analysis_{analysis.id}',
+                {
+                    'type': 'analysis_paused',
+                    'message': 'Analysis paused',
+                    'analysis_id': analysis.id
+                }
+            )
+        except Exception as e:
+            print(f"⚠️ Error sending WebSocket notification: {e}")
 
         return Response(
             {
-                "message": "Video analysis paused (state change only)",
+                "message": "Video analysis paused",
                 "analysis_id": analysis.id,
                 "status": analysis.status,
-                "note": "Task continues running in background until completion",
+                "isPaused": analysis.isPaused,
+                "isPlaying": analysis.isPlaying,
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["post"])
+    def resume(self, request, pk=None):
+        """
+        Reanudar análisis de video pausado
+        Continúa el procesamiento desde donde se pausó
+        """
+        analysis = self.get_object()
+
+        if analysis.status != "PAUSED":
+            return Response(
+                {"error": f"Cannot resume analysis in {analysis.status} status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Actualizar estado
+            analysis.status = "PROCESSING"
+            analysis.isPaused = False
+            analysis.isPlaying = True
+            analysis.save(update_fields=["status", "isPaused", "isPlaying"])
+
+            # 🎬 Reanudar procesamiento DIRECTO (continuar desde donde estaba)
+            import threading
+            def run_resume():
+                try:
+                    from .services.video_analysis_runner import run_video_analysis_standalone
+                    run_video_analysis_standalone(analysis.id)
+                except Exception as e:
+                    print(f"❌ Error resumiendo: {e}")
+            threading.Thread(target=run_resume, daemon=True).start()
+
+            # Notificar via WebSocket
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'traffic_analysis_{analysis.id}',
+                    {
+                        'type': 'analysis_resumed',
+                        'message': 'Analysis resumed',
+                        'analysis_id': analysis.id
+                    }
+                )
+            except Exception as e:
+                print(f"⚠️ Error sending WebSocket notification: {e}")
+
+            return Response(
+                {
+                    "message": "Video analysis resumed",
+                    "analysis_id": analysis.id,
+                    "task_id": task.id,
+                    "status": analysis.status,
+                    "isPaused": analysis.isPaused,
+                    "isPlaying": analysis.isPlaying,
+                    "resumeFrom": analysis.currentTimestamp,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ Error resuming video analysis: {e}")
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=["post"])
     def stop(self, request, pk=None):
@@ -491,17 +668,27 @@ def analyze_video_endpoint(request):
       }
     """
     try:
+        # 🔍 DEBUG: Ver qué llega
+        print("=" * 60)
+        print("📥 ANALYZE VIDEO ENDPOINT")
+        print(f"FILES: {list(request.FILES.keys())}")
+        print(f"DATA: {dict(request.data)}")
+        print("=" * 60)
+
         # Validar que venga el video
         if "video" not in request.FILES:
+            print("❌ ERROR: No video file in request.FILES")
             return Response(
                 {"error": "No video file provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         video_file = request.FILES["video"]
+        print(f"✅ Video file: {video_file.name} ({video_file.size} bytes)")
 
         # Validar que venga cámara o ubicación
         camera_id = request.data.get("cameraId")
         location_id = request.data.get("locationId")
+        print(f"📷 Camera ID: {camera_id}, Location ID: {location_id}")
 
         if not camera_id and not location_id:
             return Response(
@@ -560,11 +747,26 @@ def analyze_video_endpoint(request):
 
         print(f"✅ TrafficAnalysis creado: ID={analysis.id}")
 
-        # Lanzar tarea de Celery para procesamiento
-        video_full_path = os.path.join(default_storage.location, video_path)
-        task = process_video_analysis.delay(analysis.id)
+        # 🔄 ACTUALIZAR CÁMARA: Asignar video y análisis actual
+        if camera_id:
+            camera.currentVideoPath = video_path
+            camera.currentAnalysisId_id = analysis.id
+            camera.status = "ACTIVE"  # Marcar como activa con video
+            camera.save(update_fields=["currentVideoPath", "currentAnalysisId_id", "status", "updatedAt"])
+            print(f"✅ Cámara actualizada: ID={camera.id}, Video={video_path}, Analysis={analysis.id}")
 
-        print(f"✅ Celery task iniciado: {task.id}")
+        # 🎬 Lanzar procesamiento DIRECTO (sin Celery)
+        video_full_path = os.path.join(default_storage.location, video_path)
+        import threading
+        def run_upload_processing():
+            try:
+                from .services.video_analysis_runner import run_video_analysis_standalone
+                run_video_analysis_standalone(analysis.id)
+            except Exception as e:
+                print(f"❌ Error en procesamiento de upload: {e}")
+        threading.Thread(target=run_upload_processing, daemon=True).start()
+        
+        print(f"✅ Procesamiento directo iniciado")
 
         # Actualizar estado
         analysis.status = "PROCESSING"
@@ -574,7 +776,7 @@ def analyze_video_endpoint(request):
             {
                 "id": analysis.id,
                 "message": "Video uploaded and analysis started successfully",
-                "task_id": task.id,
+                "processing": "direct",
                 "status": analysis.status,
             },
             status=status.HTTP_201_CREATED,
