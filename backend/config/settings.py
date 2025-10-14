@@ -249,7 +249,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",  # Vite dev server (alternate port)
     "http://127.0.0.1:5174",
-      "http://localhost:5175",  # Vite dev server (alternate port)
+    "http://localhost:5175",  # Vite dev server (alternate port)
     "http://127.0.0.1:5175",
 ]
 
@@ -377,10 +377,10 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
 CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
-        "schedule": crontab(minute="*/10"),
+        #"schedule": 10 * 60,  # cada 10 minutos
+        "schedule": crontab(minute='*/10'), # 00,10,20,30,40,50
     },
 }
-
 
 
 # ==============================================================================

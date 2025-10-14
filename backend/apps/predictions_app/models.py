@@ -1,6 +1,6 @@
 from django.db import models
 from apps.entities.models.predictions import PredictionModelEntity
-from backend.apps.entities.models import PredictionSourceEntity
+from apps.entities.models import PredictionSourceEntity
 
 
 # Create your models here.

@@ -9,12 +9,17 @@ from ..constants import (
 
 class PredictionModelEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionModelEntity"""
+
     """USAGE: Inherit in other apps - class User(PredictionModelEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
     modelName = models.CharField(max_length=100)
     modelType = models.CharField(max_length=50)
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="predictionsource_locations",
+    )
     features = models.TextField()
     hyperparameters = models.TextField()
     trainingDataPeriod = models.CharField(max_length=50)
@@ -30,21 +35,25 @@ class PredictionModelEntity(BaseModel):
         verbose_name_plural = "Abstract PredictionModelEntitys"
 
     def __str__(self):
-        return f'PredictionModelEntity ({self.pk})'
+        return f"PredictionModelEntity ({self.pk})"
+
 
 class ModelTrainingJobEntity(BaseModel):
     """Abstract DLL model from TypeScript interface ModelTrainingJobEntity"""
+
     """USAGE: Inherit in other apps - class User(ModelTrainingJobEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
+    modelId = models.ForeignKey(
+        "PredictionModel", on_delete=models.CASCADE, related_name="modelid_model_set"
+    )
     status = models.CharField(max_length=20)
     startTime = models.DateTimeField()
     endTime = models.DateTimeField(blank=True, null=True)
     trainingLogs = models.TextField(blank=True, null=True)
     errorMessage = models.TextField(blank=True, null=True)
     dataPointsUsed = models.IntegerField(default=0)
-    validationScore = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    validationScore = models.DecimalField(max_digits=5, decimal_places=4, default="0")
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -52,26 +61,38 @@ class ModelTrainingJobEntity(BaseModel):
         verbose_name_plural = "Abstract ModelTrainingJobEntitys"
 
     def __str__(self):
-        return f'ModelTrainingJobEntity ({self.pk})'
+        return f"ModelTrainingJobEntity ({self.pk})"
+
 
 class TrafficPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficPredictionEntity"""
+
     """USAGE: Inherit in other apps - class User(TrafficPredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    modelId = models.ForeignKey(
+        "PredictionModel", on_delete=models.CASCADE, related_name="modelid_model_set"
+    )
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="locationid_location_set",
+    )
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
     predictedVehicleCount = models.IntegerField(default=0)
-    predictedAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    predictedAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default="0")
     predictedDensityLevel = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
     predictionHorizon = models.IntegerField()
     actualVehicleCount = models.IntegerField(blank=True, null=True)
-    actualAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    actualAvgSpeed = models.DecimalField(
+        max_digits=6, decimal_places=2, blank=True, null=True
+    )
     actualDensityLevel = models.CharField(max_length=20, blank=True, null=True)
-    predictionError = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
+    predictionError = models.DecimalField(
+        max_digits=10, decimal_places=4, blank=True, null=True
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -79,19 +100,27 @@ class TrafficPredictionEntity(BaseModel):
         verbose_name_plural = "Abstract TrafficPredictionEntitys"
 
     def __str__(self):
-        return f'TrafficPredictionEntity ({self.pk})'
+        return f"TrafficPredictionEntity ({self.pk})"
+
 
 class BatchPredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface BatchPredictionEntity"""
+
     """USAGE: Inherit in other apps - class User(BatchPredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    modelId = models.ForeignKey(
+        "PredictionModel", on_delete=models.CASCADE, related_name="modelid_model_set"
+    )
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="locationid_location_set",
+    )
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
     totalPredictions = models.IntegerField(default=0)
-    avgConfidence = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    avgConfidence = models.DecimalField(max_digits=5, decimal_places=4, default="0")
     status = models.CharField(max_length=20)
     executionTime = models.IntegerField(default=0)
 
@@ -101,23 +130,31 @@ class BatchPredictionEntity(BaseModel):
         verbose_name_plural = "Abstract BatchPredictionEntitys"
 
     def __str__(self):
-        return f'BatchPredictionEntity ({self.pk})'
+        return f"BatchPredictionEntity ({self.pk})"
+
 
 class PredictionAccuracyEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionAccuracyEntity"""
+
     """USAGE: Inherit in other apps - class User(PredictionAccuracyEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    modelId = models.ForeignKey('PredictionModel', on_delete=models.CASCADE, related_name='modelid_model_set')
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    modelId = models.ForeignKey(
+        "PredictionModel", on_delete=models.CASCADE, related_name="modelid_model_set"
+    )
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="locationid_location_set",
+    )
     evaluationPeriod = models.CharField(max_length=50)
     predictionHorizon = models.IntegerField()
     totalPredictions = models.IntegerField(default=0)
     correctPredictions = models.IntegerField(default=0)
-    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    avgError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
-    maxError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
-    minError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
+    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default="0")
+    avgError = models.DecimalField(max_digits=10, decimal_places=4, default="0")
+    maxError = models.DecimalField(max_digits=10, decimal_places=4, default="0")
+    minError = models.DecimalField(max_digits=10, decimal_places=4, default="0")
     evaluatedAt = models.DateTimeField()
 
     class Meta:
@@ -126,22 +163,28 @@ class PredictionAccuracyEntity(BaseModel):
         verbose_name_plural = "Abstract PredictionAccuracyEntitys"
 
     def __str__(self):
-        return f'PredictionAccuracyEntity ({self.pk})'
+        return f"PredictionAccuracyEntity ({self.pk})"
+
 
 class RealTimePredictionEntity(BaseModel):
     """Abstract DLL model from TypeScript interface RealTimePredictionEntity"""
+
     """USAGE: Inherit in other apps - class User(RealTimePredictionEntity): pass"""
 
     id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="locationid_location_set",
+    )
     currentVehicleCount = models.IntegerField(default=0)
     currentDensityLevel = models.CharField(max_length=20)
     next1HourPrediction = models.IntegerField(default=0)
     next6HourPrediction = models.IntegerField(default=0)
     next24HourPrediction = models.IntegerField(default=0)
-    confidence1Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    confidence6Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    confidence24Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    confidence1Hour = models.DecimalField(max_digits=5, decimal_places=4, default="0")
+    confidence6Hour = models.DecimalField(max_digits=5, decimal_places=4, default="0")
+    confidence24Hour = models.DecimalField(max_digits=5, decimal_places=4, default="0")
     lastUpdated = models.DateTimeField()
 
     class Meta:
@@ -150,18 +193,28 @@ class RealTimePredictionEntity(BaseModel):
         verbose_name_plural = "Abstract RealTimePredictionEntitys"
 
     def __str__(self):
-        return f'RealTimePredictionEntity ({self.pk})'
+        return f"RealTimePredictionEntity ({self.pk})"
+
 
 class PredictionSourceEntity(BaseModel):
     """Abstract DLL model from TypeScript interface PredictionSourceEntity"""
+
     """USAGE: Inherit in other apps - class User(PredictionSourceEntity): pass"""
 
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
-    cameraId = models.ForeignKey('traffic_app.Camera', on_delete=models.CASCADE, related_name='cameraid_camera_set')
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="locationid_location_set",
+    )
+    cameraId = models.ForeignKey(
+        "traffic_app.Camera",
+        on_delete=models.CASCADE,
+        related_name="cameraid_camera_set",
+    )
     startedAt = models.DateTimeField()
     endedAt = models.DateTimeField()
     totalVehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default="0")
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -169,4 +222,4 @@ class PredictionSourceEntity(BaseModel):
         verbose_name_plural = "Abstract PredictionSourceEntitys"
 
     def __str__(self):
-        return f'PredictionSourceEntity ({self.pk})'
+        return f"PredictionSourceEntity ({self.pk})"
