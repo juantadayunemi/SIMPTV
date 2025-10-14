@@ -164,7 +164,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "es-es"
-TIME_ZONE = "America/Mexico_City"
+TIME_ZONE = "America/Guayaquil"
 USE_I18N = True
 USE_TZ = True
 
@@ -377,8 +377,8 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
 CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
-        #"schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute='*/10'), # 00,10,20,30,40,50
+        # "schedule": 10 * 60,  # cada 10 minutos
+        "schedule": crontab(minute="*/1"),  # 00,10,20,30,40,50
     },
 }
 
