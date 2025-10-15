@@ -98,7 +98,7 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         )
     
     async def loading_progress(self, event):
-        """Progreso de carga de modelos (YOLOv8, EasyOCR)"""
+        """Progreso de carga de modelos (YOLOv5, PaddleOCR)"""
         await self.send(
             text_data=json.dumps({"type": "loading_progress", "data": event["data"]})
         )

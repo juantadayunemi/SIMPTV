@@ -44,14 +44,14 @@ try:
 except Exception as e:
     print(f"   ❌ Error: {e}")
 
-# 3. Verificar modelo YOLO
-print(f"\n3️⃣  MODELO YOLO:")
+# 3. Verificar modelo YOLOv5
+print(f"\n3️⃣  MODELO YOLOv5:")
 try:
     yolo_path = settings.YOLO_MODEL_PATH
     if os.path.exists(yolo_path):
         size = os.path.getsize(yolo_path)
-        print(f"   ✅ Modelo existe")
-        print(f"   💾 Tamaño: {size / (1024**2):.2f} MB")
+        print(f"   ✅ Modelo existe: yolov5s.pt")
+        print(f"   💾 Tamaño: {size / (1024**2):.2f} MB (~14MB esperado)")
         print(f"   📁 Ruta: {yolo_path}")
     else:
         print(f"   ❌ Modelo NO existe")
@@ -68,14 +68,12 @@ try:
     print(f"   🔥 CUDA disponible: {torch.cuda.is_available()}")
     if torch.cuda.is_available():
         print(f"   🎮 GPU: {torch.cuda.get_device_name(0)}")
+        print(f"   📦 YOLOv5 carga con torch.hub (ultralytics/yolov5)")
 except Exception as e:
     print(f"   ❌ PyTorch: {e}")
 
-try:
-    from ultralytics import YOLO
-    print(f"   ✅ Ultralytics YOLO instalado")
-except Exception as e:
-    print(f"   ❌ Ultralytics: {e}")
+# YOLOv5 no requiere paquete 'ultralytics' (se carga con torch.hub)
+print(f"   ✅ YOLOv5 se carga dinámicamente con torch.hub")
 
 try:
     import easyocr

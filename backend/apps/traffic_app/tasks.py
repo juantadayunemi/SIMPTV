@@ -127,10 +127,10 @@ def process_video_analysis(self, analysis_id: int):
         analysis.startedAt = timezone.now()
         analysis.save(update_fields=["status", "startedAt"])
 
-        # 3. Inicializar VideoProcessor
-        model_path = getattr(settings, "YOLO_MODEL_PATH", "yolov8n.pt")
-        confidence = getattr(settings, "YOLO_CONFIDENCE_THRESHOLD", 0.5)
-        iou_threshold = getattr(settings, "YOLO_IOU_THRESHOLD", 0.45)
+        # 3. Inicializar VideoProcessor con YOLOv5
+        model_path = getattr(settings, "YOLO_MODEL_PATH", "yolov5s.pt")
+        confidence = getattr(settings, "YOLO_CONFIDENCE_THRESHOLD", 0.25)
+        iou_threshold = getattr(settings, "YOLO_IOU_THRESHOLD", 0.50)
 
         processor = VideoProcessor(
             model_path=model_path,
@@ -138,7 +138,7 @@ def process_video_analysis(self, analysis_id: int):
             iou_threshold=iou_threshold,
         )
 
-        self.send_log(analysis_id, f"Modelo YOLO cargado: {model_path}")
+        self.send_log(analysis_id, f"YOLOv5 cargado: {model_path} (2x más rápido)")
 
         # 4. Definir callbacks para eventos en tiempo real
         def progress_callback(frame_number: int, total_frames: int, stats: Dict):

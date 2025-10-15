@@ -396,10 +396,10 @@ MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024  # 2GB in bytes
 # Supported video formats
 SUPPORTED_VIDEO_FORMATS = [".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv"]
 
-# YOLO Model Configuration
-YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov8n.pt"  # Nano model (fast)
-YOLO_CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence for detection
-YOLO_IOU_THRESHOLD = 0.45  # IoU threshold for NMS
+# YOLO Model Configuration (YOLOv5m ONNX - preciso + rápido)
+YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov5m.pt"  # Medium model (más preciso, 40MB)
+YOLO_CONFIDENCE_THRESHOLD = 0.30  # Confianza más alta = mejor clasificación
+YOLO_IOU_THRESHOLD = 0.45  # IoU más estricto = menos falsos positivos
 
 # Vehicle Re-identification Configuration
 REIDENTIFICATION_TIME_WINDOW = 60  # seconds (1 minute)
