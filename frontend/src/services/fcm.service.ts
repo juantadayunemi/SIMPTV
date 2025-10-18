@@ -25,7 +25,7 @@ export interface TestNotificationData {
 }
 
 class FCMService {
- private vapidKey = 'BIkOrii5-rc_ENBgBdqlj506i5ZzbQruS-SwYQiX2D6vTBdv6_1a7rw_HB4BzBaG2B8LIaX6MXjw5BKtxjasxWI'; 
+ private vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY; 
 
   /**
    * Check if FCM is supported in this browser

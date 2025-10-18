@@ -3,12 +3,12 @@ import { getMessaging, Messaging } from 'firebase/messaging';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAWC8V0gXLw9X8PsUVnqhGtHBQtvpgkqV0",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "trafismart.firebaseapp.com",
   projectId: "trafismart",
   storageBucket: "trafismart.firebasestorage.app",
-  messagingSenderId: "134462786929",
-  appId: "1:134462786929:web:17c2c53227d113c0a53ad0",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: "G-075GGFQXVL"
 };
 
