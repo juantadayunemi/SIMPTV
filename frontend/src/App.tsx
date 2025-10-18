@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 
 // Pages
@@ -24,6 +25,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 import Layout from './components/layout/Layout';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { FCMInitializer } from './components/notifications/FCMInitializer';
 
 // Styles
 import './App.css';
@@ -62,6 +64,29 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="App min-h-screen bg-gray-50">
+        {/* FCM Initializer - Solo se activa cuando el usuario está autenticado */}
+        <FCMInitializer />
+
+        {/* React Hot Toast Container */}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 8000,
+            style: {
+              background: 'transparent',
+              boxShadow: 'none',
+              padding: 0,
+            },
+            // Custom styles for different types
+            success: {
+              duration: 4000,
+            },
+            error: {
+              duration: 5000,
+            },
+          }}
+        />
+
         <Routes>
           {/* Public Routes */}
           <Route 

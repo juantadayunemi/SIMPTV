@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test-fcm": "node scripts/test-fcm-config.cjs",
+    "test-fcm-complete": "node scripts/test-fcm-complete.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -18,6 +20,7 @@
     "axios": "^1.6.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
+    "firebase": "^12.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
@@ -39,6 +42,7 @@
     "@typescript-eslint/parser": "^6.10.0",
     "@vitejs/plugin-react": "^4.1.1",
     "autoprefixer": "^10.4.16",
+    "dotenv": "^17.2.3",
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",

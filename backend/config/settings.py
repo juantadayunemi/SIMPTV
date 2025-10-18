@@ -49,19 +49,13 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
-    # Django REST Framework
-    "rest_framework",
-    "rest_framework_simplejwt",
-    # CORS
-    "corsheaders",
-    # Development tools
+    "rest_framework",  # Django REST Framework
+    "rest_framework_simplejwt",  # CORS
+    "corsheaders",  # Development tools
     "django_extensions",
-    "debug_toolbar",
-    # API Documentation
-    "drf_spectacular",
-    # Async Processing
-    "django_celery_results",
-    # WebSocket
+    "debug_toolbar",  # API Documentation
+    "drf_spectacular",  # Async Processing
+    "django_celery_results",  # WebSocket
     "channels",
 ]
 
@@ -72,8 +66,8 @@ LOCAL_APPS = [
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
     "apps.predictions_app",  # Traffic Predictions & ML
+    "apps.notifications_app",  # Notifications
     # "apps.external_apis",  # External APIs
-    # "apps.notifications",  # Notifications
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -248,7 +242,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",  # Vite dev server (alternate port)
     "http://127.0.0.1:5174",
-      "http://localhost:5175",  # Vite dev server (alternate port)
+    "http://localhost:5175",  # Vite dev server (alternate port)
     "http://127.0.0.1:5175",
 ]
 
@@ -419,3 +413,14 @@ STREAM_TIMEOUT = 10  # seconds
 
 # Frontend URL for email links
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+
+# Firebase Cloud Messaging Configuration
+import firebase_admin
+from firebase_admin import credentials
+
+# Initialize Firebase Admin SDK
+FIREBASE_CREDENTIALS_PATH = BASE_DIR / "config" / "firebase-service-account.json"
+if not FIREBASE_CREDENTIALS_PATH.exists():
+    print(
+        "⚠️ Warning: Firebase service account file not found. FCM notifications will not work."
+    )

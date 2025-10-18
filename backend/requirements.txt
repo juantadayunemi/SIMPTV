@@ -57,6 +57,9 @@ channels==4.2.0  # WebSocket support for Django
 channels-redis==4.2.1  # Redis channel layer
 daphne==4.1.2  # ASGI server
 
+# Firebase Cloud Messaging
+firebase-admin==6.5.0  # Firebase Admin SDK for server-side FCM
+
 # Video Streaming
 imageio==2.36.0  # Read/write images and videos
 imageio-ffmpeg==0.5.1  # FFmpeg wrapper for video processing
