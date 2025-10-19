@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFCM } from '../../hooks/useFCM';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Car, DollarSign, Bell, X } from 'lucide-react';
+import notificationStore from '@/stores/notificationStore';
 
 export const FCMInitializer: React.FC = () => {
   const { user } = useAuth();

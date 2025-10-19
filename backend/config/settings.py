@@ -6,13 +6,16 @@ Configured for Urbia project with SQL Server and DRF.
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
 import os
 from decouple import config
 from django.core.exceptions import ImproperlyConfigured
 import sys
 
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # Add apps directory to Python path
 sys.path.insert(0, os.path.join(BASE_DIR, "apps"))
@@ -123,7 +126,7 @@ else:
             "ENGINE": "mssql",  # Correcto: usa mssql-django
             "NAME": config("DB_NAME", default="UrbiaDb"),
             "USER": config("DB_USER", default="jsofuseradmin"),
-            "PASSWORD": config("DB_PASSWORD", default="1234567890"),
+            "PASSWORD": config("DB_PASSWORD", default="xxxxxxxxx"),
             "HOST": config("DB_HOST", default="."),
             "PORT": config("DB_PORT", default="1433"),
             "OPTIONS": {
@@ -264,6 +267,7 @@ CORS_ALLOWED_HEADERS = [
 # API DOCUMENTATION (drf-spectacular)
 # ==============================================================================
 
+# (removed duplicate indented import)
 SPECTACULAR_SETTINGS = {
     "TITLE": "Urbia API",
     "DESCRIPTION": "RESTful API for Urbia application with automatic entity generation",
@@ -412,15 +416,5 @@ STREAM_RECONNECT_ATTEMPTS = 3
 STREAM_TIMEOUT = 10  # seconds
 
 # Frontend URL for email links
-FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
-
-# Firebase Cloud Messaging Configuration
-import firebase_admin
-from firebase_admin import credentials
-
-# Initialize Firebase Admin SDK
-FIREBASE_CREDENTIALS_PATH = BASE_DIR / "config" / "firebase-service-account.json"
-if not FIREBASE_CREDENTIALS_PATH.exists():
-    print(
-        "⚠️ Warning: Firebase service account file not found. FCM notifications will not work."
-    )
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5174")
+LOGO_URL = os.getenv('LOGO_URL', 'https://via.placeholder.com/80')

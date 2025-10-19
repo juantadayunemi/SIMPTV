@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .base import BaseModel
 import uuid
@@ -22,12 +23,12 @@ class WeatherDataEntity(BaseModel):
     locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
-    temperature = models.DecimalField(max_digits=5, decimal_places=2, default='0')
-    humidity = models.DecimalField(max_digits=5, decimal_places=2, default='0')
-    precipitation = models.DecimalField(max_digits=6, decimal_places=2, default='0')
-    windSpeed = models.DecimalField(max_digits=5, decimal_places=2, default='0')
+    temperature = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
+    humidity = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
+    precipitation = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0'))
+    windSpeed = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0'))
     weatherCondition = models.CharField(max_length=50)
-    visibility = models.DecimalField(max_digits=6, decimal_places=2, default='10')
+    visibility = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('10'))
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

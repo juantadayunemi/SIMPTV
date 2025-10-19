@@ -23,9 +23,9 @@ from .serializers import (
 from .email_utils import (
     generate_confirmation_token,
     send_confirmation_email,
-    send_welcome_email,
     generate_password_reset_token,
     send_password_reset_email,
+    send_welcome_email
 )
 
 

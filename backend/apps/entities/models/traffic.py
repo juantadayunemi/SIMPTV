@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .base import BaseModel
 import uuid
@@ -22,7 +23,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     dayOfWeek = models.IntegerField()
     month = models.IntegerField()
     vehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0'))
     densityLevel = models.CharField(max_length=20)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
     temperature = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)

@@ -119,7 +119,9 @@ class FCMService {
         // Also show the body as a separate toast or handle it differently
         if (payload.notification && payload.notification.body) {
           setTimeout(() => {
-            toast(payload.notification.body, { duration: 4000 });
+           if (payload.notification && payload.notification.body) {
+              toast(payload.notification.body, { duration: 4000 });
+            }
           }, 500);
         }
       }

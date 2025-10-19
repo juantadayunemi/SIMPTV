@@ -481,7 +481,7 @@ class TypeScriptEntityParser:
         ts_type: str,
         prop_name: str = "",
         is_optional: bool = False,
-        annotations: Dict = None,
+        annotations: Dict = {},
     ) -> Dict[str, Any]:
         """
         Map TypeScript types to Django model fields
@@ -509,6 +509,8 @@ class TypeScriptEntityParser:
             if not clean_field_name:
                 clean_field_name = prop_name.lower()
 
+            field_options: dict[str, Any] = {}
+            
             field_options = {
                 "on_delete": "models.CASCADE",
                 "related_name": f"%(class)s_{clean_field_name}_set",
@@ -1409,7 +1411,7 @@ class DjangoModelGenerator:
             # Except if it's explicitly marked as primary with custom type
             annotations = prop_info.get("annotations", {})
             if not annotations.get("is_primary"):
-                return None
+                return ""
 
         # Handle ForeignKey specially
         if field_type == "ForeignKey":
@@ -1442,7 +1444,8 @@ class DjangoModelGenerator:
         if annotations.get("is_primary"):
             if annotations.get("is_identity"):
                 # Ya está en BaseModel como id
-                return None
+                return ""
+            
             elif field_type == "CharField":
                 # Primary key VARCHAR para CUIDs
                 option_parts = []
