@@ -84,9 +84,7 @@ class PredictionView(APIView):
             # calcular el periodo a predecir en el futuro
             last_datetime = df["ds"].max()
             print(f"Last datetime in data: {last_datetime}")
-            target_datetime = datetime.strptime(
-                f"{date} {hour}:{minute}:00", "%Y-%m-%d %H:%M:%S"
-            )
+            target_datetime = convert_datetime(date, hour, minute)
 
             delta = target_datetime - last_datetime
 
