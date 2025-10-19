@@ -3,6 +3,8 @@ URL configuration for SIMPTV Traffic Analysis project.
 Auto-discovers and includes URL patterns from all installed apps.
 """
 
+import apps.predictions_app.urls  # Ensure predictions_app is imported
+
 import importlib
 from django.contrib import admin
 from django.urls import path, include, reverse
@@ -129,11 +131,16 @@ def include_app_urls():
         try:
             app_name = app_config.split(".")[-1]
 
+            print("app_name:", app_name)
+
             # Try to import urls module to check if it exists
             importlib.import_module(f"{app_config}.urls")
 
             # Get clean API path
             api_path = api_path_mapping.get(app_name, app_name.replace("_app", ""))
+
+            print("local_app:", local_apps)
+            print(">>>", api_path)
 
             # Add to URL patterns
             app_urls.append(path(f"api/{api_path}/", include(f"{app_config}.urls")))
@@ -141,6 +148,8 @@ def include_app_urls():
         except ImportError:
             # App doesn't have urls.py, skip silently
             continue
+
+    print("Final app_urls:", app_urls)
 
     return app_urls
 

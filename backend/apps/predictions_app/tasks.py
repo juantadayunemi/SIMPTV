@@ -98,7 +98,7 @@ def aggregate_prediction_data():
 
                     if camera and location:
                         avg_speed = round(group["avgSpeed"] or 0, 2)
-
+                        logger.info(timezone.localtime(timezone.now()))
                         predictions_to_create.append(
                             PredictionSource(
                                 createdAt=current_block,
