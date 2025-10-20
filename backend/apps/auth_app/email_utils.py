@@ -16,7 +16,7 @@ def generate_confirmation_token(user):
 
 def send_confirmation_email(user, token):
     """Send confirmation email to user"""
-    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5174")
     logo_url = getattr(settings, "LOGO_URL", f"{frontend_url}/static/logo/logo.png")
     confirmation_link = f"{frontend_url}/confirm-email?token={token}"
 
@@ -168,7 +168,7 @@ def generate_password_reset_token(user):
 
 def send_password_reset_email(user, token):
     """Send password reset email to user"""
-    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5174")
     logo_url = getattr(settings, "LOGO_URL", f"{frontend_url}/static/logo/logo.png")
     reset_link = f"{frontend_url}/reset-password?token={token}"
 
@@ -333,7 +333,7 @@ def send_password_reset_email(user, token):
 
 def send_welcome_email(user):
     """Send welcome email after successful email confirmation"""
-    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5174')
     logo_url = getattr(settings, 'LOGO_URL', f"{frontend_url}/static/logo/logo.png")
     login_url = f"{frontend_url}/login"
 

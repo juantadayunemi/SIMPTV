@@ -21,9 +21,10 @@ cd redis
 .\redis-server.exe redis.windows.conf
 ```
 
-### Paso 3: Iniciar Celery Worker (en terminal separado)
+### Paso 3: Iniciar Celery Worker (en terminal separado, estar en backend)
 ```cmd
-# PRERREQUISITOS: Redis debe estar corriendo, venv activado, estar en backend/
+# PRERREQUISITOS: Redis debe estar corriendo
+# Desde el directorio backend (con venv activado)
 celery -A config worker --loglevel=info --pool=solo
 ```
 
