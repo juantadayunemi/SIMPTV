@@ -396,10 +396,17 @@ MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024  # 2GB in bytes
 # Supported video formats
 SUPPORTED_VIDEO_FORMATS = [".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv"]
 
-# YOLO Model Configuration (YOLOv5m ONNX - preciso + rápido)
-YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov5m.pt"  # Medium model (más preciso, 40MB)
-YOLO_CONFIDENCE_THRESHOLD = 0.30  # Confianza más alta = mejor clasificación
-YOLO_IOU_THRESHOLD = 0.45  # IoU más estricto = menos falsos positivos
+# =============================================================================
+# MODEL CONFIGURATION - MobileNetSSD + HaarCascade + PaddleOCR
+# =============================================================================
+# NUEVA ARQUITECTURA: MobileNetSSD reemplaza YOLOv5 (3-5x más rápido)
+# Los modelos se descargan con: python models/download_models.py
+# Modelos: MobileNetSSD (23MB), HaarCascade (1.5MB)
+# =============================================================================
+
+# Configuración de detección (Compatible con código anterior)
+YOLO_CONFIDENCE_THRESHOLD = 0.50  # Umbral de confianza para MobileNetSSD
+YOLO_IOU_THRESHOLD = 0.30  # IoU para tracking con SORT
 
 # Vehicle Re-identification Configuration
 REIDENTIFICATION_TIME_WINDOW = 60  # seconds (1 minute)

@@ -123,10 +123,12 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
               };
-              img.onerror = () => {
-                console.error('❌ Error cargando imagen base64');
+              img.onerror = (e) => {
+                console.error('❌ Error cargando imagen base64:', e);
+                console.error('🔍 frame_data preview:', data.frame_data?.substring(0, 100));
               };
-              img.src = `data:image/jpeg;base64,${data.frame_data}`;
+              // ✅ FIX: frame_data YA incluye el prefijo data:image/jpeg;base64,
+              img.src = data.frame_data;
             }
           }
         });
@@ -466,20 +468,39 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                     style={{ backgroundColor: '#000' }}
                   />
                   
-                  {/* Video original (oculto cuando está analizando) */}
+                  {/* Video original (SIN CONTROLES - solo primer frame) */}
                   <video
                     ref={videoRef}
                     src={videoUrl}
                     className={`w-full h-full object-cover ${showProcessedFrames ? 'hidden' : 'block'}`}
-                    controls={!showProcessedFrames}
+                    controls={false}
+                    muted
+                    preload="metadata"
                     onError={(e) => {
                       console.error('❌ Error cargando video:', e);
                       console.error('Video URL:', videoUrl);
                     }}
-                    onLoadedMetadata={() => {
+                    onLoadedMetadata={(e) => {
                       console.log('✅ Video cargado correctamente');
+                      // Pausar el video en el primer frame
+                      const video = e.target as HTMLVideoElement;
+                      video.currentTime = 0;
+                      video.pause();
                     }}
                   />
+                  
+                  {/* Overlay cuando NO está procesando (mostrar que está pausado) */}
+                  {!showProcessedFrames && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <div className="text-center">
+                        <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mb-4 mx-auto">
+                          <Play className="w-10 h-10 text-white" />
+                        </div>
+                        <p className="text-white text-xl font-semibold">Video Cargado</p>
+                        <p className="text-gray-300 mt-2">Presiona "Iniciar" para comenzar el análisis</p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Indicador de procesamiento */}
                   {showProcessedFrames && (

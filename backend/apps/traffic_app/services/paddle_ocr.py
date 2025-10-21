@@ -121,14 +121,37 @@ class PaddlePlateOCR:
             preprocessed = self._preprocess_for_ocr(image)
             result = self.ocr.ocr(preprocessed, cls=True)
             
+            # Validar resultado antes de procesar
+            if result is None or not isinstance(result, list) or len(result) == 0:
+                result = [[]]  # Resultado vacío seguro
+            
             if result and result[0]:
                 for line in result[0]:
-                    if line:
-                        text = line[1][0] if isinstance(line[1], tuple) else line[1]
-                        conf = line[1][1] if isinstance(line[1], tuple) else 0.0
+                    # 🔒 VALIDACIÓN ROBUSTA: Verificar estructura de datos
+                    if not line or not isinstance(line, (list, tuple)):
+                        continue
+                    
+                    if len(line) < 2:
+                        continue
+                    
+                    try:
+                        # Extraer texto y confianza de forma segura
+                        text_data = line[1]
+                        if isinstance(text_data, tuple) and len(text_data) >= 2:
+                            text = text_data[0]
+                            conf = text_data[1]
+                        elif isinstance(text_data, str):
+                            text = text_data
+                            conf = 0.0
+                        else:
+                            continue
+                        
                         cleaned = self._clean_text(text)
                         if cleaned and len(cleaned) >= 6:  # Pre-filtro básico
                             all_texts.append((cleaned, conf, 'aggressive'))
+                    except (IndexError, TypeError, AttributeError) as e:
+                        # Ignorar líneas con estructura inesperada
+                        continue
             
             # INTENTO 2: Imagen original sin tanto procesamiento (backup)
             # A veces el preprocesamiento puede distorsionar caracteres
@@ -144,14 +167,37 @@ class PaddlePlateOCR:
             
             result2 = self.ocr.ocr(simple, cls=True)
             
+            # Validar resultado antes de procesar
+            if result2 is None or not isinstance(result2, list) or len(result2) == 0:
+                result2 = [[]]  # Resultado vacío seguro
+            
             if result2 and result2[0]:
                 for line in result2[0]:
-                    if line:
-                        text = line[1][0] if isinstance(line[1], tuple) else line[1]
-                        conf = line[1][1] if isinstance(line[1], tuple) else 0.0
+                    # 🔒 VALIDACIÓN ROBUSTA: Verificar estructura de datos
+                    if not line or not isinstance(line, (list, tuple)):
+                        continue
+                    
+                    if len(line) < 2:
+                        continue
+                    
+                    try:
+                        # Extraer texto y confianza de forma segura
+                        text_data = line[1]
+                        if isinstance(text_data, tuple) and len(text_data) >= 2:
+                            text = text_data[0]
+                            conf = text_data[1]
+                        elif isinstance(text_data, str):
+                            text = text_data
+                            conf = 0.0
+                        else:
+                            continue
+                        
                         cleaned = self._clean_text(text)
                         if cleaned and len(cleaned) >= 6:
                             all_texts.append((cleaned, conf, 'simple'))
+                    except (IndexError, TypeError, AttributeError) as e:
+                        # Ignorar líneas con estructura inesperada
+                        continue
             
             if not all_texts:
                 elapsed = (time.time() - start_time) * 1000

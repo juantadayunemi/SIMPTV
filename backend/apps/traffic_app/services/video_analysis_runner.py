@@ -1,19 +1,22 @@
 """
 Video Analysis Runner - Ejecuta procesamiento sin Celery
 Versión standalone que envía eventos por WebSocket directamente
+
+ACTUALIZADO: Ahora usa VideoProcessorOpenCV (MobileNetSSD + HaarCascade + PaddleOCR)
 """
 
 import os
 import logging
 from datetime import datetime
 from typing import Dict
+from pathlib import Path
 from django.conf import settings
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from ..models import TrafficAnalysis, Vehicle, VehicleFrame
-from .video_processor import VideoProcessor
+from .video_processor_opencv import VideoProcessorOpenCV as VideoProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +87,14 @@ def run_video_analysis_standalone(analysis_id: int):
         file_size = os.path.getsize(video_full_path)
         send_log(analysis_id, f"✅ Video encontrado: {file_size / (1024**2):.2f}MB")
         
-        # 3. Inicializar VideoProcessor CON callback de progreso
-        print(f"🚀 Inicializando VideoProcessor...")
-        print(f"   - Model path: {settings.YOLO_MODEL_PATH}")
-        print(f"   - Confidence: 0.5, IOU: 0.45")
+        # 3. Inicializar VideoProcessor con NUEVA ARQUITECTURA (MobileNetSSD)
+        models_dir = Path(settings.BASE_DIR) / 'models'
+        confidence = getattr(settings, "YOLO_CONFIDENCE_THRESHOLD", 0.50)
+        iou_threshold = getattr(settings, "YOLO_IOU_THRESHOLD", 0.30)
+        
+        print(f"🚀 Inicializando VideoProcessorOpenCV (MobileNetSSD)...")
+        print(f"   - Models dir: {models_dir}")
+        print(f"   - Confidence: {confidence}, IOU: {iou_threshold}")
         
         # Callback para reportar progreso de carga
         def loading_progress_callback(stage: str, message: str, progress: int):
@@ -105,14 +112,14 @@ def run_video_analysis_standalone(analysis_id: int):
             send_log(analysis_id, f"{message}")
         
         processor = VideoProcessor(
-            model_path=str(settings.YOLO_MODEL_PATH),
-            confidence_threshold=0.5,
-            iou_threshold=0.45,
+            model_path=str(models_dir),
+            confidence_threshold=confidence,
+            iou_threshold=iou_threshold,
             progress_callback=loading_progress_callback,
         )
         
-        print(f"✅ VideoProcessor inicializado completamente (YOLOv8 + EasyOCR cargados)")
-        send_log(analysis_id, "✅ Iniciando procesamiento de video...")
+        print(f"✅ VideoProcessorOpenCV inicializado (MobileNetSSD 3-5x más rápido)")
+        send_log(analysis_id, "✅ MobileNetSSD + HaarCascade + PaddleOCR listos - Iniciando procesamiento...")
         
         # 4. Definir callbacks
         frame_count = [0]  # Usar lista para poder modificar en closure
@@ -143,25 +150,26 @@ def run_video_analysis_standalone(analysis_id: int):
             # Dibujar detecciones en el frame
             annotated_frame = processor.draw_detections(frame, detections)
             
-            # 🚀 OPTIMIZACIÓN CRÍTICA: Enviar solo cada 2 frames para mayor fluidez
-            # Esto reduce el ancho de banda en 50% sin pérdida de calidad visual
-            if frame_count[0] % 2 == 0:
-                # Quality 60 para máxima velocidad (ya se redimensiona internamente)
-                frame_base64 = processor.encode_frame_to_base64(annotated_frame, quality=60)
-                
-                # Log primer frame para confirmar envío
-                if frame_count[0] == 4:
-                    print(f"🚀 Primer frame enviado a WebSocket (frame #{frame_count[0]})")
-                
-                send_websocket_event(
-                    analysis_id,
-                    "frame_update",
-                    {
-                        "frame_number": frame_count[0],
-                        "frame_data": frame_base64,
-                        "detections_count": len(detections),
-                    },
-                )
+            # 🚀 MÁXIMA FLUIDEZ: Enviar CADA frame procesado
+            # Con resolución reducida (800px) y calidad 45 = ~40KB por frame
+            # 30 FPS procesado → 30 FPS mostrado (ULTRA FLUIDO en UI)
+            # Quality 45 para máxima velocidad (compensado por menor resolución)
+            frame_base64 = processor.encode_frame_to_base64(annotated_frame, quality=45)
+            
+            # Log primer frame para confirmar envío
+            if frame_count[0] == 1:
+                print(f"🚀 Primer frame enviado a WebSocket (frame #{frame_count[0]})")
+                print(f"   Configuración: 800px, calidad 45, CADA frame")
+            
+            send_websocket_event(
+                analysis_id,
+                "frame_update",
+                {
+                    "frame_number": frame_count[0],
+                    "frame_data": frame_base64,
+                    "detections_count": len(detections),
+                },
+            )
             
             # Enviar detecciones de vehículos
             for detection in detections:
