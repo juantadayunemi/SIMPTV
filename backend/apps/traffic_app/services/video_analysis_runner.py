@@ -3,6 +3,7 @@ Video Analysis Runner - Ejecuta procesamiento sin Celery
 Versión standalone que envía eventos por WebSocket directamente
 
 ACTUALIZADO: Ahora usa VideoProcessorOpenCV (MobileNetSSD + HaarCascade + PaddleOCR)
+OPTIMIZADO: Sistema de control para detener análisis cuando se cambia de cámara
 """
 
 import os
@@ -17,6 +18,7 @@ from asgiref.sync import async_to_sync
 
 from ..models import TrafficAnalysis, Vehicle, VehicleFrame
 from .video_processor_opencv import VideoProcessorOpenCV as VideoProcessor
+from .analysis_manager import get_analysis_manager
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,8 @@ def run_video_analysis_standalone(analysis_id: int):
     Ejecuta análisis de video COMPLETO sin Celery
     Esta versión se ejecuta en un thread de Django directamente
     
+    ✅ CON CONTROL DE STOP: Puede ser detenido cuando se cambia de cámara
+    
     Args:
         analysis_id: ID del análisis a procesar
     """
@@ -61,6 +65,14 @@ def run_video_analysis_standalone(analysis_id: int):
     print(f"🎬 STANDALONE: Iniciando análisis {analysis_id}")
     print(f"{'='*60}\n")
     logger.info(f"🎬 STANDALONE: Iniciando análisis {analysis_id}")
+    
+    # 🎯 REGISTRAR en AnalysisManager (detendrá análisis anteriores)
+    manager = get_analysis_manager()
+    import threading
+    current_thread = threading.current_thread()
+    control = manager.start_analysis(analysis_id, current_thread)
+    
+    print(f"✅ Análisis {analysis_id} registrado. Análisis activos: {manager.get_active_count()}")
     
     try:
         # 1. Cargar análisis
@@ -141,6 +153,11 @@ def run_video_analysis_standalone(analysis_id: int):
         
         def frame_callback(frame, detections: list):
             """Callback para cada frame procesado"""
+            # 🛑 VERIFICAR STOP_FLAG antes de procesar
+            if control.should_stop():
+                print(f"🛑 Análisis {analysis_id} detenido por stop_flag en frame {frame_count[0]}")
+                raise StopIteration("Análisis detenido por cambio de cámara")
+            
             frame_count[0] += 1
             
             # Log cada 30 frames para no saturar
@@ -150,26 +167,27 @@ def run_video_analysis_standalone(analysis_id: int):
             # Dibujar detecciones en el frame
             annotated_frame = processor.draw_detections(frame, detections)
             
-            # 🚀 MÁXIMA FLUIDEZ: Enviar CADA frame procesado
-            # Con resolución reducida (800px) y calidad 45 = ~40KB por frame
-            # 30 FPS procesado → 30 FPS mostrado (ULTRA FLUIDO en UI)
-            # Quality 45 para máxima velocidad (compensado por menor resolución)
-            frame_base64 = processor.encode_frame_to_base64(annotated_frame, quality=45)
-            
-            # Log primer frame para confirmar envío
-            if frame_count[0] == 1:
-                print(f"🚀 Primer frame enviado a WebSocket (frame #{frame_count[0]})")
-                print(f"   Configuración: 800px, calidad 45, CADA frame")
-            
-            send_websocket_event(
-                analysis_id,
-                "frame_update",
-                {
-                    "frame_number": frame_count[0],
-                    "frame_data": frame_base64,
-                    "detections_count": len(detections),
-                },
-            )
+            # 🚀 OPTIMIZACIÓN: Enviar frames cada 2 frames para mejor fluidez
+            # Esto reduce el envío de datos por WebSocket a la mitad
+            # Frames procesados: 30 FPS → Frames enviados: 15 FPS (más que suficiente)
+            if frame_count[0] % 2 == 0:
+                # Quality 40 para mejor compresión (balance calidad/tamaño)
+                frame_base64 = processor.encode_frame_to_base64(annotated_frame, quality=40)
+                
+                # Log primer frame para confirmar envío
+                if frame_count[0] == 2:
+                    print(f"🚀 Enviando frames al WebSocket (cada 2 frames)")
+                    print(f"   Configuración: 800px, calidad 40, cada 2 frames")
+                
+                send_websocket_event(
+                    analysis_id,
+                    "frame_update",
+                    {
+                        "frame_number": frame_count[0],
+                        "frame_data": frame_base64,
+                        "detections_count": len(detections),
+                    },
+                )
             
             # Enviar detecciones de vehículos
             for detection in detections:
@@ -210,19 +228,33 @@ def run_video_analysis_standalone(analysis_id: int):
         print(f"\n🎬 Iniciando procesamiento de video...")
         print(f"   - Video: {video_full_path}")
         print(f"   - Callbacks configurados: progress ✅, frame ✅")
+        print(f"   - Control: stop_flag habilitado ✅")
         send_log(analysis_id, "🎬 Iniciando procesamiento de video...")
         
-        stats = processor.process_video(
-            video_source=video_full_path,
-            progress_callback=progress_callback,
-            frame_callback=frame_callback,
-        )
-        
-        print(f"\n✅ Procesamiento completado: {stats['processed_frames']} frames")
-        send_log(
-            analysis_id, 
-            f"✅ Procesamiento completado: {stats['processed_frames']} frames"
-        )
+        try:
+            stats = processor.process_video(
+                video_source=video_full_path,
+                progress_callback=progress_callback,
+                frame_callback=frame_callback,
+            )
+            
+            print(f"\n✅ Procesamiento completado: {stats['processed_frames']} frames")
+            send_log(
+                analysis_id, 
+                f"✅ Procesamiento completado: {stats['processed_frames']} frames"
+            )
+        except StopIteration as e:
+            # ✅ Análisis detenido intencionalmente
+            print(f"🛑 Análisis {analysis_id} detenido: {e}")
+            send_log(analysis_id, f"🛑 Análisis detenido: {e}", "warning")
+            
+            # Actualizar análisis como pausado
+            analysis.status = "PAUSED"
+            analysis.save(update_fields=["status"])
+            
+            # Limpiar del manager
+            manager.complete_analysis(analysis_id)
+            return  # ← Salir sin error
         
         # 6. Guardar vehículos en DB
         send_log(analysis_id, "💾 Guardando vehículos en base de datos...")
@@ -271,6 +303,13 @@ def run_video_analysis_standalone(analysis_id: int):
         
         logger.info(f"✅ STANDALONE: Análisis {analysis_id} completado exitosamente")
         
+        # ✅ Marcar análisis como completado y limpiar del manager
+        manager.complete_analysis(analysis_id)
+        
+    except StopIteration as stop_error:
+        # ✅ Análisis detenido intencionalmente - ya manejado en el callback
+        logger.info(f"🛑 Análisis {analysis_id} detenido intencionalmente")
+        
     except Exception as e:
         logger.error(f"❌ STANDALONE: Error en análisis {analysis_id}: {e}")
         import traceback
@@ -294,3 +333,6 @@ def run_video_analysis_standalone(analysis_id: int):
             )
         except:
             pass
+        
+        # ✅ Limpiar del manager incluso si hay error
+        manager.complete_analysis(analysis_id)

@@ -72,6 +72,7 @@ export interface CameraEntity {
   // Video asignado a esta cámara
   currentVideoPath?: string; // @db:varchar(500) - Ruta del video actualmente asignado a esta cámara
   currentAnalysisId?: number; // @db:foreignKey TrafficAnalysis @db:int - FK al análisis activo de esta cámara
+  thumbnailPath?: string; // @db:varchar(500) - Ruta del thumbnail (primer frame del video)
   
   notes?: string; // @db:text - Notas adicionales (puede incluir historial de ubicaciones si necesario)
   createdAt: Date; // @db:datetime - Fecha de creación

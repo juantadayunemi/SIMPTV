@@ -74,10 +74,9 @@ export const TrafficAnalysisPage: React.FC = () => {
 
   // WebSocket connection cleanup
   useEffect(() => {
-    const ws = getWebSocketService();
-    
     return () => {
-      ws.disconnect();
+      // ✅ La limpieza se hará cuando se desmonte el análisis específico
+      // No necesitamos limpiar aquí porque cada análisis tiene su propia instancia
     };
   }, []);
 
@@ -105,8 +104,8 @@ export const TrafficAnalysisPage: React.FC = () => {
       const newAnalysisId = response.id;
       setAnalysisId(newAnalysisId);
 
-      // Connect to WebSocket
-      const ws = getWebSocketService();
+      // ✅ Conectar usando instancia específica para este análisis
+      const ws = getWebSocketService(newAnalysisId);
       await ws.connect(newAnalysisId);
 
       // Subscribe to progress updates

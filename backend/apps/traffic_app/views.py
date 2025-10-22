@@ -12,6 +12,7 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.db.models import Avg, Sum, Count
 from django.utils import timezone
+from django.http import FileResponse, Http404
 import os
 
 from .models import Location, Camera, TrafficAnalysis, Vehicle, VehicleFrame
@@ -109,6 +110,30 @@ class CameraViewSet(viewsets.ModelViewSet):
         analyses = TrafficAnalysis.objects.filter(cameraId=camera)
         serializer = TrafficAnalysisListSerializer(analyses, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=["get"])
+    def thumbnail(self, request, pk=None):
+        """
+        Obtener thumbnail del video de una cámara
+        GET /api/traffic/cameras/{id}/thumbnail/
+        """
+        camera = self.get_object()
+        
+        # Verificar si tiene thumbnail
+        if not camera.thumbnailPath or not os.path.exists(camera.thumbnailPath):
+            # Si tiene video pero no thumbnail, generarlo ahora
+            if camera.currentVideoPath and os.path.exists(camera.currentVideoPath):
+                from .utils.thumbnail_generator import generate_video_thumbnail
+                thumb_path = generate_video_thumbnail(camera.currentVideoPath)
+                if thumb_path:
+                    camera.thumbnailPath = thumb_path
+                    camera.save(update_fields=['thumbnailPath'])
+                    return FileResponse(open(thumb_path, 'rb'), content_type='image/jpeg')
+            
+            raise Http404("Thumbnail not found for this camera")
+        
+        # Servir thumbnail existente
+        return FileResponse(open(camera.thumbnailPath, 'rb'), content_type='image/jpeg')
 
     def update(self, request, *args, **kwargs):
         """Actualizar configuración de cámara (PUT completo)"""
@@ -749,10 +774,18 @@ def analyze_video_endpoint(request):
 
         # 🔄 ACTUALIZAR CÁMARA: Asignar video y análisis actual
         if camera_id:
+            # Generar thumbnail del video
+            from .utils.thumbnail_generator import generate_video_thumbnail
+            full_video_path = default_storage.path(video_path)
+            thumbnail_path = generate_video_thumbnail(full_video_path)
+            
             camera.currentVideoPath = video_path
             camera.currentAnalysisId_id = analysis.id
             camera.status = "ACTIVE"  # Marcar como activa con video
-            camera.save(update_fields=["currentVideoPath", "currentAnalysisId_id", "status", "updatedAt"])
+            if thumbnail_path:
+                camera.thumbnailPath = thumbnail_path
+                print(f"✅ Thumbnail generado para cámara {camera_id}: {thumbnail_path}")
+            camera.save(update_fields=["currentVideoPath", "currentAnalysisId_id", "status", "thumbnailPath", "updatedAt"])
             print(f"✅ Cámara actualizada: ID={camera.id}, Video={video_path}, Analysis={analysis.id}")
 
         # 🎬 Lanzar procesamiento DIRECTO (sin Celery)

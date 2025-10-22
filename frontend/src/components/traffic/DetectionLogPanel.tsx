@@ -58,12 +58,35 @@ export const DetectionLogPanel: React.FC<DetectionLogPanelProps> = ({
   return (
     <div 
       ref={logRef}
-      className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-64 overflow-y-auto"
+      className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-y-auto"
       style={{
+        height: '400px', // Altura fija más grande que antes (antes 256px)
         scrollBehavior: 'smooth',
-        fontFamily: 'Consolas, Monaco, "Courier New", monospace'
+        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+        // Scrollbar personalizado (webkit)
+        scrollbarWidth: 'thin' as const,
+        scrollbarColor: '#4B5563 #1F2937'
       }}
     >
+      <style>{`
+        /* Scrollbar personalizado para Webkit (Chrome, Safari, Edge) */
+        .bg-gray-900::-webkit-scrollbar {
+          width: 10px;
+        }
+        .bg-gray-900::-webkit-scrollbar-track {
+          background: #1F2937;
+          border-radius: 5px;
+        }
+        .bg-gray-900::-webkit-scrollbar-thumb {
+          background: #4B5563;
+          border-radius: 5px;
+          border: 2px solid #1F2937;
+        }
+        .bg-gray-900::-webkit-scrollbar-thumb:hover {
+          background: #6B7280;
+        }
+      `}</style>
+      
       {displayedDetections.length === 0 ? (
         <div className="text-gray-500 text-center py-8">
           Esperando detecciones...

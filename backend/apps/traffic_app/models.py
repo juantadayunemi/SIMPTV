@@ -63,6 +63,16 @@ class Camera(CameraEntity):
         help_text="Ruta del video actualmente asignado a esta cámara"
     )
     
+    # Thumbnail del video (primer frame)
+    thumbnailPath = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        db_column="thumbnailPath",
+        verbose_name="Video Thumbnail",
+        help_text="Ruta del thumbnail (primer frame del video)"
+    )
+    
     # Análisis activo de esta cámara
     currentAnalysisId = models.ForeignKey(
         'TrafficAnalysis',

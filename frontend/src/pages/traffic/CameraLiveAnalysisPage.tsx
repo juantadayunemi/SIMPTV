@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Camera, Play, Pause, RotateCcw } from 'lucide-react';
 import { trafficService } from '../../services/traffic.service';
 import { CameraEntity } from '@traffic-analysis/shared';
-import { getWebSocketService } from '../../services/websocket.service';
+import { getWebSocketService, cleanupWebSocketService } from '../../services/websocket.service';
 import { DetectionLogPanel } from '../../components/traffic/DetectionLogPanel';
 import type { RealtimeDetectionEvent } from '@traffic-analysis/shared';
 
@@ -75,7 +75,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   useEffect(() => {
     if (!analysisId) return;
 
-    const wsService = getWebSocketService();
+    // ✅ Obtener instancia específica para este análisis (no compartida)
+    const wsService = getWebSocketService(analysisId);
     const unsubscribers: Array<() => void> = [];
 
     const connectWebSocket = async () => {
@@ -215,9 +216,11 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
     connectWebSocket();
 
+    // ✅ Cleanup: desconectar y limpiar instancia al desmontar
     return () => {
       unsubscribers.forEach(unsub => unsub());
       wsService.disconnect();
+      cleanupWebSocketService(analysisId); // ✅ Limpiar instancia del Map
     };
   }, [analysisId]);
 
@@ -319,7 +322,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     }
 
     try {
-      const wsService = getWebSocketService();
+      // ✅ Usar instancia específica para este análisis
+      const wsService = getWebSocketService(analysisId);
       await wsService.connect(analysisId);
       setIsConnected(true);
       console.log('Reconectado a WebSocket');
@@ -588,67 +592,65 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
           {/* Info Panel */}
           <div className="bg-gray-900 text-white rounded-lg p-6 shadow-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Camera Info */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-400">UBICACIÓN:</span>
-                  <span className="font-mono">{location?.description || 'INSIV-001'}</span>
-                </div>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-400">INICIO:</span>
-                  <span className="font-mono">
-                    {liveData.startTime || new Date().toLocaleString('es-EC', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }).replace(',', ':')}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-400">TIEMPO:</span>
-                  <span className="font-mono">
-                    {(() => {
-                      const hours = Math.floor(liveData.elapsedSeconds / 3600);
-                      const minutes = Math.floor((liveData.elapsedSeconds % 3600) / 60);
-                      const secs = liveData.elapsedSeconds % 60;
-                      return `${hours}h${minutes}m${secs}s`;
-                    })()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">ELMENT. CONTADO:</span>
-                  <span className="font-mono">{liveData.vehicleCount}</span>
-                </div>
+            {/* Camera Info - Compacto arriba */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-700">
+              <div className="flex flex-col">
+                <span className="text-gray-400 text-xs mb-1">UBICACIÓN</span>
+                <span className="font-mono text-sm">{location?.description || 'INSIV-001'}</span>
               </div>
+              <div className="flex flex-col">
+                <span className="text-gray-400 text-xs mb-1">INICIO</span>
+                <span className="font-mono text-sm">
+                  {liveData.startTime || new Date().toLocaleString('es-EC', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }).replace(',', ':')}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-gray-400 text-xs mb-1">TIEMPO</span>
+                <span className="font-mono text-sm">
+                  {(() => {
+                    const hours = Math.floor(liveData.elapsedSeconds / 3600);
+                    const minutes = Math.floor((liveData.elapsedSeconds % 3600) / 60);
+                    const secs = liveData.elapsedSeconds % 60;
+                    return `${hours}h${minutes}m${secs}s`;
+                  })()}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-gray-400 text-xs mb-1">ELEM. CONTADO</span>
+                <span className="font-mono text-sm">{liveData.vehicleCount}</span>
+              </div>
+            </div>
 
-              {/* Logs en tiempo real */}
-              <div className="h-40">
-                {/* Barra de progreso de carga */}
-                {isLoadingModels && (
-                  <div className="mb-4 p-4 bg-blue-900 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-blue-200">⏳ {loadingMessage}</span>
-                      <span className="text-sm font-mono text-blue-200">{loadingProgress}%</span>
-                    </div>
-                    <div className="w-full bg-blue-950 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${loadingProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-blue-300 mt-2">
-                      {loadingProgress < 30 ? 'Cargando modelo YOLOv8...' : 
-                       loadingProgress < 100 ? 'Cargando PaddleOCR (rápido - 5-10 seg)...' : 
-                       'Listo para procesar ✓'}
-                    </p>
+            {/* Logs en tiempo real - Panel más grande */}
+            <div className="flex flex-col h-full">
+              {/* Barra de progreso de carga */}
+              {isLoadingModels && (
+                <div className="mb-4 p-4 bg-blue-900 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-blue-200">⏳ {loadingMessage}</span>
+                    <span className="text-sm font-mono text-blue-200">{loadingProgress}%</span>
                   </div>
-                )}
-                
-                <DetectionLogPanel detections={detections} />
-              </div>
+                  <div className="w-full bg-blue-950 rounded-full h-2.5">
+                    <div 
+                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${loadingProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-blue-300 mt-2">
+                    {loadingProgress < 30 ? 'Cargando modelo YOLOv8...' : 
+                     loadingProgress < 100 ? 'Cargando PaddleOCR (rápido - 5-10 seg)...' : 
+                     'Listo para procesar ✓'}
+                  </p>
+                </div>
+              )}
+              
+              <DetectionLogPanel detections={detections} />
             </div>
           </div>
         </div>

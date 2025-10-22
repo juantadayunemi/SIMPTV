@@ -216,9 +216,9 @@ class VideoProcessorOpenCV:
         print("🔤 PaddleOCR se cargará automáticamente al detectar primera placa")
         print("✅ Sistema OCR listo (PaddleOCR)")
         
-        # Reportar progreso: Todo cargado
+        # Reportar progreso: Todo cargado (100%)
         if self.progress_callback:
-            self.progress_callback("all_loaded", "✓ Sistema completo cargado y listo", 80)
+            self.progress_callback("all_loaded", "✓ Sistema completo cargado y listo", 100)
 
         # Estadísticas de procesamiento
         self.total_frames = 0
@@ -714,22 +714,17 @@ class VideoProcessorOpenCV:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # 🚀 OPTIMIZACIÓN: Ajustar process_every_n_frames basado en FPS del video
-        # Para videos de 60 FPS, procesar cada 3 frames = 20 FPS efectivo
-        # Para videos de 30 FPS, procesar cada 1 frame = 30 FPS efectivo
-        if fps >= 50:  # Videos de 60 FPS
-            process_every_n_frames = 2  # 60/2 = 30 FPS (FLUIDO)
-            print(f"🎯 Video de alta velocidad ({fps} FPS) - Procesando a 30 FPS (fluido)")
-        elif fps >= 40:
-            process_every_n_frames = 1  # Procesar todo para fluidez
-        else:
-            process_every_n_frames = 1  # 30 FPS o menos, procesar todo
+        # ✅ SIEMPRE PROCESAR TODOS LOS FRAMES para máxima precisión
+        # La fluidez se controla enviando solo algunos frames al WebSocket (en runner)
+        # NUNCA saltar frames = máxima detección de vehículos y placas
+        process_every_n_frames = 1  # ← FORZADO: procesar TODOS los frames
         
         print(f"�🎬 Procesando video:")
         print(f"   - Resolución: {width}x{height}")
         print(f"   - FPS original: {fps}")
         print(f"   - Frames totales: {total_frames}")
-        print(f"   - 🚀 Procesando cada {process_every_n_frames} frames (~{fps//process_every_n_frames} FPS efectivo)")
+        print(f"   - ✅ Procesando TODOS los frames (máxima detección)")
+        print(f"   - 📤 WebSocket: cada 2 frames (controlado en runner)")
         
         # Configurar escritura de video si se especifica
         writer = None
@@ -745,6 +740,13 @@ class VideoProcessorOpenCV:
         
         self.processing_active = True
         start_time = time.time()
+        
+        # ⏱️ Control de timing para simular FPS real del video
+        # Esto evita que procese demasiado rápido y pierda frames/detecciones
+        frame_delay = 1.0 / fps if fps > 0 else 0.033  # Tiempo entre frames (segundos)
+        next_frame_time = time.time()
+        
+        print(f"⏱️ Control de timing: {frame_delay*1000:.1f}ms entre frames ({fps} FPS)")
         
         try:
             while cap.isOpened() and self.processing_active:
@@ -841,6 +843,14 @@ class VideoProcessorOpenCV:
                     writer.write(frame)
                 
                 frame_count += 1
+                
+                # ⏱️ CONTROL DE VELOCIDAD: Esperar para simular FPS real
+                # Esto evita que procese a velocidad máxima CPU y pierda calidad
+                current_time = time.time()
+                if current_time < next_frame_time:
+                    sleep_time = next_frame_time - current_time
+                    time.sleep(sleep_time)
+                next_frame_time += frame_delay
                 
         finally:
             cap.release()

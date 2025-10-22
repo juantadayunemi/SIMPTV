@@ -70,6 +70,13 @@ const CamerasPage: React.FC = () => {
         // Buscar el último análisis de esta cámara (por ahora no filtramos por cameraId porque TrafficAnalysis no lo tiene)
         const lastAnalysis = analyses.length > 0 ? analyses[0] : undefined;
         
+        // 🔍 DEBUG: Ver thumbnailPath
+        console.log(`📷 Cámara ${camera.id} (${camera.name}):`, {
+          thumbnailPath: camera.thumbnailPath,
+          currentVideoPath: camera.currentVideoPath,
+          status: camera.status
+        });
+        
         // Convertir status del backend (string) al tipo StatusCameraKey
         // El backend devuelve: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
         let status: StatusCameraKey = StatusCameraKey.INACTIVE;
@@ -97,7 +104,10 @@ const CamerasPage: React.FC = () => {
           notes: camera.notes,
           createdAt: new Date(camera.createdAt),
           updatedAt: new Date(camera.updatedAt),
-          lastAnalysis: lastAnalysis
+          lastAnalysis: lastAnalysis,
+          currentVideoPath: camera.currentVideoPath, // 🆕 Incluir video path
+          currentAnalysisId: camera.currentAnalysisId, // 🆕 Incluir análisis actual
+          thumbnailPath: camera.thumbnailPath // 🆕 Incluir thumbnail
         };
       });
 
@@ -247,10 +257,10 @@ const CamerasPage: React.FC = () => {
       }
     });
 
-    // Usar analysisId real generado para la sesión de análisis
-    const ws = getWebSocketService();
+    // ✅ Usar instancia específica para este análisis
+    const ws = getWebSocketService(analysisId);
     wsRef.current = ws;
-  ws.connect(analysisId).then(() => {
+    ws.connect(analysisId).then(() => {
       // Escuchar progreso de análisis
       ws.on('progress_update', (data: ProgressUpdate) => {
         setLiveAnalysis(prev => ({
@@ -452,6 +462,10 @@ const CamerasPage: React.FC = () => {
               <div
                 key={camera.id}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => {
+                  // Redirigir a la página de la cámara
+                  navigate(`/camera/${camera.id}`);
+                }}
               >
                 {/* Camera Feed Placeholder */}
                 <div className="aspect-video bg-gray-900 relative">
@@ -464,13 +478,43 @@ const CamerasPage: React.FC = () => {
                       muted
                       className="w-full h-full object-cover"
                     />
+                  ) : (camera.thumbnailPath || camera.currentVideoPath) ? (
+                    /* Thumbnail del video - Intentar cargar aunque no tenga thumbnailPath guardado */
+                    <>
+                      <img
+                        src={`http://localhost:8001/api/traffic/cameras/${camera.id}/thumbnail/`}
+                        alt={`Preview ${camera.name}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Si falla cargar el thumbnail, mostrar placeholder genérico
+                          console.warn(`❌ Error cargando thumbnail para cámara ${camera.id}`);
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.parentElement?.querySelector('.thumbnail-fallback');
+                          if (fallback) {
+                            fallback.classList.remove('hidden');
+                          }
+                        }}
+                        onLoad={() => {
+                          console.log(`✅ Thumbnail cargado para cámara ${camera.id}`);
+                        }}
+                      />
+                      {/* Fallback si thumbnail falla al cargar */}
+                      <div className="thumbnail-fallback hidden absolute inset-0 flex items-center justify-center bg-gray-900">
+                        <div className="text-center text-white">
+                          <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm opacity-75">
+                            {camera.status === StatusCameraKey.ACTIVE ? 'Video cargado' : 'Sin preview'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
                   ) : (
-                    /* Placeholder */
+                    /* Placeholder genérico - No hay video */
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center text-white">
                         <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p className="text-sm opacity-75">
-                          {camera.status === StatusCameraKey.ACTIVE ? 'Transmisión en vivo' : 'Sin señal'}
+                          {camera.status === StatusCameraKey.ACTIVE ? 'Transmisión en vivo' : 'Sin video'}
                         </p>
                       </div>
                     </div>
@@ -512,12 +556,15 @@ const CamerasPage: React.FC = () => {
                         {camera.location}
                       </p>
                     </div>
-                    <CameraMenuDropdown
-                      onConnectPath={() => handleConnectPath(camera)}
-                      onConnectUrl={() => handleConnectUrl(camera)}
-                      onConnectCamera={() => handleConnectCamera(camera)}
-                      onConfigure={() => handleEditCamera(camera)}
-                    />
+                    {/* Prevenir propagación del click en el menú */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <CameraMenuDropdown
+                        onConnectPath={() => handleConnectPath(camera)}
+                        onConnectUrl={() => handleConnectUrl(camera)}
+                        onConnectCamera={() => handleConnectCamera(camera)}
+                        onConfigure={() => handleEditCamera(camera)}
+                      />
+                    </div>
                   </div>
 
                   {/* Mostrar estadísticas solo para cámaras ACTIVAS */}
