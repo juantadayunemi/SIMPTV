@@ -54,7 +54,7 @@ def add_to_date(date, days=0, months=0, years=0) -> date:
     return pd.to_datetime(date).date() + period_change
 
 
-def convert_datetime(date, hour, minute, second=0):
+def convert_datetime(date, hour, minute, second=0) -> datetime:
     """
     Convierte valores separados de fecha y hora en un objeto datetime.
 
@@ -69,3 +69,27 @@ def convert_datetime(date, hour, minute, second=0):
     """
 
     return datetime.strptime(f"{date} {hour}:{minute}:{second}", "%Y-%m-%d %H:%M:%S")
+
+
+def previous_periods(date, period_type: str) -> date:
+    """
+    Obtiene la fecha correspondiente al periodo anterior basado en el tipo de periodo especificado.
+
+    Args:
+        date (date): Fecha base.
+        period_type (str): Tipo de periodo ('yearly', 'monthly', 'daily').
+
+    Returns:
+        date: Fecha del periodo anterior.
+    """
+    periods = {
+        "yearly": {"years": -1},
+        "monthly": {"months": -1},
+        "daily": {"days": -1},
+    }
+    if period_type in periods:
+        return add_to_date(date, **periods[period_type])
+    else:
+        raise ValueError(
+            "Tipo de periodo no válido. Use 'yearly', 'monthly' o 'daily'."
+        )

@@ -27,6 +27,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Styles
 import './App.css';
+import { ToastProvider } from './components/ui/ToastContainer';
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +61,7 @@ const App: React.FC = () => {
   }
 
   return (
+    <ToastProvider>
     <Router>
       <div className="App min-h-screen bg-gray-50">
         <Routes>
@@ -146,6 +148,7 @@ const App: React.FC = () => {
         </Routes>
       </div>
     </Router>
+    </ToastProvider>
   );
 };
 

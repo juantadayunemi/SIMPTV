@@ -24,10 +24,15 @@ def get_forecast_by_date(forecast, target_datetime: datetime) -> pd.DataFrame:
         si existen (trend, seasonality, holidays, etc.).
 
     """
-    filtered = forecast.loc[forecast["ds"] == target_datetime]
-    if not filtered.empty:
-        return filtered.iloc[0]
-    return None
+    print("target datetime: ", target_datetime)
+
+    # nearest_row = forecast.loc[forecast["ds"] == target_datetime]
+    # if nearest_row.empty:
+    #     return None
+    forecast["diff"] = (forecast["ds"] - target_datetime).abs()
+    nearest_row = forecast.loc[forecast["diff"].idxmin()]
+
+    return nearest_row
 
 
 def get_total_seasonality(row, columns_name=("weekly", "yearly", "daily")) -> float:
@@ -70,12 +75,14 @@ def get_previous_forecast(forecast, previous_date, yhat, trend) -> json:
     resp = {}
     columns = [("yhat", yhat), ("trend", trend)]
     row = get_forecast_by_date(forecast, previous_date)
+    if row is None:
+        return None
 
     for key, value in columns:
         previous_value = row[key]
-        print(f"Previous values '{key}': {previous_value}")
-        resp[key] = calculate_previous_growth_decrease(value, previous_value)
-        print(f">>>>>>{key} = {resp[key]}")
+        resp[key + "_change"] = calculate_previous_growth_decrease(
+            value, previous_value
+        )
 
     return resp
 
