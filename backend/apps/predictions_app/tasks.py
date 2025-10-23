@@ -27,7 +27,7 @@ def aggregate_prediction_data():
 
     # Determinar desde dónde comenzar a procesar
     if not last_prediction:
-        # CASO 1: Primera ejecución - buscar el primer vehículo registrado
+        # 1: Primera ejecución - buscar el primer vehículo registrado
         first_vehicle = Vehicle.objects.order_by("firstDetectedAt").first()
 
         if not first_vehicle:
@@ -38,7 +38,7 @@ def aggregate_prediction_data():
         start_time = _round_to_block_start(first_vehicle.firstDetectedAt)
         logger.info(f"Primera ejecución. Iniciando desde: {start_time}")
     else:
-        # CASO 2: Ya hay datos procesados - comenzar desde el siguiente bloque
+        # 2: Ya hay datos procesados - comenzar desde el siguiente bloque
         start_time = _round_to_block_start(last_prediction) + timedelta(minutes=10)
         logger.info(f"Continuando desde último bloque: {start_time}")
 
