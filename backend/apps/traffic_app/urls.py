@@ -1,6 +1,7 @@
 """
 URLs para Traffic Analysis App
 Rutas REST para análisis de tráfico vehicular
+D:\\TrafiSmart\\backend\\apps\\traffic_app
 """
 
 from django.urls import path, include

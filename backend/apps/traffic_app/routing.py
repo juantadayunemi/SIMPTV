@@ -1,6 +1,7 @@
 """
 WebSocket Routing para Traffic App
 Define las rutas WebSocket para actualizaciones en tiempo real
+D:\\TrafiSmart\\backend\\apps\\traffic_app
 """
 
 from django.urls import re_path

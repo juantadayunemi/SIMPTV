@@ -1,25 +1,18 @@
-"""
-Celery Configuration for TrafiSmart
-Manejo de tareas asíncronas para procesamiento de video
-"""
-
+# config/celery.py
 import os
 from celery import Celery
 
-# Set default Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+# Establece el módulo de configuración de Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-# Create Celery app
-app = Celery("trafismart")
+app = Celery('config')
 
-# Load config from Django settings (namespace='CELERY')
-app.config_from_object("django.conf:settings", namespace="CELERY")
+# Lee la configuración desde settings.py con el prefijo CELERY_
+app.config_from_object('django.conf:settings', namespace='CELERY')
 
-# Auto-discover tasks in all installed apps
+# Autodescubre tareas en todas las apps instaladas
 app.autodiscover_tasks()
 
-
-@app.task(bind=True, ignore_result=True)
+@app.task(bind=True)
 def debug_task(self):
-    """Debug task for testing Celery"""
-    print(f"Request: {self.request!r}")
+    print(f'Request: {self.request!r}')

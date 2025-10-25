@@ -129,7 +129,7 @@ class Vehicle(VehicleEntity):
     trafficAnalysisId = models.ForeignKey(
         TrafficAnalysis,
         on_delete=models.CASCADE,
-        related_name="vehicles",
+        related_name="vehicles",  # Relación inversa explícita
         db_column="trafficAnalysisId",
         verbose_name="Traffic Analysis",
     )

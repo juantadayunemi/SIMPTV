@@ -191,7 +191,7 @@ export const RealTimeAnalysisPage: React.FC = () => {
             <VideoPlayerWithOverlay
               videoFile={selectedVideo}
               analysisId={analysisId}
-              wsUrl={import.meta.env.VITE_WS_URL || 'localhost:8001'}
+              wsUrl={import.meta.env.VITE_WS_URL || 'localhost:8000'}
             />
           </div>
         )}

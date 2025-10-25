@@ -171,73 +171,87 @@ class TrafficService {
     return response.data;
   }
 
-  // Upload video in chunks with real-time analysis
-  async uploadVideoInChunks(
-    file: File,
-    cameraId: number,
-    locationId: number,
-    userId: number,
-    weatherConditions: string = '',
-    onProgress?: (progress: number, message: string) => void,
-    onChunkComplete?: (chunkIndex: number, response: any) => void
-  ): Promise<{ analysisId: string; finalResponse: any }> {
-    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    const analysisId = crypto.randomUUID(); // Generate unique analysis ID
+  
+/**
+ * Método actualizado para traffic.service.ts
+ */
 
-    onProgress?.(0, `Iniciando subida de ${totalChunks} chunks...`);
-
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-      const start = chunkIndex * CHUNK_SIZE;
-      const end = Math.min(start + CHUNK_SIZE, file.size);
-      const chunk = file.slice(start, end);
-
-      const formData = new FormData();
+async uploadVideoInChunks(
+  videoFile: File,
+  cameraId: number,
+  locationId: number,
+  userId: number,
+  onProgress: (progress: number, message: string) => void,
+  onChunkComplete: (chunkIndex: number, response: any) => void
+): Promise<{ analysisId: string; totalChunks: number }> {
+  const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB por chunk
+  const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE);
+  
+  console.log(`📦 Subiendo video: ${videoFile.name} (${(videoFile.size / (1024 * 1024)).toFixed(2)} MB)`);
+  console.log(`📦 Total chunks: ${totalChunks}`);
+  
+  let analysisId: string | null = null;
+  
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const start = chunkIndex * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, videoFile.size);
+    const chunk = videoFile.slice(start, end);
+    
+    const formData = new FormData();
+    formData.append('chunk', chunk);
+    formData.append('chunkIndex', chunkIndex.toString());
+    formData.append('totalChunks', totalChunks.toString());
+    formData.append('fileName', videoFile.name);
+    formData.append('cameraId', cameraId.toString());
+    formData.append('locationId', locationId.toString());
+    formData.append('userId', userId.toString());
+    
+    // Incluir analysisId después del primer chunk
+    if (analysisId) {
       formData.append('analysisId', analysisId);
-      formData.append('chunkIndex', chunkIndex.toString());
-      formData.append('totalChunks', totalChunks.toString());
-      formData.append('file', chunk, `chunk_${chunkIndex}.mp4`);
-      formData.append('cameraId', cameraId.toString());
-      formData.append('locationId', locationId.toString());
-      formData.append('userId', userId.toString());
-      formData.append('weatherConditions', weatherConditions);
-
-      try {
-        const response = await api.post('/api/traffic/upload-chunk/', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-        const message = chunkIndex === 0 
-          ? 'Primer chunk enviado - análisis iniciado!' 
-          : `Chunk ${chunkIndex + 1}/${totalChunks} completado`;
-
-        onProgress?.(progress, message);
-        onChunkComplete?.(chunkIndex, response.data);
-
-        // Small delay between chunks to avoid overwhelming the server
-        if (chunkIndex < totalChunks - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-      } catch (error) {
-        console.error(`Error uploading chunk ${chunkIndex}:`, error);
-        throw new Error(`Failed to upload chunk ${chunkIndex}: ${error}`);
-      }
     }
-
-    // Get final analysis status
+    
     try {
-      const finalResponse = await this.getAnalysis(analysisId);
-      onProgress?.(100, 'Análisis completado!');
-      return { analysisId, finalResponse };
+      const response = await api.post('/api/traffic/upload-chunk/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Guardar analysisId del primer chunk
+  
+      if (chunkIndex === 0 && response.data.analysisId) {
+        analysisId = response.data.analysisId;
+        console.log(`✅ TrafficAnalysis creado: ID=${analysisId}`);
+      }
+      
+      // Calcular progreso
+      const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+      onProgress(progress, `Chunk ${chunkIndex + 1}/${totalChunks} subido`);
+      
+      onChunkComplete(chunkIndex, response.data);
+      
+      console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} subido (${progress}%)`);
+      
     } catch (error) {
-      console.warn('Could not get final analysis status:', error);
-      return { analysisId, finalResponse: null };
+      console.error(`❌ Error subiendo chunk ${chunkIndex}:`, error);
+      throw error;
     }
   }
+  
+  if (!analysisId) {
+    throw new Error('No se pudo obtener el ID del análisis');
+  }
+  
+  console.log(`✅ Upload completo: analysisId=${analysisId}`);
+  
+  return {
+    analysisId,
+    totalChunks
+  };
+}
+
+
 
   // Get all traffic analyses
   async getAnalyses(params?: {

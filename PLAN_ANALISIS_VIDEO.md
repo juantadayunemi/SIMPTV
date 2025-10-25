@@ -31,7 +31,7 @@ Este documento describe el plan completo para implementar el sistema de análisi
 interface VideoPlayerProps {
   videoFile: File;        // Archivo de video local
   analysisId: string;     // ID del análisis
-  wsUrl: string;          // URL del WebSocket (localhost:8001)
+  wsUrl: string;          // URL del WebSocket (localhost:8000)
 }
 ```
 

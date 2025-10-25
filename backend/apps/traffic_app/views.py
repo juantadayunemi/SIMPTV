@@ -24,7 +24,7 @@ from .serializers import (
     VehicleFrameSerializer,
     CreateTrafficAnalysisSerializer,
 )
-from .tasks import process_video_analysis
+from .tasks import analyze_video_async
 from rest_framework.decorators import api_view, parser_classes
 
 
@@ -299,7 +299,7 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
 
         try:
             # Lanzar tarea de Celery
-            task = process_video_analysis.delay(analysis.id)
+            task = analyze_video_async.delay(analysis.id)
 
             # Actualizar estado
             analysis.status = "PROCESSING"
@@ -568,7 +568,7 @@ def analyze_video_endpoint(request):
 
         # Lanzar tarea de Celery para procesamiento
         video_full_path = os.path.join(default_storage.location, video_path)
-        task = process_video_analysis.delay(analysis.id)
+        task = analyze_video_async.delay(analysis.id, video_full_path)
 
         print(f"✅ Celery task iniciado: {task.id}")
 

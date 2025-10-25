@@ -72,7 +72,6 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
         cameraId,
         locationId,
         userId,
-        '', // weatherConditions - opcional
         (progress, message) => {
           setProgress(progress);
           console.log(`Progress: ${progress}% - ${message}`);
@@ -82,20 +81,20 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
         }
       );
 
-      console.log('Upload completed:', result);
+      console.log('Carga completada:', result);
       setIsProcessing(false);
       setSelectedFile(null);
       onPlay(selectedFile, parseInt(result.analysisId));
       onClose();
 
     } catch (err) {
-      console.error('Error uploading video:', err);
-      alert('Error subiendo el video en chunks.');
+      console.error('Error al subir el video:', err);
+      alert('Error al subir el video en fragmentos.');
       setIsProcessing(false);
     }
   };
 
-  // Si el modal se cierra manualmente, cancela la subida simulada
+  // Si el modal se cierra manualmente, cancela la subida
   const handleClose = () => {
     uploadRef.current.cancel = true;
     setIsProcessing(false);
@@ -108,7 +107,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+        {/* Encabezado */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Conectar Video</h2>
@@ -123,9 +122,9 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
           </button>
         </div>
 
-        {/* Content */}
+        {/* Contenido */}
         <div className="p-6 space-y-6">
-          {/* Drag & Drop Area */}
+          {/* Área de arrastrar y soltar */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -161,7 +160,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
             </label>
           </div>
 
-          {/* Selected File Info */}
+          {/* Información del archivo seleccionado */}
           {selectedFile && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
@@ -189,7 +188,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
                 <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-900">
-                    Subiendo video por chunks y analizando en tiempo real...
+                    Subiendo video y analizando en tiempo real...
                   </p>
                   <div className="w-full bg-blue-100 rounded-full h-2 mt-2">
                     <div
@@ -204,7 +203,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Pie de página */}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={handleClose}

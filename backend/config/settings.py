@@ -35,7 +35,7 @@ DEBUG = config("DEBUG", default=True, cast=bool)
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default="127.0.0.1,localhost",
+    default="*",
     cast=lambda v: [s.strip() for s in v.split(",")],
 )
 
@@ -160,7 +160,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "es-es"
-TIME_ZONE = "America/Mexico_City"
+TIME_ZONE = "America/Guayaquil"
 USE_I18N = True
 USE_TZ = True
 
@@ -358,17 +358,13 @@ EMAIL_FROM = config("EMAIL_FROM", default="TrafiSmart <noreply@trafismart.com>")
 # ==============================================================================
 # CELERY CONFIGURATION (Async Task Processing)
 # ==============================================================================
-
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = config(
-    "CELERY_RESULT_BACKEND", default="redis://localhost:6379/0"
-)
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Guayaquil'
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # ==============================================================================
 # CHANNELS CONFIGURATION (WebSocket)
@@ -376,14 +372,32 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
 
 ASGI_APPLICATION = "config.asgi.application"
 
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [config("REDIS_URL", default="redis://localhost:6379/1")],
+            "hosts": [("127.0.0.1", 6379)],
         },
     },
 }
+
+# Cache con Redis para uploads chunked
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels.layers.InMemoryChannelLayer',
+#     },
+# }
 
 # ==============================================================================
 # VIDEO PROCESSING CONFIGURATION
@@ -417,4 +431,4 @@ STREAM_TIMEOUT = 10  # seconds
 
 # Frontend URL for email links
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5174")
-LOGO_URL = os.getenv('LOGO_URL', 'https://via.placeholder.com/80')
+LOGO_URL = os.getenv("LOGO_URL", "https://via.placeholder.com/80")

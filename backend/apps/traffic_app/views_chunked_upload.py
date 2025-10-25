@@ -1,410 +1,262 @@
-print("[DEBUG] views_chunked_upload.py importado correctamente")
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.conf import settings
+"""
+API REST para subida de video por chunks
+Backend API-only (sin vistas HTML)
+"""
+
 from django.utils import timezone
-from django.db import transaction
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+from django.core.files.storage import default_storage
+from django.conf import settings
 import os
-import json
+import logging
+import traceback
 
-# ⚠️ Importar TrafficAnalysis solo cuando se usa, para evitar referencias circulares
+from .serializers import (
+    TrafficAnalysisSerializer,
+    CameraSerializer,
+    LocationSerializer
+)
 
-CHUNKS_DIR = os.path.join(settings.MEDIA_ROOT, "temp_uploads")
-UUID_MAPPING_FILE = os.path.join(CHUNKS_DIR, "uuid_mapping.json")
+logger = logging.getLogger(__name__)
+
+
+class TrafficAnalysisViewSet(viewsets.ModelViewSet):
+    """
+    API ViewSet para análisis de tráfico
+    Expone endpoints REST para CRUD de análisis
+    """
+    
+    from .models import TrafficAnalysis;
+    queryset = TrafficAnalysis.objects.all()
+    serializer_class = TrafficAnalysisSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_video(self, request):
+        """
+        POST /api/traffic/analysis/upload_video/
+        Subir video completo y iniciar análisis
+        """
+        try:
+            video_file = request.FILES.get('video')
+            camera_id = request.data.get('cameraId')
+            location_id = request.data.get('locationId')
+            user_id = request.data.get('userId', 1)
+
+            if not video_file:
+                return Response(
+                    {'error': 'No se proporcionó ningún video'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not camera_id and not location_id:
+                return Response(
+                    {'error': 'Debe proporcionar cameraId o locationId'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Guardar video
+            video_path = default_storage.save(
+                f'videos/{video_file.name}',
+                video_file
+            )
+            full_video_path = os.path.join(settings.MEDIA_ROOT, video_path)
+
+            # Crear análisis
+            analysis_data = {
+                'userId': user_id,
+                'status': 'PENDING',
+            }
+
+            if camera_id:
+                analysis_data['cameraId'] = camera_id
+            if location_id:
+                analysis_data['locationId'] = location_id
+
+            serializer = self.get_serializer(data=analysis_data)
+            serializer.is_valid(raise_exception=True)
+            analysis = serializer.save(videoPath=full_video_path)
+
+            # Iniciar análisis asíncrono
+            analyze_video_realtime.delay(analysis.id, full_video_path)
+
+            logger.info(f"✅ Análisis {analysis.id} creado - Video: {video_file.name}")
+
+            return Response(
+                {
+                    'id': analysis.id,
+                    'status': 'PENDING',
+                    'message': 'Video subido correctamente. Análisis en progreso...'
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Error en upload_video: {str(e)}", exc_info=True)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TrafficChunkedUploadView(APIView):
-    def __init__(self, *args, **kwargs):
-        print("[DEBUG] TrafficChunkedUploadView inicializada")
-        super().__init__(*args, **kwargs)
-
-    def _load_uuid_mapping(self):
-        """Carga el mapping de UUIDs a IDs de análisis"""
-        try:
-            if os.path.exists(UUID_MAPPING_FILE):
-                with open(UUID_MAPPING_FILE, 'r') as f:
-                    return json.load(f)
-            return {}
-        except Exception as e:
-            print(f"[UUID_MAPPING] Error cargando mapping: {e}")
-            return {}
-
-    def _save_uuid_mapping(self, mapping):
-        """Guarda el mapping de UUIDs a IDs de análisis"""
-        try:
-            os.makedirs(os.path.dirname(UUID_MAPPING_FILE), exist_ok=True)
-            with open(UUID_MAPPING_FILE, 'w') as f:
-                json.dump(mapping, f)
-        except Exception as e:
-            print(f"[UUID_MAPPING] Error guardando mapping: {e}")
-
-    def _get_or_create_analysis(self, analysis_id, camera_id, location_id, user_id, weather, chunk_index):
-        """Obtiene o crea análisis según el chunk_index"""
-        from .models import TrafficAnalysis
-
-        # Cargar mapping existente
-        uuid_mapping = self._load_uuid_mapping()
-
-        if chunk_index == 0:
-            # PRIMER CHUNK: Crear nuevo análisis
-            with transaction.atomic():
-                header = TrafficAnalysis.objects.create(
-                    cameraId_id=camera_id,
-                    locationId_id=location_id,
-                    userId=user_id,
-                    startedAt=timezone.now(),
-                    status="UPLOADING",
-                    densityLevel="",
-                    weatherConditions=weather,
-                )
-
-                # Guardar mapping UUID -> ID
-                uuid_mapping[analysis_id] = header.id
-                self._save_uuid_mapping(uuid_mapping)
-
-                print(f"[UPLOAD] Creado nuevo TrafficAnalysis: ID={header.id} (UUID: {analysis_id})")
-                return header
-
-        else:
-            # CHUNKS SIGUIENTES: Buscar análisis existente
-            if analysis_id not in uuid_mapping:
-                raise ValueError(f"No se encontró análisis para UUID: {analysis_id}")
-
-            analysis_db_id = uuid_mapping[analysis_id]
-            try:
-                header = TrafficAnalysis.objects.get(id=analysis_db_id)
-                print(f"[UPLOAD] Usando TrafficAnalysis existente: ID={header.id} (UUID: {analysis_id})")
-                return header
-            except TrafficAnalysis.DoesNotExist:
-                raise ValueError(f"Análisis no encontrado en DB: ID={analysis_db_id}")
-
-    def _start_incremental_analysis(self, header, chunk_path, chunk_index):
-        """🚀 Inicia análisis incremental apenas llega el primer chunk"""
-        print(f"[INCREMENTAL] Iniciando análisis con primer chunk: {chunk_path}")
-
-        # Actualizar estado
-        header.status = "ANALYZING"
-        header.save(update_fields=["status"])
-
-        # Crear video temporal con el primer chunk
-        temp_video_path = os.path.join(
-            os.path.dirname(chunk_path), f"temp_{header.id}.mp4"
-        )
-        try:
-            # Copiar el primer chunk como video temporal
-            import shutil
-
-            shutil.copy2(chunk_path, temp_video_path)
-            print(f"[INCREMENTAL] Video temporal creado: {temp_video_path}")
-
-            # Lanzar tarea de análisis incremental
-            self._launch_incremental_analysis_task(header, temp_video_path, chunk_index)
-
-        except Exception as e:
-            print(f"[INCREMENTAL][ERROR] Error creando video temporal: {e}")
-
-    def _continue_incremental_analysis(self, header, chunk_path, chunk_index):
-        """📈 Continúa análisis incremental con chunks adicionales"""
-        print(
-            f"[INCREMENTAL] Continuando análisis con chunk {chunk_index}: {chunk_path}"
-        )
-
-        # Crear video temporal actualizado
-        temp_video_path = os.path.join(
-            os.path.dirname(chunk_path), f"temp_{header.id}.mp4"
-        )
-
-        try:
-            # Agregar chunk al video temporal (simplificado - en producción usar ffmpeg)
-            with open(temp_video_path, "ab") as temp_file:
-                with open(chunk_path, "rb") as chunk_file:
-                    temp_file.write(chunk_file.read())
-            print(f"[INCREMENTAL] Chunk {chunk_index} agregado al video temporal")
-
-            # Actualizar progreso del análisis
-            self._update_incremental_analysis(header, temp_video_path, chunk_index)
-
-        except Exception as e:
-            print(f"[INCREMENTAL][ERROR] Error actualizando video temporal: {e}")
-
-    def _launch_incremental_analysis_task(self, header, temp_video_path, chunk_index):
-        """Lanza tarea de análisis incremental"""
-        try:
-            print(f"[INCREMENTAL] Lanzando tarea de análisis para {header.id}")
-
-            # Importar task de manera lazy
-            from .tasks import process_incremental_video_analysis
-
-            # Lanzar tarea con flag incremental
-            task = process_incremental_video_analysis.delay(
-                header.id, temp_video_path, chunk_index, is_first_chunk=True
-            )
-
-            print(f"[INCREMENTAL] Tarea lanzada: {task.id}")
-
-            # Notificar vía WebSocket
-            self._notify_incremental_progress(
-                header, chunk_index, "analysis_started", task.id
-            )
-
-        except Exception as e:
-            print(f"[INCREMENTAL][ERROR] Error lanzando tarea: {e}")
-
-    def _update_incremental_analysis(self, header, temp_video_path, chunk_index):
-        """Actualiza análisis incremental con nuevo chunk"""
-        try:
-            # Importar task de manera lazy
-            from .tasks import process_incremental_video_analysis
-
-            # Lanzar tarea de actualización
-            task = process_incremental_video_analysis.delay(
-                header.id, temp_video_path, chunk_index, is_first_chunk=False
-            )
-
-            print(f"[INCREMENTAL] Tarea de actualización lanzada: {task.id}")
-
-            # Notificar progreso
-            self._notify_incremental_progress(
-                header, chunk_index, "chunk_processed", task.id
-            )
-
-        except Exception as e:
-            print(f"[INCREMENTAL][ERROR] Error actualizando análisis: {e}")
-
-    def _notify_incremental_progress(
-        self, header, chunk_index, event_type, task_id=None
-    ):
-        """Notifica progreso del análisis incremental vía WebSocket"""
-        try:
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
-
-            channel_layer = get_channel_layer()
-            if channel_layer:
-                group = f"traffic_analysis_{header.id}"
-                message = {
-                    "type": "incremental_analysis_update",
-                    "data": {
-                        "analysisId": str(header.id),
-                        "event": event_type,
-                        "chunkIndex": chunk_index,
-                        "taskId": task_id,
-                        "timestamp": timezone.now().isoformat(),
-                    },
-                }
-
-                async_to_sync(channel_layer.group_send)(group, message)
-                print(f"[WS] Notificación incremental enviada: {event_type}")
-
-        except Exception as e:
-            print(f"[WS][ERROR] Error enviando notificación incremental: {e}")
-
     """
-    Endpoint para subida de video por chunks y disparo de análisis en paralelo.
-    
+    API REST endpoint para subida por chunks
     POST /api/traffic/upload-chunk/
     
-    Body (multipart/form-data):
-    - analysisId: UUID del análisis
-    - chunkIndex: Índice del chunk actual (0-based)
-    - totalChunks: Total de chunks del archivo
-    - file: Chunk binario del archivo
-    - cameraId: ID de la cámara
-    - locationId: ID de la ubicación
-    - userId: ID del usuario
-    - weatherConditions: (opcional) Condiciones climáticas
+    Este es un endpoint JSON puro para tu frontend React
     """
+    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        from .models import TrafficAnalysis
-
-        print("[CHUNKED_UPLOAD] --- NUEVA PETICIÓN ---")
-        print(f"[CHUNKED_UPLOAD] request.data: {dict(request.data)}")
-        print(f"[CHUNKED_UPLOAD] request.FILES: {request.FILES}")
-
-        # Extraer parámetros
-        analysis_id = request.data.get("analysisId")
-        chunk_index = request.data.get("chunkIndex")
-        total_chunks = request.data.get("totalChunks")
-        file_obj = request.FILES.get("file")
-        camera_id = request.data.get("cameraId")
-        location_id = request.data.get("locationId")
-        user_id = request.data.get("userId")
-        weather = request.data.get("weatherConditions", "")
-
-        print(
-            f"[CHUNKED_UPLOAD] analysisId={analysis_id}, chunkIndex={chunk_index}, totalChunks={total_chunks}, file={file_obj}, cameraId={camera_id}, locationId={location_id}, userId={user_id}, weather={weather}"
-        )
-
-        # Validación de tipos
+        """
+        Recibe chunks del video desde React frontend
+        Retorna JSON con el progreso
+        """
+        from .models import TrafficAnalysis;
+        from .tasks import analyze_video_async;
+        from apps.entities.constants.traffic import ANALYSIS_STATUS
         try:
-            chunk_index = int(chunk_index) if chunk_index is not None else None
-            total_chunks = int(total_chunks) if total_chunks is not None else None
-            print(
-                f"[CHUNKED_UPLOAD] chunk_index (int)={chunk_index}, total_chunks (int)={total_chunks}"
-            )
-        except (TypeError, ValueError) as e:
-            print(f"[CHUNKED_UPLOAD][ERROR] chunkIndex/totalChunks inválidos: {e}")
-            return Response(
-                {
-                    "error": f"chunkIndex y totalChunks deben ser números válidos: {str(e)}"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Extraer datos del request
+            analysis_id: int = -1
+            analysis: TrafficAnalysis 
+            
+            chunk = request.FILES.get('chunk')
+            chunk_index = int(request.data.get('chunkIndex', 0))
+            total_chunks = int(request.data.get('totalChunks', 1))
+            file_name = request.data.get('fileName')
+            camera_id = request.data.get('cameraId')
+            location_id = request.data.get('locationId')
+            user_id = request.data.get('userId', 1)
+            analysis_id = request.data.get('analysisId', -1)      
 
-        # Validación de campos requeridos
-        if not all([analysis_id, file_obj, chunk_index is not None, total_chunks]):
-            print(f"[CHUNKED_UPLOAD][ERROR] Faltan campos requeridos")
-            return Response(
-                {
-                    "error": "Faltan campos requeridos",
-                    "required": ["analysisId", "file", "chunkIndex", "totalChunks"],
-                    "received": {
-                        "analysisId": bool(analysis_id),
-                        "file": bool(file_obj),
-                        "chunkIndex": chunk_index is not None,
-                        "totalChunks": bool(total_chunks),
-                    },
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            logger.info(f"📦 Recibido chunk {chunk_index + 1}/{total_chunks} - {file_name}")
 
-        # Validar que chunkIndex esté en rango
-        if chunk_index < 0 or chunk_index >= total_chunks:
-            print(
-                f"[CHUNKED_UPLOAD][ERROR] chunkIndex fuera de rango: {chunk_index} de {total_chunks}"
-            )
-            return Response(
-                {
-                    "error": f"chunkIndex {chunk_index} fuera de rango [0, {total_chunks-1}]"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Crear directorio para chunks
-        chunk_dir = os.path.join(CHUNKS_DIR, str(analysis_id))
-        try:
-            os.makedirs(chunk_dir, exist_ok=True)
-            print(f"[CHUNKED_UPLOAD] Directorio de chunks: {chunk_dir}")
-        except OSError as e:
-            print(f"[CHUNKED_UPLOAD][ERROR] No se pudo crear directorio: {e}")
-            return Response(
-                {"error": f"No se pudo crear directorio de chunks: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Guardar chunk
-        chunk_path = os.path.join(chunk_dir, f"chunk_{chunk_index:05d}")
-        try:
-            with open(chunk_path, "wb") as f:
-                for chunk in file_obj.chunks():
-                    f.write(chunk)
-            print(f"[CHUNKED_UPLOAD] Chunk guardado en: {chunk_path}")
-        except Exception as e:
-            print(f"[CHUNKED_UPLOAD][ERROR] Error guardando chunk: {e}")
-            return Response(
-                {"error": f"Error guardando chunk: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Crear o actualizar registro de análisis
-        try:
-            header = self._get_or_create_analysis(
-                analysis_id, camera_id, location_id, user_id, weather, chunk_index
-            )
-
-            if chunk_index == 0:
-                # 🚀 PRIMER CHUNK: Lanzar análisis inmediato
-                self._start_incremental_analysis(header, chunk_path, chunk_index)
-            else:
-                # � CHUNKS SIGUIENTES: Continuar análisis incremental
-                self._continue_incremental_analysis(header, chunk_path, chunk_index)
-
-        except Exception as e:
-            print(f"[CHUNKED_UPLOAD][ERROR] Error creando/obteniendo análisis: {e}")
-            # Limpiar chunk si falla la creación del análisis
-            if os.path.exists(chunk_path):
-                os.remove(chunk_path)
-            return Response(
-                {"error": f"Error creando/obteniendo análisis: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Si NO es el último chunk, retornar confirmación
-        if chunk_index + 1 < total_chunks:
-            progress_percent = round((chunk_index + 1) / total_chunks * 100, 2)
-            return Response(
-                {
-                    "message": "Chunk uploaded successfully",
-                    "chunkIndex": chunk_index,
-                    "analysisId": str(analysis_id),
-                    "progress": progress_percent,
-                    "chunksReceived": chunk_index + 1,
-                    "totalChunks": total_chunks,
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        # ============================================
-        # LÓGICA MODIFICADA: Procesamiento incremental continuo
-        # ============================================
-
-        # Si es el último chunk, finalizar análisis y ensamblar video completo
-        if chunk_index + 1 == total_chunks:
-            print(
-                f"[UPLOAD] Último chunk recibido ({chunk_index+1}/{total_chunks}), finalizando análisis y ensamblando video"
-            )
-
-            try:
-                # Finalizar análisis incremental
-                header.status = "COMPLETED"
-                header.endedAt = timezone.now()
-                header.save(update_fields=["status", "endedAt"])
-
-                # Ensamblar video completo
-                final_video_path = os.path.join(
-                    settings.MEDIA_ROOT, "traffic_videos", f"final_{analysis_id}.mp4"
-                )
-                print(f"[UPLOAD] Ensamblando video final: {final_video_path}")
-
-                # Aquí iría la lógica real de ensamblado de video
-                # Por simplicidad, copiamos el último video temporal como final
-                temp_video_path = os.path.join(chunk_dir, f"temp_{header.id}.mp4")
-                if os.path.exists(temp_video_path):
-                    import shutil
-
-                    os.makedirs(os.path.dirname(final_video_path), exist_ok=True)
-                    shutil.copy2(temp_video_path, final_video_path)
-                    header.videoPath = final_video_path
-                    header.save(update_fields=["videoPath"])
-
-                print(f"[UPLOAD] Análisis completado exitosamente")
-
-            except Exception as e:
-                print(f"[CHUNKED_UPLOAD][ERROR] Error finalizando análisis: {e}")
-                header.status = "ERROR"
-                header.errorMessage = str(e)
-                header.save(update_fields=["status", "errorMessage"])
+            # Validación
+            if not chunk or not file_name:
                 return Response(
-                    {"error": f"Error finalizando análisis: {str(e)}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    {'error': 'Chunk o nombre de archivo no proporcionado'},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Respuesta exitosa
-        response_data = {
-            "message": (
-                "Chunk uploaded and analysis progressing"
-                if chunk_index + 1 < total_chunks
-                else "Upload complete, analysis finished"
-            ),
-            "analysisId": str(analysis_id),
-            "chunkIndex": chunk_index,
-            "progress": round((chunk_index + 1) / total_chunks * 100, 2),
-            "chunksReceived": chunk_index + 1,
-            "totalChunks": total_chunks,
-            "status": header.status,
-            "vehiclesDetected": header.totalVehicles,
-        }
-        print(f"[UPLOAD] Respuesta exitosa: {response_data}")
-        return Response(response_data, status=status.HTTP_200_OK)
+              # Si es el primer chunk y no existe analysis_id -> crear cabecera
+            if chunk_index == 0:
+                analysis_data = {
+                    'userId': user_id,
+                    'status': 'UPLOADING',
+                    'videoPath': '',  # aún no tenemos el video completo
+                    'startedAt': timezone.now(),
+                }
+                if camera_id:
+                    analysis_data['cameraId_id'] = camera_id
+                if location_id:
+                    analysis_data['locationId_id'] = location_id
+
+                analysis = TrafficAnalysis.objects.create(**analysis_data)
+                analysis_id = analysis.id  # 🆕 guardar ID
+
+                logger.info(f"🆕 Cabecera creada - ID: {analysis_id}")
+                
+            # Directorio temporal para chunks
+            chunks_dir = os.path.join(settings.MEDIA_ROOT, 'chunks', file_name)
+            os.makedirs(chunks_dir, exist_ok=True)
+
+            # Guardar chunk en disco
+            chunk_path = os.path.join(chunks_dir, f'chunk_{chunk_index}')
+            with open(chunk_path, 'wb') as f:
+                for data in chunk.chunks():
+                    f.write(data)
+
+            logger.info(f"✅ Chunk {chunk_index + 1}/{total_chunks} guardado")
+
+            # Si es el último chunk, ensamblar video completo
+            if chunk_index == total_chunks - 1:
+                logger.info(f"🔧 Ensamblando {total_chunks} chunks...")
+
+                # Crear video completo
+                video_path = os.path.join(settings.MEDIA_ROOT, 'videos', file_name)
+                os.makedirs(os.path.dirname(video_path), exist_ok=True)
+
+                # Combinar todos los chunks
+                with open(video_path, 'wb') as output_file:
+                    for i in range(total_chunks):
+                        chunk_file_path = os.path.join(chunks_dir, f'chunk_{i}')
+                        with open(chunk_file_path, 'rb') as chunk_file:
+                            output_file.write(chunk_file.read())
+                        os.remove(chunk_file_path)
+
+                # Limpiar directorio temporal
+                os.rmdir(chunks_dir)
+                logger.info(f"✅ Video ensamblado: {video_path}")
+                
+               # ✅ AQUÍ actualizar el análisis con el path del VIDEO FINAL
+                try:
+                    analysis = TrafficAnalysis.objects.get(id=analysis_id)
+                    analysis.videoPath = video_path 
+                    analysis.status = ANALYSIS_STATUS.PENDING
+                    analysis.save()
+                except TrafficAnalysis.DoesNotExist:
+                    logger.error("❌ Error en upload_chunk", exc_info=True)
+                    traceback.print_exc()
+                    return {"error": "Análisis no encontrado"}
+     
+                # Iniciar análisis asíncrono
+                analyze_video_async.delay(analysis_id, video_path)
+
+                logger.info(f"🚀 Análisis iniciado - ID: {analysis_id}")
+
+                # Respuesta JSON para React
+                return Response(
+                    {
+                        'success': True,
+                        'message': 'Video completo subido y análisis iniciado',
+                        'analysisId': str(analysis_id),
+                        'chunkIndex': chunk_index,
+                        'complete': True,
+                        'totalChunks': total_chunks
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+
+            # Respuesta para chunks intermedios
+            return Response(
+                {
+                    'success': True,
+                    'message': f'Chunk {chunk_index + 1}/{total_chunks} recibido',
+                    'chunkIndex': chunk_index,
+                    'totalChunks': total_chunks,
+                    'complete': False,
+                    'analysisId': str(analysis_id)  
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error("❌ Error en upload_chunk", exc_info=True)
+            # Además imprime la traza en consola (útil en desarrollo)
+            traceback.print_exc()
+            print("Detalles del error:", e)
+            return Response(
+                {'success': False, 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+class CameraViewSet(viewsets.ModelViewSet):
+    """API REST para cámaras"""
+    from .models import Camera;
+    queryset = Camera.objects.all()
+    serializer_class = CameraSerializer
+
+
+class LocationViewSet(viewsets.ModelViewSet):
+    """API REST para ubicaciones"""
+    from .models import Location;
+    queryset = Location.objects.all()
+    serializer_class = LocationSerializer

@@ -8,7 +8,8 @@ export type WebSocketMessageType =
   | 'vehicle_detected'
   | 'processing_complete'
   | 'processing_error'
-  | 'log_message';
+  | 'log_message'
+  | 'frame_processed';
 
 export interface WebSocketMessage {
   type: WebSocketMessageType;
@@ -61,9 +62,7 @@ export class TrafficWebSocketService {
       this.analysisId = analysisId;
       
       // Construir URL del WebSocket
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = import.meta.env.VITE_WS_URL || 'localhost:8001';
-      const wsUrl = `${protocol}//${host}/ws/traffic/analysis/${analysisId}/`;
+      const wsUrl = `${import.meta.env.VITE_WS_URL}/ws/traffic/analysis/${analysisId}/`;
 
       console.log(`🔌 Conectando a WebSocket: ${wsUrl}`);
 
@@ -128,6 +127,7 @@ export class TrafficWebSocketService {
    * Manejar mensaje recibido del WebSocket
    */
   private handleMessage(message: WebSocketMessage): void {
+    console.log(`📨 Mensaje recibido VVVVVVVVVV `, message)
     console.log(`📨 Mensaje recibido [${message.type}]:`, message.data);
 
     const handlers = this.handlers.get(message.type);

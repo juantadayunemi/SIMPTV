@@ -1,6 +1,7 @@
 """
 WebSocket Consumer para Traffic Analysis
 Envía actualizaciones en tiempo real durante el procesamiento de video
+D:\\TrafiSmart\\backend\\apps\\traffic_app
 """
 
 import json
@@ -14,7 +15,7 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
     Consumer WebSocket para recibir actualizaciones en tiempo real
     de análisis de tráfico en progreso
 
-    URL: ws://localhost:8000/ws/traffic/analysis/<analysis_id>/
+    URL: ws://localhost:8001/ws/traffic/analysis/<analysis_id>/
     """
 
     async def connect(self):
@@ -42,6 +43,11 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         """Cliente desconecta del WebSocket"""
         # Salir del grupo
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+        # Log para rastrear desconexiones
+        print(
+            f"Cliente desconectado del análisis {self.analysis_id} con código {close_code}"
+        )
 
     async def receive(self, text_data):
         """Recibe mensaje del cliente (no usado actualmente)"""
