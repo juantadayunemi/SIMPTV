@@ -11,6 +11,10 @@ from django.conf import settings
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from sympy import true
+import torch
+import time
+from scipy.spatial import distance
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ def analyze_video_async(self, analysis_id, video_path):
     from ultralytics import YOLO
     from apps.traffic_app.models import TrafficAnalysis, Vehicle, VehicleFrame
 
-    # Capa de canales para WebSocket
+    # Capa de canales para WebSocket - mensajería con el frontend
     channel_layer = get_channel_layer()
     room_group_name = f"traffic_analysis_{analysis_id}"
 
@@ -41,17 +45,30 @@ def analyze_video_async(self, analysis_id, video_path):
 
     try:
         logger.info(f"🧠 Iniciando análisis {analysis_id}")
+ 
+        # Abrir video con openCV
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise Exception(f"No se puede abrir el video: {video_path}")
+        
+        # Verificar disponibilidad de GPU
+        if torch.cuda.is_available():
+            print(f"GPU detectada: {torch.cuda.get_device_name(0)}")
+            print(f"Número de GPUs: {torch.cuda.device_count()}")
+            print(f"Memoria total: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+        else:
+            print("❌ GPU NO DETECTADA")
 
         # Obtener análisis
         try:
             analysis = TrafficAnalysis.objects.get(id=analysis_id)
+            analysis.status = "PROCESSING"
+            analysis.save(update_fields=["status"])
+            
         except TrafficAnalysis.DoesNotExist:
             logger.error(f"❌ Análisis {analysis_id} no encontrado")
             return {"error": "Análisis no encontrado"}
 
-        # Actualizar estado
-        analysis.status = "PROCESSING"
-        analysis.save(update_fields=["status"])
 
         # Notificar inicio
         send_ws("analysis_started", {
@@ -60,21 +77,64 @@ def analyze_video_async(self, analysis_id, video_path):
             "message": "Iniciando análisis...",
         })
 
+
         # Cargar modelo YOLO
         model_path = getattr(settings, "YOLO_MODEL_PATH", "yolov8n.pt")
         model = YOLO(model_path)
         logger.info(f"✅ YOLO cargado: {model_path}")
+        
+        
+         # 🔬 DIAGNÓSTICO: Medir velocidad pura de GPU
+        logger.info("🔬 Prueba de velocidad GPU...")
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 100)  # Ir a frame 100
+        ret, test_frame = cap.read()
+
+        # Calentar GPU
+        for i in range(3):
+            _ = model.predict(test_frame, device=0, imgsz=384, verbose=False)
+        torch.cuda.synchronize()
+
+        # Medir 10 inferencias
+        test_times = []
+        for i in range(10):
+            start = time.time()
+            _ = model.predict(test_frame, device=0, imgsz=384, verbose=False)
+            torch.cuda.synchronize()
+            test_times.append((time.time() - start) * 1000)
+
+        avg_time = sum(test_times) / len(test_times)
+        logger.info(f"⚡ Velocidad GPU pura: {avg_time:.1f}ms/frame")
+        logger.info(f"⚡ FPS teórico: {1000/avg_time:.1f}")
+
+        # Resetear video
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        
+        # 🔥 DIAGNÓSTICO CRÍTICO
+        logger.info(f"🔥 CUDA disponible: {torch.cuda.is_available()}")
+        logger.info(f"🔥 Device actual: {model.device}")
+
+        # ⭐ AGREGAR ESTAS LÍNEAS AQUÍ:
+        if torch.cuda.is_available():
+            model.to('cuda:0')  # 🎯 MOVER MODELO A GPU
+            logger.info(f"✅ Modelo movido a GPU")
+            logger.info(f"✅ Device después: {next(model.model.parameters()).device}")
+            torch.cuda.empty_cache()
+        else:
+            logger.warning("⚠️ GPU no disponible")
+
+        if torch.cuda.is_available():
+            logger.info(f"🔥 GPU: {torch.cuda.get_device_name(0)}")
+            logger.info(f"🔥 CUDA version: {torch.version.cuda}")
+        else:
+            logger.warning(f"⚠️ USANDO CPU - ESTO ES MUY LENTO")
+
 
         send_ws("log_message", {
             "message": f"Modelo YOLO cargado: {model_path}",
             "level": "info",
         })
-
-        # Abrir video
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise Exception(f"No se puede abrir el video: {video_path}")
-
+        
+        
         # Información del video
         fps = int(cap.get(cv2.CAP_PROP_FPS)) or 30
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -88,9 +148,103 @@ def analyze_video_async(self, analysis_id, video_path):
             "level": "info",
         })
 
-        # Configuración de procesamiento
-        SKIP_FRAMES = 2  # Procesar cada 5 frames para mejor rendimiento
-        MIN_FRAMES_TO_SAVE = 10  # Mínimo de frames para guardar un vehículo
+        # Optimizaciones para RTX 3050 (4GB VRAM)
+        next_vehicle_id = 1
+        active_tracks = {}  # {track_id: {'bbox': [x,y,w,h], 'type': str, 'frames_missing': int}}
+        MAX_FRAMES_MISSING = 5  # Máximo frames sin detectar antes de eliminar track
+        IOU_THRESHOLD_TRACKING = 0.3  # IoU mínimo para asociar detección con track
+        SKIP_FRAMES = 3          # Procesar cada 3 frames
+        IMGSZ = 480            # Resolución de entrada [616x346 para 16:9, 608x352 para 16:9, 384x216 para pruebas rápidas]
+        CONF_THRESHOLD = 0.5     # Umbral de confianza
+        IOU_THRESHOLD = 0.45     # IoU para NMS
+        USE_HALF_PRECISION = False  # ✅ CAMBIAR DE OFF A False
+        MIN_FRAMES_TO_SAVE = 10  # Mínimo de frames para guardar vehículo
+        
+        
+        def calculate_iou(box1, box2):
+            """Calcular IoU entre dos bounding boxes [x, y, w, h]"""
+            x1, y1, w1, h1 = box1
+            x2, y2, w2, h2 = box2
+            
+            # Coordenadas de intersección
+            xi1 = max(x1, x2)
+            yi1 = max(y1, y2)
+            xi2 = min(x1 + w1, x2 + w2)
+            yi2 = min(y1 + h1, y2 + h2)
+            
+            # Área de intersección
+            inter_area = max(0, xi2 - xi1) * max(0, yi2 - yi1)
+            
+            # Áreas individuales
+            box1_area = w1 * h1
+            box2_area = w2 * h2
+            
+            # IoU
+            union_area = box1_area + box2_area - inter_area
+            return inter_area / union_area if union_area > 0 else 0
+        
+        
+      
+        def assign_track_ids(detections, active_tracks):
+            """Asignar IDs a detecciones usando tracking simple"""
+            nonlocal next_vehicle_id  # ✅ AGREGAR ESTA LÍNEA AL INICIO
+            
+            assigned_detections = []
+            used_track_ids = set()
+            
+            # Incrementar frames_missing para todos los tracks
+            for track_id in active_tracks:
+                active_tracks[track_id]['frames_missing'] += 1
+            
+            # Para cada detección, buscar el mejor track
+            for det in detections:
+                det_bbox = det['bbox']
+                det_type = det['vehicle_type']
+                best_track_id = None
+                best_iou = IOU_THRESHOLD_TRACKING
+                
+                # Buscar track más cercano del mismo tipo
+                for track_id, track in active_tracks.items():
+                    if track_id in used_track_ids:
+                        continue
+                    if track['type'] != det_type:
+                        continue
+                        
+                    iou = calculate_iou(det_bbox, track['bbox'])
+                    if iou > best_iou:
+                        best_iou = iou
+                        best_track_id = track_id
+                
+                # Asignar track ID
+                if best_track_id is not None:
+                    # Actualizar track existente
+                    active_tracks[best_track_id]['bbox'] = det_bbox
+                    active_tracks[best_track_id]['frames_missing'] = 0
+                    det['track_id'] = best_track_id
+                    used_track_ids.add(best_track_id)
+                else:
+                    # Crear nuevo track
+                    track_id = next_vehicle_id
+                    next_vehicle_id += 1
+                    active_tracks[track_id] = {
+                        'bbox': det_bbox,
+                        'type': det_type,
+                        'frames_missing': 0
+                    }
+                    det['track_id'] = track_id
+                
+                assigned_detections.append(det)
+            
+            # Eliminar tracks perdidos
+            tracks_to_remove = [
+                tid for tid, track in active_tracks.items()
+                if track['frames_missing'] > MAX_FRAMES_MISSING
+            ]
+            for tid in tracks_to_remove:
+                del active_tracks[tid]
+            
+            return assigned_detections
+
 
         frame_count = 0
         last_progress = 0
@@ -107,105 +261,138 @@ def analyze_video_async(self, analysis_id, video_path):
             # Saltar frames para optimizar procesamiento
             if frame_count % SKIP_FRAMES != 0:
                 continue
+            
+            # ====================================================================
+            # DETECCIÓN SIN TRACKING 
+            # ====================================================================
 
+            start_time = time.time()
+            
             timestamp_seconds = frame_count / fps if fps > 0 else 0
 
             # Detección con YOLO
-            results = model.track(
+            results = model.predict(
                 frame,
-                persist=True,
-                conf=0.5,
-                iou=0.45,
-                classes=[2, 3, 5, 7],  # auto, moto, bus, camión
+                conf=CONF_THRESHOLD,
+                iou=IOU_THRESHOLD,
+                classes=[2, 3, 5, 7],
                 verbose=False,
-                imgsz=416,
+                imgsz=IMGSZ,  # Resolución reducida
+                device=0,
+                half=False,
             )
+            
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+                
+            # Opcional: Limpiar caché de CUDA periódicamente
+            if frame_count % 100 == 0 and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                
+            # ✅ CALCULAR TIEMPO
+            yolo_time = (time.time() - start_time) * 1000  # en milisegundos
+            
+            # Reducir frecuencia:
+            if frame_count % 90 == 0:  # Log cada 90 frames
+                logger.info(f"⏱️ YOLO tardó: {yolo_time:.1f}ms en frame {frame_count}")
+                
+                
+                
+            # ====================================================================
+            # PASO 1: PROCESAR DETECCIONES DE YOLO
+            # ====================================================================
+            detections_raw = []
 
-            # Procesar detecciones
-            detections_to_send = []
             if results[0].boxes is not None and len(results[0].boxes) > 0:
                 for box in results[0].boxes:
-                    track_id = int(box.id[0]) if box.id is not None else None
-                    if track_id is None:
-                        continue
-
                     cls = int(box.cls[0])
                     conf = float(box.conf[0])
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-
+                    
                     class_names = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
                     vehicle_type = class_names.get(cls, "unknown")
-
-                    # Calcular bounding box en formato [x, y, ancho, alto]
-                    bbox = [
-                        int(x1),
-                        int(y1),
-                        int(x2 - x1),  # ancho
-                        int(y2 - y1)   # alto
-                    ]
-
-                    # 🚧 DEBUG: Verificar que el bbox es válido
-                    logger.debug(f"🚧 Detección - ID:{track_id} Tipo:{vehicle_type} BBox:{bbox} Conf:{conf:.2f}")
-
-                    # Agregar a lista de detecciones para enviar al frontend
-                    detections_to_send.append({
-                        "track_id": track_id,
+                    
+                    bbox = [int(x1), int(y1), int(x2 - x1), int(y2 - y1)]
+                    
+                    detections_raw.append({
                         "vehicle_type": vehicle_type,
                         "bbox": bbox,
-                        "confidence": round(conf, 4)
-                    })
-
-                    # Guardar en diccionario de vehículos rastreados
-                    if track_id not in tracked_vehicles:
-                        tracked_vehicles[track_id] = {
-                            "type": vehicle_type,
-                            "first_frame": frame_count,
-                            "last_frame": frame_count,
-                            "count": 1,
-                            "confidence_sum": conf,
-                            "frames": [],
-                        }
-                        logger.info(f"🚗 Nuevo {vehicle_type}: ID={track_id}")
-
-                        # Notificar nuevo vehículo detectado
-                        send_ws("vehicle_detected", {
-                            "track_id": track_id,
-                            "vehicle_type": vehicle_type,
-                            "frame": frame_count,
-                            "total_vehicles": len(tracked_vehicles),
-                        })
-                    else:
-                        # Actualizar información del vehículo existente
-                        tracked_vehicles[track_id]["last_frame"] = frame_count
-                        tracked_vehicles[track_id]["count"] += 1
-                        tracked_vehicles[track_id]["confidence_sum"] += conf
-
-                    # Guardar información del frame actual
-                    tracked_vehicles[track_id]["frames"].append({
-                        "frameNumber": frame_count,
-                        "timestamp_seconds": timestamp_seconds,
-                        "boundingBox": {
-                            "x": int(x1),
-                            "y": int(y1),
-                            "width": int(x2 - x1),
-                            "height": int(y2 - y1),
-                        },
                         "confidence": conf,
+                        "x1": int(x1),
+                        "y1": int(y1),
+                        "x2": int(x2),
+                        "y2": int(y2),
                     })
+           
+           
+            # ====================================================================
+            # PASO 2: APLICAR TRACKING MANUAL
+            # ====================================================================
+            detections_to_send = assign_track_ids(detections_raw, active_tracks)
+               
+               
+            # ====================================================================
+            # PASO 3: GUARDAR EN tracked_vehicles
+            # ====================================================================
+            for det in detections_to_send:
+                track_id = det['track_id']
+                vehicle_type = det['vehicle_type']
+                conf = det['confidence']
+                x1, y1 = det['x1'], det['y1']
+                x2, y2 = det['x2'], det['y2']
+                
+                # Guardar en diccionario de vehículos rastreados
+                if track_id not in tracked_vehicles:
+                    tracked_vehicles[track_id] = {
+                        "type": vehicle_type,
+                        "first_frame": frame_count,
+                        "last_frame": frame_count,
+                        "count": 1,
+                        "confidence_sum": conf,
+                        "frames": [],
+                    }
+                    
+                    # Notificar nuevo vehículo detectado
+                    send_ws("vehicle_detected", {
+                        "track_id": track_id,
+                        "vehicle_type": vehicle_type,
+                        "frame": frame_count,
+                        "total_vehicles": len(tracked_vehicles),
+                    })
+                else:
+                    # Actualizar información del vehículo existente
+                    tracked_vehicles[track_id]["last_frame"] = frame_count
+                    tracked_vehicles[track_id]["count"] += 1
+                    tracked_vehicles[track_id]["confidence_sum"] += conf
+                
+                # Guardar información del frame actual
+                tracked_vehicles[track_id]["frames"].append({
+                    "frameNumber": frame_count,
+                    "timestamp_seconds": timestamp_seconds,
+                    "boundingBox": {
+                        "x": x1,
+                        "y": y1,
+                        "width": x2 - x1,
+                        "height": y2 - y1,
+                    },
+                    "confidence": conf,
+                })
 
-            # 🔥 Enviar detecciones del frame actual al frontend cada 3 frames
+
+            # ====================================================================
+            # PASO 4: ENVIAR DETECCIONES AL FRONTEND
+            # ====================================================================
             if detections_to_send and frame_count % 3 == 0:
-                # logger.info(f"📦 Enviando {len(detections_to_send)} detecciones para frame {frame_count} @ {timestamp_seconds:.2f}s")
-    
                 send_ws("frame_processed", {
                     "frame_number": frame_count,
                     "timestamp": round(timestamp_seconds, 2),
                     "detections": detections_to_send,
                 })
-            else:
-                #logger.debug(f"ℹ️ Frame {frame_count}: Sin detecciones")
-                ...
                 
+ 
+            # ====================================================================
+            # PASO 5: ACTUALIZAR PROGRESO
+            # ====================================================================
             # Actualizar progreso cada 5%
             progress = (frame_count / total_frames) * 100
             if progress - last_progress >= 5:
@@ -244,7 +431,8 @@ def analyze_video_async(self, analysis_id, video_path):
                         "bus": bus_count,
                     }
                 })
-
+                
+                
         # Liberar recursos del video
         cap.release()
 
