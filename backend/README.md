@@ -121,7 +121,7 @@ interface UserEntity {
 
 **🚀 Opciones avanzadas:**
 ```bash
-# Generación básica
+# Generación básica  , RECOMENDADO
 python manage.py generate_entities --organized
 
 # Solo entidades, sin tipos

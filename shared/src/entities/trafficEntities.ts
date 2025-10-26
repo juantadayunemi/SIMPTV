@@ -68,6 +68,12 @@ export interface CameraEntity {
   status: StatusCameraKey; // @db:varchar(20) @default(ACTIVE) - Estado de la cámara: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
   lanes: number; // @db:int @default(2) - Número de carriles que cubre (Ej: 2, 4)
   coversBothDirections: boolean; // @default(false) - Si cubre ambas direcciones del tráfico
+
+   // Video asignado a esta cámara
+  currentVideoPath?: string; // @db:varchar(500) - Ruta del video actualmente asignado a esta cámara
+  currentAnalysisId?: number; // @db:foreignKey TrafficAnalysis @db:int - FK al análisis activo de esta cámara
+  thumbnailPath?: string; // @db:varchar(500) - Ruta del thumbnail (primer frame del video)
+  
   notes?: string; // @db:text - Notas adicionales (puede incluir historial de ubicaciones si necesario)
   createdAt: Date; // @db:datetime - Fecha de creación
   updatedAt: Date; // @db:datetime - Fecha de última actualización (se actualiza al mover la cámara)
@@ -100,6 +106,12 @@ export interface TrafficAnalysisEntity {
   avgSpeed?: number; // @db:decimal(6,2) - Velocidad promedio en km/h
   densityLevel: DensityLevelKey; // @db:varchar(10) - Nivel de densidad del tráfico
   
+  // Control de reproducción y análisis en tiempo real
+  isPlaying: boolean; // @default(false) - Si el análisis está en reproducción activa
+  isPaused: boolean; // @default(false) - Si el análisis está pausado
+  currentTimestamp: number; // @db:int @default(0) - Timestamp actual del video en segundos
+  
+
   // Datos adicionales
   weatherConditions?: string; // @db:varchar(100) - Condiciones climáticas (Ej: "Soleado", "Lluvioso")
   analysisData?: string; // @db:text - JSON serializado con datos adicionales del análisis
@@ -130,6 +142,10 @@ export interface VehicleEntity {
   vehicleType: VehicleTypeKey; // @db:varchar(20) - Tipo de vehículo detectado
   confidence: number; // @db:decimal(5,4) - Confianza promedio de la detección (0-1)
   
+  // Placa detectada (OCR)
+  detectedPlate?: string; // @db:varchar(20) - Número de placa detectado por OCR
+  plateConfidence?: number; // @db:decimal(5,4) - Confianza de la detección de placa (0-1)
+
   // Tracking temporal
   firstDetectedAt: Date; // @db:datetime - Primera vez que se detectó
   lastDetectedAt: Date; // @db:datetime - Última vez que se detectó

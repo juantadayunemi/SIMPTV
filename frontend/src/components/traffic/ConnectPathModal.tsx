@@ -66,25 +66,44 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
     uploadRef.current.cancel = false;
 
     try {
-      // Usar el nuevo método de subida por chunks
-      const result = await trafficService.uploadVideoInChunks(
-        selectedFile,
-        cameraId,
-        locationId,
-        userId,
-        (progress, message) => {
-          setProgress(progress);
-          console.log(`Progress: ${progress}% - ${message}`);
-        },
-        (chunkIndex, response) => {
-          console.log(`Chunk ${chunkIndex} uploaded:`, response);
-        }
-      );
 
-      console.log('Carga completada:', result);
+      // Usar el nuevo método de subida por chunks
+      // const result = await trafficService.uploadVideoInChunks(
+      //   selectedFile,
+      //   cameraId,
+      //   locationId,
+      //   userId,
+      //   (progress, message) => {
+      //     setProgress(progress);
+      //     console.log(`Progress: ${progress}% - ${message}`);
+      //   },
+      //   (chunkIndex, response) => {
+      //     console.log(`Chunk ${chunkIndex} uploaded:`, response);
+      //   }
+      // );
+
+
+      // Crear FormData con video y cameraId
+      const formData = new FormData();
+      formData.append('video', selectedFile); // Backend espera 'video', no 'video_file'
+      formData.append('cameraId', cameraId.toString());
+
+      console.log('📤 Subiendo video para cámara:', cameraId);
+      console.log('📦 FormData contenido:', {
+        video: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type,
+        cameraId: cameraId
+      });
+
+      // Subir video y crear análisis
+      const response = await trafficService.startVideoAnalysis(formData);
+      const analysisId = response.id;
+
+      console.log('Carga completada:', response);
       setIsProcessing(false);
       setSelectedFile(null);
-      onPlay(selectedFile, parseInt(result.analysisId));
+      onPlay(selectedFile, analysisId);
       onClose();
 
     } catch (err) {

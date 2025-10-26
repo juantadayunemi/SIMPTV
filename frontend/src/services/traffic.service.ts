@@ -1,4 +1,6 @@
+import { CameraEntity } from '@traffic-analysis/shared';
 import api from './api';
+import { AnalysisStatusKey, DensityLevelKey } from '@shared/types/trafficTypes';
 
 export interface TrafficAnalysis {
   id: string;
@@ -6,7 +8,7 @@ export interface TrafficAnalysis {
   videoPath?: string;
   vehicleCount: number;
   analysisData?: any;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: AnalysisStatusKey;
   createdAt: string;
   plateDetections?: PlateDetection[];
 }
@@ -34,7 +36,7 @@ export interface CreateAnalysisData {
 export interface TrafficPrediction {
   timeSlot: string;
   predictedVehicles: number;
-  densityLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  densityLevel: DensityLevelKey;
   confidence: number;
 }
 
@@ -61,8 +63,6 @@ export interface Location {
   updatedAt: string;
 }
 
-
-
 export interface CreateLocationData {
   description: string;
   latitude: number;
@@ -85,22 +85,6 @@ export interface CreateCameraData {
   notes?: string;
 }
 
-export interface Camera {
-  id: number;
-  name: string;
-  brand?: string;
-  model?: string;
-  resolution?: string;
-  fps?: number;
-  locationId: number;
-  status: string;
-  lanes: number;
-  coversBothDirections: boolean;
-  notes?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 class TrafficService {
   // ============================================
@@ -127,18 +111,18 @@ class TrafficService {
   // CAMERAS
   // ============================================
   
-  async createCamera(data: CreateCameraData): Promise<Camera> {
+  async createCamera(data: CreateCameraData): Promise<CameraEntity> {
     const response = await api.post('/api/traffic/cameras/', data);
     return response.data;
   }
 
-  async getCameras(): Promise<Camera[]> {
+  async getCameras(): Promise<CameraEntity[]> {
     const response = await api.get('/api/traffic/cameras/');
     // DRF devuelve un objeto paginado: { count, next, previous, results }
     return response.data.results || response.data;
   }
 
-  async getCamera(cameraId: number): Promise<Camera> {
+  async getCamera(cameraId: number): Promise<CameraEntity> {
     const response = await api.get(`/api/traffic/cameras/${cameraId}/`);
     return response.data;
   }
@@ -283,6 +267,50 @@ async uploadVideoInChunks(
     return response.data;
   }
 
+   // ============================================
+  // ANALYSIS CONTROL (Play/Pause/Resume)
+  // ============================================
+
+  // Start analysis (iniciar procesamiento)
+  async startAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    task_id: string;
+    status: string;
+    isPlaying: boolean;
+    isPaused: boolean;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/start/`);
+    return response.data;
+  }
+
+   // Pause analysis (pausar procesamiento)
+  async pauseAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    status: string;
+    isPaused: boolean;
+    isPlaying: boolean;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/pause/`);
+    return response.data;
+  }
+
+
+    // Resume analysis (reanudar procesamiento)
+  async resumeAnalysis(analysisId: number): Promise<{
+    message: string;
+    analysis_id: number;
+    task_id: string;
+    status: string;
+    isPaused: boolean;
+    isPlaying: boolean;
+    resumeFrom: number;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/resume/`);
+    return response.data;
+  }
+
   // Get traffic predictions
   async getPredictions(location: string, hoursAhead: number = 24): Promise<{
     location: string;
@@ -316,7 +344,7 @@ async uploadVideoInChunks(
     lanes?: number;
     coversBothDirections?: boolean;
     notes?: string;
-  }>): Promise<Camera> {
+  }>): Promise<CameraEntity> {
     const response = await api.patch(`/api/traffic/cameras/${cameraId}/`, data);
     return response.data;
   }

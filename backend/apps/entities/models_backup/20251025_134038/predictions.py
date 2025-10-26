@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .base import BaseModel
 from ..constants import (
@@ -18,10 +19,10 @@ class PredictionModelEntity(BaseModel):
     features = models.TextField()
     hyperparameters = models.TextField()
     trainingDataPeriod = models.CharField(max_length=50)
-    accuracy = models.DecimalField(max_digits=5, decimal_places=4)
-    mse = models.DecimalField(max_digits=12, decimal_places=6)
-    mae = models.DecimalField(max_digits=12, decimal_places=6)
-    r2Score = models.DecimalField(max_digits=5, decimal_places=4)
+    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
+    mse = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('0'))
+    mae = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('0'))
+    r2Score = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
     trainedAt = models.DateTimeField()
 
     class Meta:
@@ -44,7 +45,7 @@ class ModelTrainingJobEntity(BaseModel):
     trainingLogs = models.TextField(blank=True, null=True)
     errorMessage = models.TextField(blank=True, null=True)
     dataPointsUsed = models.IntegerField(default=0)
-    validationScore = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    validationScore = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -64,7 +65,7 @@ class TrafficPredictionEntity(BaseModel):
     predictionDate = models.DateTimeField()
     predictionHour = models.IntegerField()
     predictedVehicleCount = models.IntegerField(default=0)
-    predictedAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    predictedAvgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0'))
     predictedDensityLevel = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
     predictionHorizon = models.IntegerField()
@@ -91,7 +92,7 @@ class BatchPredictionEntity(BaseModel):
     predictionStartDate = models.DateTimeField()
     predictionEndDate = models.DateTimeField()
     totalPredictions = models.IntegerField(default=0)
-    avgConfidence = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    avgConfidence = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
     status = models.CharField(max_length=20)
     executionTime = models.IntegerField(default=0)
 
@@ -114,10 +115,10 @@ class PredictionAccuracyEntity(BaseModel):
     predictionHorizon = models.IntegerField()
     totalPredictions = models.IntegerField(default=0)
     correctPredictions = models.IntegerField(default=0)
-    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    avgError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
-    maxError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
-    minError = models.DecimalField(max_digits=10, decimal_places=4, default='0')
+    accuracy = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
+    avgError = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('0'))
+    maxError = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('0'))
+    minError = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('0'))
     evaluatedAt = models.DateTimeField()
 
     class Meta:
@@ -139,9 +140,9 @@ class RealTimePredictionEntity(BaseModel):
     next1HourPrediction = models.IntegerField(default=0)
     next6HourPrediction = models.IntegerField(default=0)
     next24HourPrediction = models.IntegerField(default=0)
-    confidence1Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    confidence6Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
-    confidence24Hour = models.DecimalField(max_digits=5, decimal_places=4, default='0')
+    confidence1Hour = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
+    confidence6Hour = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
+    confidence24Hour = models.DecimalField(max_digits=5, decimal_places=4, default=Decimal('0'))
     lastUpdated = models.DateTimeField()
 
     class Meta:

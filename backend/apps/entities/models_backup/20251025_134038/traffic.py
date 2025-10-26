@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from .base import BaseModel
 import uuid
@@ -22,7 +23,7 @@ class TrafficHistoricalDataEntity(BaseModel):
     dayOfWeek = models.IntegerField()
     month = models.IntegerField()
     vehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default='0')
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0'))
     densityLevel = models.CharField(max_length=20)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
     temperature = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
@@ -89,11 +90,8 @@ class CameraEntity(BaseModel):
     status = models.CharField(max_length=20, default='ACTIVE')
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
-    currentVideoPath = models.CharField(max_length=500, blank=True, null=True)
-    currentAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='currentanalysisid_currentanalysis_set', blank=True, null=True)
-    thumbnailPath = models.CharField(max_length=500, blank=True, null=True)
-
     notes = models.TextField(blank=True, null=True)
+
     class Meta:
         abstract = True  # DLL model - inherit in other apps
         verbose_name = "Abstract CameraEntity"
@@ -120,9 +118,6 @@ class TrafficAnalysisEntity(BaseModel):
     totalVehicleCount = models.IntegerField(default=0)
     avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     densityLevel = models.CharField(max_length=10)
-    isPlaying = models.BooleanField(default=False)
-    isPaused = models.BooleanField(default=False)
-    currentTimestamp = models.IntegerField(default=0)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
     analysisData = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20)
@@ -150,8 +145,6 @@ class VehicleEntity(BaseModel):
     trafficAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='trafficanalysisid_trafficanalysis_set')
     vehicleType = models.CharField(max_length=20)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
-    detectedPlate = models.CharField(max_length=20, blank=True, null=True)
-    plateConfidence = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
     firstDetectedAt = models.DateTimeField()
     lastDetectedAt = models.DateTimeField()
     trackingStatus = models.CharField(max_length=20)

@@ -3,6 +3,7 @@ Views y ViewSets para Traffic Analysis App
 Endpoints REST para gestión de análisis de tráfico
 """
 
+from venv import logger
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,7 +13,10 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.db.models import Avg, Sum, Count
 from django.utils import timezone
+from django.conf import settings
 import os
+import logging
+import traceback
 
 from .models import Location, Camera, TrafficAnalysis, Vehicle, VehicleFrame
 from .serializers import (
@@ -275,9 +279,11 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
         Lanza la tarea de Celery para análisis asíncrono
         """
         analysis = self.get_object()
-
+        
+        logger.info(f"🚀 Starting video analysis for ID: {analysis.id}")
+        
         # Validar estado
-        if analysis.status not in ["PENDING", "ERROR"]:
+        if analysis.status not in ["PENDING", "ERROR", "COMPLETED"]:
             return Response(
                 {"error": f"Cannot start analysis in {analysis.status} status"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -299,7 +305,7 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
 
         try:
             # Lanzar tarea de Celery
-            task = analyze_video_async.delay(analysis.id)
+            task = analyze_video_async.delay(analysis.id, video_full_path)
 
             # Actualizar estado
             analysis.status = "PROCESSING"
@@ -466,6 +472,15 @@ class VehicleFrameViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]  # ⚠️ TEMPORAL: Sin autenticación para debug
 
 
+def get_serializer(self, *args, **kwargs):
+    """
+    Return the serializer instance that should be used for validating and
+    deserializing input, and for serializing output.
+    """
+    serializer_class = self.get_serializer_class()
+    kwargs.setdefault('context', self.get_serializer_context())
+    return serializer_class(*args, **kwargs)
+    
 # ============================================
 # ENDPOINT PARA FRONTEND: Análisis de Video
 # ============================================
@@ -473,7 +488,7 @@ class VehicleFrameViewSet(viewsets.ReadOnlyModelViewSet):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
-def analyze_video_endpoint(request):
+def analyze_video_endpoint( request):
     """
     Endpoint combinado para subir video y empezar análisis
 
@@ -496,7 +511,10 @@ def analyze_video_endpoint(request):
         "status": str
       }
     """
+    
+    from .tasks import analyze_video_async;
     try:
+       
         # Validar que venga el video
         if "video" not in request.FILES:
             return Response(
@@ -508,12 +526,20 @@ def analyze_video_endpoint(request):
         # Validar que venga cámara o ubicación
         camera_id = request.data.get("cameraId")
         location_id = request.data.get("locationId")
-
+        user_id = request.data.get('userId', 1)
+        
+        if not video_file:
+                return Response(
+                    {'error': 'No se proporcionó ningún video'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
         if not camera_id and not location_id:
             return Response(
                 {"error": "Either cameraId or locationId is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        
 
         # Si viene cámara, obtener su ubicación
         if camera_id:
@@ -526,22 +552,21 @@ def analyze_video_endpoint(request):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-        # Validar ubicación
-        if location_id:
-            try:
-                location = Location.objects.get(id=location_id)
-            except Location.DoesNotExist:
-                return Response(
-                    {"error": f"Location with id {location_id} not found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
 
-        # Guardar video en storage
-        video_name = f"traffic_videos/{timezone.now().strftime('%Y%m%d_%H%M%S')}_{video_file.name}"
-        video_path = default_storage.save(video_name, ContentFile(video_file.read()))
+        # Guardar video
+        video_path = default_storage.save(
+            f'videos/{video_file.name}',
+            video_file
+        )
 
-        print(f"✅ Video guardado: {video_path}")
-
+       # Guardar video
+        video_path = default_storage.save(
+            f'videos/{video_file.name}',
+            video_file
+        )
+        
+        full_video_path = os.path.join(settings.MEDIA_ROOT, video_path)
+   
         # Crear análisis
         analysis = TrafficAnalysis.objects.create(
             cameraId_id=camera_id if camera_id else None,
@@ -564,21 +589,38 @@ def analyze_video_endpoint(request):
             totalVehicles=0,
         )
 
-        print(f"✅ TrafficAnalysis creado: ID={analysis.id}")
+        logger.info (f"✅ TrafficAnalysis creado: ID={analysis.id}")
+       
+       
+        # 🔄 ACTUALIZAR CÁMARA: Asignar video y análisis actual
+        if camera_id:
+            # Generar thumbnail del video
+            from .utils.thumbnail_generator import generate_video_thumbnail
+            full_video_path = default_storage.path(video_path)
+            thumbnail_path = generate_video_thumbnail(full_video_path)
+            
+            camera.currentVideoPath = video_path
+            camera.currentAnalysisId = analysis
+            camera.status = "ACTIVE"  # Marcar como activa con video
+            if thumbnail_path:
+                camera.thumbnailPath = thumbnail_path
+                logger.info(f"✅ Thumbnail generado para cámara {camera_id}: {thumbnail_path}")
+            camera.save(update_fields=["currentVideoPath", "currentAnalysisId", "status", "thumbnailPath", "updatedAt"])
+            logger.info(f"✅ Cámara actualizada: ID={camera.id}, Video={video_path}, Analysis={analysis.id}")
 
-        # Lanzar tarea de Celery para procesamiento
-        video_full_path = os.path.join(default_storage.location, video_path)
-        task = analyze_video_async.delay(analysis.id, video_full_path)
+        task = analyze_video_async.delay(analysis.id, full_video_path)
 
-        print(f"✅ Celery task iniciado: {task.id}")
+        logger.info(f"✅ Celery task iniciado: {task.id}")
 
         # Actualizar estado
         analysis.status = "PROCESSING"
         analysis.save(update_fields=["status"])
 
+        logger.info(f"✅ Análisis de tráfico en procesamiento: ID={analysis.id}")
+
         return Response(
             {
-                "id": analysis.id,
+                "analysisId": analysis.id,
                 "message": "Video uploaded and analysis started successfully",
                 "task_id": task.id,
                 "status": analysis.status,

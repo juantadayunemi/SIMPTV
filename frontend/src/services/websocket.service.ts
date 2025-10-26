@@ -186,12 +186,32 @@ export class TrafficWebSocketService {
   }
 }
 
-// Instancia singleton
-let wsInstance: TrafficWebSocketService | null = null;
+// ✅ NUEVO: Múltiples instancias WebSocket (una por análisis/cámara)
+// Esto permite abrir varias cámaras simultáneamente sin mezclar datos
+const wsInstances = new Map<number, TrafficWebSocketService>();
 
-export const getWebSocketService = (): TrafficWebSocketService => {
-  if (!wsInstance) {
-    wsInstance = new TrafficWebSocketService();
+export const getWebSocketService = (analysisId?: number): TrafficWebSocketService => {
+  // Si se proporciona analysisId, devolver o crear instancia específica
+  if (analysisId !== undefined) {
+    if (!wsInstances.has(analysisId)) {
+      wsInstances.set(analysisId, new TrafficWebSocketService());
+    }
+    return wsInstances.get(analysisId)!;
   }
-  return wsInstance;
+  
+  // Si no se proporciona analysisId, crear instancia temporal (legacy)
+  return new TrafficWebSocketService();
+};
+
+/**
+ * ✅ NUEVO: Limpiar instancia de WebSocket cuando ya no se necesita
+ * Llamar cuando se cierra una cámara o se completa el análisis
+ */
+export const cleanupWebSocketService = (analysisId: number): void => {
+  const instance = wsInstances.get(analysisId);
+  if (instance) {
+    instance.disconnect();
+    wsInstances.delete(analysisId);
+    console.log(`🧹 WebSocket limpiado para análisis ${analysisId}`);
+  }
 };

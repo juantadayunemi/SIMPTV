@@ -1,6 +1,7 @@
 /**
  * BoundingBoxDrawer.tsx
- * Componente para dibujar bounding boxes sobre el video en tiempo real
+ * Componente para dibujar bounding boxes sobre el video/canvas en tiempo real
+ * ✅ Compatible con HTMLVideoElement y HTMLCanvasElement
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -13,7 +14,7 @@ interface Detection {
 }
 
 interface BoundingBoxDrawerProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | HTMLCanvasElement>;
   detections: Detection[];
   width?: number;
   height?: number;
@@ -38,27 +39,56 @@ const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const video = videoRef.current;
+    const videoOrCanvas = videoRef.current;
     
-    if (!canvas || !video) return;
+    if (!canvas || !videoOrCanvas) {
+      console.warn('⚠️ BoundingBoxDrawer: canvas o videoRef no disponible');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('❌ BoundingBoxDrawer: No se pudo obtener contexto 2D');
+      return;
+    }
 
-    // Ajustar tamaño del canvas al video
-    canvas.width = width || video.videoWidth || 640;
-    canvas.height = height || video.videoHeight || 480;
+    // ✅ Obtener dimensiones según el tipo de elemento
+    let canvasWidth: number;
+    let canvasHeight: number;
+
+    if (videoOrCanvas instanceof HTMLVideoElement) {
+      // Es un video
+      canvasWidth = width || videoOrCanvas.videoWidth || 640;
+      canvasHeight = height || videoOrCanvas.videoHeight || 480;
+    } else if (videoOrCanvas instanceof HTMLCanvasElement) {
+      // Es un canvas
+      canvasWidth = width || videoOrCanvas.width || 640;
+      canvasHeight = height || videoOrCanvas.height || 480;
+    } else {
+      // Fallback para el objeto dummy
+      canvasWidth = width || (videoOrCanvas as any).videoWidth || 640;
+      canvasHeight = height || (videoOrCanvas as any).videoHeight || 480;
+    }
+
+    // Ajustar tamaño del canvas overlay
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
 
     // Limpiar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Si no hay detecciones, no dibujar nada
-    if (!detections || detections.length === 0) return;
+    if (!detections || detections.length === 0) {
+
+      return;
+    }
 
     // Dibujar cada detección
-    detections.forEach((detection) => {
+    detections.forEach((detection, index) => {
       const [x, y, w, h] = detection.bbox;
-      const color = COLORS[detection.vehicle_type] || COLORS.unknown;
+      const color = COLORS[detection.vehicle_type.toLowerCase()] || COLORS.unknown;
+  
 
       // Dibujar bounding box
       ctx.strokeStyle = color;
@@ -66,18 +96,21 @@ const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({
       ctx.strokeRect(x, y, w, h);
 
       // Dibujar fondo para label
+      const label = `${detection.vehicle_type} #${detection.track_id} (${(detection.confidence * 100).toFixed(0)}%)`;
+      ctx.font = 'bold 14px sans-serif';
+      const labelWidth = ctx.measureText(label).width;
+      const labelHeight = 25;
+      
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.8;
-      const labelHeight = 25;
-      ctx.fillRect(x, y - labelHeight, w, labelHeight);
+      ctx.fillRect(x, y - labelHeight, labelWidth + 10, labelHeight);
 
       // Dibujar texto
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px sans-serif';
-      const label = `${detection.vehicle_type} #${detection.track_id} (${(detection.confidence * 100).toFixed(0)}%)`;
       ctx.fillText(label, x + 5, y - 7);
     });
+
 
   }, [detections, videoRef, width, height]);
 

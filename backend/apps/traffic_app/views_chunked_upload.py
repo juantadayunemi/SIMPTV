@@ -82,7 +82,7 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
             analysis = serializer.save(videoPath=full_video_path)
 
             # Iniciar análisis asíncrono
-            analyze_video_realtime.delay(analysis.id, full_video_path)
+            analyze_video_async.delay(analysis.id, full_video_path)
 
             logger.info(f"✅ Análisis {analysis.id} creado - Video: {video_file.name}")
 

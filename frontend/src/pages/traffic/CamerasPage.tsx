@@ -506,7 +506,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
 
       {/* Grid de Cámaras */}
       {!isLoading && filteredCameras.length > 0 && (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCameras.map((camera) => {
             const live = liveAnalysis[camera.id];
             const vehicleCount = live?.vehicleCount ?? 0;
@@ -517,7 +517,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
             return (
               <div
                 key={camera.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 {/* Video Feed */}
                 <div className="aspect-video bg-gray-900 relative">

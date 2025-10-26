@@ -29,6 +29,7 @@ import { FCMInitializer } from './components/notifications/FCMInitializer';
 
 // Styles
 import './App.css';
+import { CameraLiveAnalysisPage } from './pages/traffic/CameraLiveAnalysisPage';
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -148,6 +149,7 @@ const App: React.FC = () => {
             <Route path="traffic" element={<CamerasPage />} />
             <Route path="traffic/analysis" element={<TrafficAnalysisPage />} />
             <Route path="traffic/realtime" element={<RealTimeAnalysisPage />} />
+            <Route path="camera/:id" element={<CameraLiveAnalysisPage />} />
             <Route path="plates" element={<PlateDetectionPage />} />
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
