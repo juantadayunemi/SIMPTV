@@ -98,7 +98,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
 
       // Subir video y crear análisis
       const response = await trafficService.startVideoAnalysis(formData);
-      const analysisId = response.id;
+      const analysisId = response.analysisId;
 
       console.log('Carga completada:', response);
       setIsProcessing(false);

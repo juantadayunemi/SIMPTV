@@ -70,8 +70,8 @@ export const RealTimeAnalysisPage: React.FC = () => {
 
       // Subir video y obtener ID de análisis
       const response = await trafficService.startVideoAnalysis(formData);
-      
-      setAnalysisId(response.id.toString());
+
+      setAnalysisId(response.analysisId.toString());
       setShowPlayer(true);
       
     } catch (error: any) {

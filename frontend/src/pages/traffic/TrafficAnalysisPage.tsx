@@ -102,7 +102,7 @@ export const TrafficAnalysisPage: React.FC = () => {
       if (selectedLocationId) formData.append('locationId', selectedLocationId.toString());
 
       const response = await trafficService.startVideoAnalysis(formData);
-      const newAnalysisId = response.id;
+      const newAnalysisId = response.analysisId;
       setAnalysisId(newAnalysisId);
 
       // Connect to WebSocket

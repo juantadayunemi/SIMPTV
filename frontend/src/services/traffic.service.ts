@@ -146,7 +146,7 @@ class TrafficService {
   }
 
   // Start video analysis (combined upload + process)
-  async startVideoAnalysis(formData: FormData): Promise<{ id: number; message: string }> {
+  async startVideoAnalysis(formData: FormData): Promise<{ analysisId: number; message: string }> {
     const response = await api.post('/api/traffic/analyze-video/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

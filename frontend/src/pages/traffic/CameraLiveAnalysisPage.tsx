@@ -84,10 +84,14 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const [detections, setDetections] = useState<RealtimeDetectionEvent[]>([]);
   const [currentFrameDetections, setCurrentFrameDetections] = useState<Detection[]>([]);
   const [detectionBuffer, setDetectionBuffer] = useState<DetectionBuffer>({});
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [videoProgress, setVideoProgress] = useState<number>(0);
   
   const framesReceivedCount = useRef<number>(0);
   const videoStartTime = useRef<number>(0);
   const lastProcessedTimestamp = useRef<number>(0);
+
 
   // Cargar datos de la cámara
   useEffect(() => {
@@ -105,6 +109,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
     const connectWebSocket = async () => {
       try {
+
+        framesReceivedCount.current  = 0; 
         await wsService.connect(analysisId);
         setIsConnected(true);
         console.log('✅ WebSocket conectado para análisis:', analysisId);
@@ -255,7 +261,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           if (data.progress >= 100) {
             setTimeout(() => {
               setIsLoadingModels(false);
-            }, 1000);
+            }, 500);
           }
         });
         unsubscribers.push(unsubLoading);
@@ -454,12 +460,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     }
 
     try {
-      // Resetear contadores y buffer
-      framesReceivedCount.current = 0;
-      setDetectionBuffer({});
-      setBufferingProgress(0);
-      
-      if (isPaused) {
+ 
+     if (isPaused) {
         // Reanudar
         const result = await trafficService.resumeAnalysis(analysisId);
         console.log('✅ Análisis reanudado:', result);
@@ -468,7 +470,11 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           videoRef.current.play();
         }
       } else {
-        // Iniciar por primera vez
+        // Resetear contadores y buffer
+        framesReceivedCount.current = 0;
+        hasStartedVideo.current = false;  
+        setDetectionBuffer({});
+        setBufferingProgress(0);
         setIsLoadingModels(true);
         setLoadingProgress(0);
         setLoadingMessage('Iniciando análisis...');
@@ -592,15 +598,21 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                       console.error('❌ Error cargando video:', e);
                     }}
                     onLoadedMetadata={() => {
-                      console.log('✅ Video metadata cargada');
+                       if (videoRef.current) {
+                          setVideoDuration(videoRef.current.duration);
+                        }
                     }}
                     onTimeUpdate={(e) => {
-                      const currentTime = e.currentTarget.currentTime;
-                      const detections = getDetectionsForTime(currentTime);
+                      setCurrentTime(e.currentTarget.currentTime);
+                      setVideoProgress((e.currentTarget.currentTime / videoDuration) * 100);
+                      const detections = getDetectionsForTime(e.currentTarget.currentTime);
                       setCurrentFrameDetections(detections);
                     }}
                     onEnded={() => {
                       console.log('🎬 Video finalizado');
+                      setCurrentTime(0);
+                      setVideoProgress(0);
+                      framesReceivedCount.current = 0;
                       setCurrentFrameDetections([]);
                     }}
                   />
@@ -644,6 +656,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                   
                   {/* Indicador de BUFFERING */}
                   {isBuffering && (
+              
                     <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
                       <div className="text-center">
                         <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
@@ -808,29 +821,34 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
             {/* Logs en tiempo real - Panel más grande */}
             <div className="flex flex-col h-full">
-              {/* Barra de progreso de carga */}
-              {isLoadingModels && (
-                <div className="mb-4 p-4 bg-blue-900 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-blue-200">⏳ {loadingMessage}</span>
-                    <span className="text-sm font-mono text-blue-200">{loadingProgress}%</span>
-                  </div>
-                  <div className="w-full bg-blue-950 rounded-full h-2.5">
-                    <div 
-                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${loadingProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-blue-300 mt-2">
-                    {loadingProgress < 30 ? 'Cargando modelo YOLOv8...' : 
-                     loadingProgress < 100 ? 'Cargando PaddleOCR (rápido - 5-10 seg)...' : 
-                     'Listo para procesar ✓'}
-                  </p>
+              {showProcessedFrames && videoDuration > 0 && (
+              <div className="mb-4 p-4 bg-blue-900 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-blue-200">
+                    ▶️ Reproducción del análisis
+                  </span>
+                  <span className="text-sm font-mono text-blue-200">
+                    {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
+                  </span>
                 </div>
-              )}
-
+                <div className="w-full bg-blue-950 rounded-full h-2.5">
+                  <div 
+                    className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${videoProgress}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-blue-300">
+                    {videoProgress < 100 ? 'Analizando video en tiempo real...' : 'Análisis completado ✓'}
+                  </p>
+                  <span className="text-xs font-mono text-blue-200">
+                    {videoProgress.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            )} 
               {/* Barra de progreso de BUFFERING */}
-              {isBuffering && (
+                 {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
                 <div className="mb-4 p-4 bg-purple-900 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-purple-200">
