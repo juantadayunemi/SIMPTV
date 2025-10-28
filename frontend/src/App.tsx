@@ -17,7 +17,7 @@ import PredictionsPage from './pages/predictions/PredictionsPage';
 import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
 import UsersPage from './pages/users/UsersPage';
 import SettingsPage from './pages/settings/SettingsPage';
-import NotificationsPage from './pages/notifications/NotificationsPage';
+import HistoryTrafficPage from './pages/historyTraffic/historyPage';
 import ProfilePage from './pages/profile/ProfilePage';
 
 // Components
@@ -130,7 +130,7 @@ const App: React.FC = () => {
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="history-traffic" element={<HistoryTrafficPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 

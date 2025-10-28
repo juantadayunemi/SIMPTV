@@ -10,6 +10,7 @@ import { getForecast } from "../../services/prediction.service";
 import { Location } from "../../types/forecast";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { useToast } from "../../components/ui/ToastContainer";
+import { getNextDate } from "../../utils/dateUtils";
 
 export default function PredictionPage() {
   const toast = useToast();
@@ -17,9 +18,7 @@ export default function PredictionPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [date, setDate] = useState(() => {
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
+    return getNextDate(today);
   });
   const [time, setTime] = useState("08:00");
   const [selectedPeriod, setSelectedPeriod] = useState<

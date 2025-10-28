@@ -46,10 +46,10 @@ export const Header: React.FC = () => {
           title: 'Configuraciones',
           subtitle: 'Configuración del sistema, usuarios y roles'
         };
-      case '/notifications':
+      case '/history-traffic':
         return {
-          title: 'Notificaciones',
-          subtitle: 'Centro de notificaciones y alertas del sistema'
+          title: 'Historial de Tráfico',
+          subtitle: 'Análisis del tráfico histórico y patrones de comportamiento'
         };
       case '/profile':
         return {

@@ -75,3 +75,6 @@ holidays==0.82
 pandas==2.2.3
 prophet==1.1.7
 translators==6.0.1
+
+#History Traffic
+django-filter==25.2
