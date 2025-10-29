@@ -6,13 +6,15 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 // Initialize the Firebase app in the service worker by passing in
 // your app's Firebase config object.
+// ATENCIÓN: Este archivo debe ser ignorado por git y contener tus claves reales de Firebase
+// Usa el archivo 'firebase-messaging-sw.example.js' como plantilla
 firebase.initializeApp({
-  apiKey: self.env?.VITE_FIREBASE_API_KEY,
+  apiKey: "AIzaSyAWC8V0gXLw9X8PsUVnqhGtHBQtvpgkqV0",
   authDomain: "trafismart.firebaseapp.com",
   projectId: "trafismart",
   storageBucket: "trafismart.firebasestorage.app",
-  messagingSenderId: self.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: self.env?.VITE_FIREBASE_APP_ID,
+  messagingSenderId: "134462786929",
+  appId: "1:134462786929:web:17c2c53227d113c0a53ad0",
   measurementId: "G-075GGFQXVL"
 });
 

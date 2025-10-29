@@ -22,24 +22,19 @@ export const useAuth = () => {
 
   const checkAuth = async () => {
     try {
-      console.log('🔍 useAuth: Checking authentication...');
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       const token = authService.getToken();
-      console.log('🔑 Token found:', token ? 'YES' : 'NO');
       
       if (!token) {
-        console.log('⚠️ No token found, user not authenticated');
         setState(prev => ({ ...prev, isLoading: false }));
         return;
       }
 
       // Check if token is still valid
       const isValid = authService.isTokenValid();
-      console.log('✅ Token valid:', isValid);
       
       if (!isValid) {
-        console.log('❌ Token has expired, logging out...');
         authService.logout();
         setState({
           user: null,
@@ -50,9 +45,7 @@ export const useAuth = () => {
         return;
       }
 
-      console.log('📡 Fetching user profile...');
       const user = await authService.getCurrentUser();
-      console.log('✅ User authenticated:', user.email);
       
       setState({
         user,

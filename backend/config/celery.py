@@ -1,4 +1,4 @@
-# config/celery.py
+# D:\TrafiSmart\backend\config\celery.py
 import os
 from celery import Celery
 

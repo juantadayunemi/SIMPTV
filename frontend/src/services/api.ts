@@ -12,13 +12,10 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Check both localStorage and sessionStorage for token
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    // Solo usar localStorage para el token
+    const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('📤 Request with auth:', config.method?.toUpperCase(), config.url);
-    } else {
-      console.log('📤 Request without auth:', config.method?.toUpperCase(), config.url);
     }
     return config;
   },
@@ -42,19 +39,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       
-      // Check both localStorage and sessionStorage for refresh token
-      const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
-      const storage = localStorage.getItem('access_token') ? localStorage : sessionStorage;
-      
+      // Solo usar localStorage para refresh token
+      const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
           const response = await axios.post(`${api.defaults.baseURL}/api/auth/token/refresh/`, {
             refresh: refreshToken  // Django SimpleJWT espera "refresh" como campo
           });
-          
           const { access } = response.data;  // Django SimpleJWT retorna "access" (no "access_token")
-          storage.setItem('access_token', access);
-          
+          localStorage.setItem('access_token', access);
           // Retry original request with new token
           original.headers.Authorization = `Bearer ${access}`;
           return api(original);
@@ -63,9 +56,6 @@ api.interceptors.response.use(
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('user');
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }
@@ -74,9 +64,6 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
-        sessionStorage.removeItem('access_token');
-        sessionStorage.removeItem('refresh_token');
-        sessionStorage.removeItem('user');
         window.location.href = '/login';
       }
     }

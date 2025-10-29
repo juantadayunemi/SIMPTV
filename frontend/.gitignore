@@ -1,0 +1,2 @@
+# Ignorar el service worker real con claves
+public/firebase-messaging-sw.js

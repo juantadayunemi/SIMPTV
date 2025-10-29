@@ -36,11 +36,7 @@ const App: React.FC = () => {
 
   // Listen for authentication changes and redirect if needed
   React.useEffect(() => {
-    console.log('🔐 App.tsx - Auth check:', { isAuthenticated, isLoading });
-    console.log('🔑 Tokens:', {
-      localStorage: localStorage.getItem('access_token') ? 'SÍ' : 'NO',
-      sessionStorage: sessionStorage.getItem('access_token') ? 'SÍ' : 'NO'
-    });
+    // ...existing code...
     
     if (!isLoading && !isAuthenticated) {
       const currentPath = window.location.pathname;

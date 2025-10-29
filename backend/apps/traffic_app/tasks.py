@@ -15,6 +15,7 @@ from sympy import true
 import torch
 import time
 from scipy.spatial import distance
+from apps.traffic_app.speed_calculator import SpeedCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,10 @@ def analyze_video_async(self, analysis_id, video_path):
                         "count": 1,
                         "confidence_sum": conf,
                         "frames": [],
+                        "speed_calculated": False,  # Flag para calcular velocidad
+                        "speed_px_per_sec": 0.0,    # Velocidad en píxeles/segundo
+                        "speed_kmh": 0.0,           # Velocidad estimada en km/h
+                        "speed_category": "unknown" # Categoría de velocidad
                     }
                     
                     # Notificar nuevo vehículo detectado
@@ -376,7 +381,30 @@ def analyze_video_async(self, analysis_id, video_path):
                         "height": y2 - y1,
                     },
                     "confidence": conf,
+                    "bbox": [x1, y1, x2 - x1, y2 - y1]
                 })
+                
+                # CALCULAR VELOCIDAD (cada 10 frames para no sobrecargar)
+                if tracked_vehicles[track_id]["count"] >= 10 and not tracked_vehicles[track_id]["speed_calculated"]:
+                    try:
+                        speed_summary = SpeedCalculator.get_speed_summary(
+                            frames=tracked_vehicles[track_id]["frames"],
+                            fps=fps,
+                            frame_width=width,
+                            frame_height=height
+                        )
+                        
+                        tracked_vehicles[track_id]["speed_px_per_sec"] = speed_summary["speed_px_per_sec"]
+                        tracked_vehicles[track_id]["speed_kmh"] = speed_summary["estimated_kmh"]
+                        tracked_vehicles[track_id]["speed_category"] = speed_summary["speed_category"]
+                        tracked_vehicles[track_id]["speed_calculated"] = True
+                        
+                         # Log solo cada 30 vehículos para no saturar
+                        if track_id % 30 == 0:
+                            logger.info(f"🚗 Vehículo {track_id}: {speed_summary['estimated_kmh']:.1f} km/h ({speed_summary['speed_category']})")
+                                        
+                    except Exception as e:
+                        logger.error(f"❌ Error calculando velocidad para {track_id}: {e}")
 
 
             # ====================================================================
@@ -449,8 +477,13 @@ def analyze_video_async(self, analysis_id, video_path):
         for track_id, vdata in tracked_vehicles.items():
             # Solo guardar vehículos con suficientes frames
             if vdata["count"] < MIN_FRAMES_TO_SAVE:
+                logger.info(f"⏭️ Saltando vehículo {track_id}: muy lento ({vdata.get('speed_kmh', 0):.1f} km/h) con {vdata['count']} frames")
                 continue
-
+            
+            if vdata.get("speed_kmh", 0) < 5.0:
+                logger.info(f"⏭️ Saltando vehículo {track_id}: detenido ({vdata.get('speed_kmh', 0):.1f} km/h)")
+                continue
+            
             try:
                 # Calcular confianza promedio
                 avg_confidence = vdata["confidence_sum"] / vdata["count"]
@@ -462,6 +495,22 @@ def analyze_video_async(self, analysis_id, video_path):
                 # Generar ID único para el vehículo
                 vehicle_id = f"vehicle_{analysis_id}_{track_id}_{int(timezone.now().timestamp() * 1000)}"
 
+                # Calcular velocidad final si no se calculó antes
+                if not vdata.get("speed_calculated", False) and len(vdata["frames"]) >= 5:
+                    try:
+                        speed_summary = SpeedCalculator.get_speed_summary(
+                            frames=vdata["frames"],
+                            fps=fps,
+                            frame_width=width,
+                            frame_height=height
+                        )
+                        vdata["speed_kmh"] = speed_summary["estimated_kmh"]
+                        vdata["speed_category"] = speed_summary["speed_category"]
+                    except Exception as e:
+                        logger.error(f"❌ Error calculando velocidad final: {e}")
+                        vdata["speed_kmh"] = 0.0
+                        vdata["speed_category"] = "unknown"
+        
                 # Crear registro de vehículo
                 vehicle = Vehicle.objects.create(
                     id=vehicle_id,
@@ -474,6 +523,7 @@ def analyze_video_async(self, analysis_id, video_path):
                     totalFrames=vdata["count"],
                     storedFrames=len(vdata["frames"]),
                     plateProcessingStatus="PENDING",
+                    avgSpeed=vdata.get("speed_kmh", 0.0), 
                 )
 
                 # Crear registros de frames
@@ -490,7 +540,7 @@ def analyze_video_async(self, analysis_id, video_path):
                         boundingBoxHeight=frame_data["boundingBox"]["height"],
                         confidence=round(frame_data["confidence"], 4),
                         frameQuality=1.0,
-                        speed=0,
+                        speed=vdata.get("speed_kmh", 0.0),
                         imagePath="",
                     ))
 

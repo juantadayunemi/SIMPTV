@@ -83,6 +83,12 @@ class FCMService {
         return false;
       }
 
+      // Evitar registrar el mismo token repetidamente
+      const lastRegisteredToken = localStorage.getItem('fcm_registered_token');
+      if (lastRegisteredToken === token) {
+        return true; // Ya registrado
+      }
+
       const data: FCMTokenData = {
         token,
         device_name: deviceName || this.getDeviceName(),
@@ -90,7 +96,7 @@ class FCMService {
       };
 
       await api.post('/api/notifications/devices/register_token/', data);
-      console.log('FCM token registered successfully');
+      localStorage.setItem('fcm_registered_token', token);
       return true;
     } catch (error) {
       console.error('Error registering FCM token:', error);
@@ -213,8 +219,7 @@ class FCMService {
     try {
       // Register service worker for background messages
       if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('Service Worker registered:', registration);
+        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
       }
 
       // Try to register token automatically

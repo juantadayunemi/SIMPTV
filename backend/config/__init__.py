@@ -1,6 +1,7 @@
 # Config Django
 
 # Import Celery app to ensure it's loaded when Django starts
+# D:\TrafiSmart\backend\config\__init__.py
 from .celery import app as celery_app
 from dotenv import load_dotenv
 import firebase_admin
