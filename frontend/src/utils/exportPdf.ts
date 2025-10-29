@@ -7,28 +7,22 @@ export const handleExport = async (
   if (!pageRef?.current) return;
 
   //Clonar el nodo completo
-  const clonedElement = pageRef.current.cloneNode(true) as HTMLElement;
+  const element = pageRef.current.cloneNode(true) as HTMLElement;
 
-  // Ocultar elementos de filtrado
-  const controls = clonedElement.querySelectorAll(".hide-controls");
-  controls.forEach((el) => {
-    (el as HTMLElement).style.display = "none";
-  });
+  element.style.width = "297mm"; // ancho A4 horsssizontal
+  element.style.minHeight = "210mm";
+  element.style.padding = "20mm";
+  element.style.backgroundColor = "white";
+  element.style.overflow = "hidden";
+  element.style.position = "fixed";
+  element.style.top = "-9999px";
+  element.style.left = "0";
 
-  clonedElement.style.width = "297mm"; // ancho A4 horizontal
-  clonedElement.style.minHeight = "210mm";
-  clonedElement.style.padding = "20mm";
-  clonedElement.style.backgroundColor = "white";
-  clonedElement.style.overflow = "hidden";
-  clonedElement.style.position = "fixed";
-  clonedElement.style.top = "-9999px";
-  clonedElement.style.left = "0";
-
-  document.body.appendChild(clonedElement);
+  document.body.appendChild(element);
 
   try {
     // Capturar canvas
-    const canvas = await html2canvas(clonedElement, {
+    const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
     });
@@ -62,6 +56,6 @@ export const handleExport = async (
     console.error("Error al exportar PDF:", err);
   } finally {
     // Eliminar clon temporal
-    document.body.removeChild(clonedElement);
+    document.body.removeChild(element);
   }
 };

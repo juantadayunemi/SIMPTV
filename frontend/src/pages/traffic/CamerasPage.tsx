@@ -8,6 +8,7 @@ import EditCameraModal from '../../components/traffic/EditCameraModal';
 import CameraMenuDropdown from '../../components/traffic/CameraMenuDropdown';
 import ConnectPathModal from '../../components/traffic/ConnectPathModal';
 import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
+import { LoadingContainer } from '@/components/ui/LoadingContainer';
 
 // Tipo extendido para la UI que incluye propiedades adicionales
 interface CameraUIEntity extends CameraEntity {
@@ -421,10 +422,7 @@ const CamerasPage: React.FC = () => {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando cámaras...</p>
-        </div>
+        <LoadingContainer type="section" loading={isLoading} message="Cargando cámaras..." />
       )}
 
       {/* Cameras Grid */}

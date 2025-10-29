@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ForecastData } from '../types/forecast';
+import { useState } from "react";
+import { ForecastData } from "../types/forecast";
 
 interface ForecastChartProps {
   data: ForecastData | null;
@@ -13,7 +13,10 @@ interface TooltipData {
   time: string;
 }
 
-export default function ForecastChart({ data, selectedDate }: ForecastChartProps) {
+export default function ForecastChart({
+  data,
+  selectedDate,
+}: ForecastChartProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   if (!data || !data.forecast || data.forecast.length === 0) {
     return (
@@ -30,7 +33,7 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
 
   const forecastPoints = data.forecast;
 
-  const values = forecastPoints.map(d => d.yhat);
+  const values = forecastPoints.map((d) => d.yhat);
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const range = maxValue - minValue || 1;
@@ -46,9 +49,9 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
     return { x, y, value: d.yhat, time: d.ds };
   });
 
-  const pathData = points.map((p, i) =>
-    `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
-  ).join(' ');
+  const pathData = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
 
   const fillPath = `${pathData} L 100 100 L 0 100 Z`;
 
@@ -60,16 +63,19 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    return `${date.getHours().toString().padStart(2, "0")}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
@@ -79,7 +85,9 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
     const relativeX = (x / rect.width) * 100;
 
     const closestPoint = points.reduce((prev, curr) => {
-      return Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX) ? curr : prev;
+      return Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX)
+        ? curr
+        : prev;
     });
 
     if (Math.abs(closestPoint.x - relativeX) < 5) {
@@ -87,7 +95,7 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
         x: (closestPoint.x / 100) * rect.width,
         y: (closestPoint.y / 100) * rect.height,
         value: closestPoint.value,
-        time: closestPoint.time
+        time: closestPoint.time,
       });
     } else {
       setTooltip(null);
@@ -103,7 +111,7 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
     adjustedMax - adjustedRange * 0.25,
     adjustedMax - adjustedRange * 0.5,
     adjustedMax - adjustedRange * 0.75,
-    adjustedMin
+    adjustedMin,
   ];
 
   return (
@@ -115,7 +123,9 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
       <div className="relative h-96 bg-gray-50 rounded-lg p-6">
         <div className="absolute left-2 top-6 bottom-16 flex flex-col justify-between text-xs text-gray-500">
           {yAxisLabels.map((label, i) => (
-            <span key={i} className="text-right pr-2">{label?.toFixed(0)}</span>
+            <span key={i} className="text-right pr-2">
+              {label?.toFixed(0)}
+            </span>
           ))}
         </div>
 
@@ -124,7 +134,11 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
-          <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+          <svg
+            viewBox="0 0 100 100"
+            className="w-full h-full"
+            preserveAspectRatio="none"
+          >
             <defs>
               <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#FFA500" stopOpacity="0.3" />
@@ -145,10 +159,7 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
               />
             ))}
 
-            <path
-              d={fillPath}
-              fill="url(#gradient)"
-            />
+            <path d={fillPath} fill="url(#gradient)" />
 
             <path
               d={pathData}
@@ -157,19 +168,6 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
               strokeWidth="0.8"
               vectorEffect="non-scaling-stroke"
             />
-
-            {points.map((point, i) => (
-              <circle
-                key={i}
-                cx={point.x}
-                cy={point.y}
-                r="1.2"
-                fill="#FFA500"
-                className="cursor-pointer hover:r-2"
-                vectorEffect="non-scaling-stroke"
-                opacity={i % Math.ceil(points.length / 20) === 0 ? 1 : 0}
-              />
-            ))}
           </svg>
 
           {tooltip && (
@@ -178,19 +176,23 @@ export default function ForecastChart({ data, selectedDate }: ForecastChartProps
               style={{
                 left: `${tooltip.x}px`,
                 top: `${tooltip.y - 60}px`,
-                transform: 'translateX(-50%)'
+                transform: "translateX(-50%)",
               }}
             >
               <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg text-xs whitespace-nowrap">
-                <div className="font-semibold">{formatDateTime(tooltip.time)}</div>
-                <div className="text-orange-300">Valor: {tooltip.value?.toFixed(0)}</div>
+                <div className="font-semibold">
+                  {formatDateTime(tooltip.time)}
+                </div>
+                <div className="text-orange-300">
+                  Valor: {tooltip.value?.toFixed(0)}
+                </div>
               </div>
               <div
                 className="w-0 h-0 mx-auto"
                 style={{
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid #111827'
+                  borderLeft: "6px solid transparent",
+                  borderRight: "6px solid transparent",
+                  borderTop: "6px solid #111827",
                 }}
               />
             </div>

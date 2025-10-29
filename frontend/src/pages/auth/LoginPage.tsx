@@ -1,27 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
 
 // Import images
-import loginDashboardImage from '../../images/images/login_dashboard.svg';
-import logoTraficSmart from '../../images/logo/logo_trafic_smart.svg';
-import { APP_NAME } from '../../config/appConfig';
+import loginDashboardImage from "../../images/images/login_dashboard.svg";
+import logoTraficSmart from "../../images/logo/logo_trafic_smart.svg";
+import { APP_NAME } from "../../config/appConfig";
+import { Eye, EyeOff } from "lucide-react";
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [mounted, setMounted] = useState(false);
   const [showResendActivation, setShowResendActivation] = useState(false);
-  const [resendEmail, setResendEmail] = useState('');
+  const [resendEmail, setResendEmail] = useState("");
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [loginAttempted, setLoginAttempted] = useState(false); // ← NUEVO: Controlar si ya se intentó login
   const { login, isLoading, error, isAuthenticated, clearError } = useAuth();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   // Animation mount effect
   useEffect(() => {
@@ -31,23 +33,23 @@ export const LoginPage: React.FC = () => {
   // Redirect to dashboard if already authenticated (SOLO SI NO HAY ERROR ACTIVO)
   useEffect(() => {
     if (isAuthenticated && !error && loginAttempted) {
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, error, loginAttempted, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Reset states
     setShowResendActivation(false);
     setResendSuccess(false);
     setLoginAttempted(true); // ← Marcar que se intentó login
-    
+
     // Basic validation
     const newErrors: { [key: string]: string } = {};
-    if (!email) newErrors.email = 'Email is required';
-    if (!password) newErrors.password = 'Password is required';
-    
+    if (!email) newErrors.email = "Email is required";
+    if (!password) newErrors.password = "Password is required";
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setLoginAttempted(false); // ← Resetear si hay errores de validación
@@ -59,24 +61,24 @@ export const LoginPage: React.FC = () => {
       // Successful login - navigation will be handled by useEffect
     } catch (err: any) {
       // Check if error is due to unconfirmed email
-      if (err.response?.data?.code === 'EMAIL_NOT_CONFIRMED') {
+      if (err.response?.data?.code === "EMAIL_NOT_CONFIRMED") {
         setShowResendActivation(true);
         setResendEmail(err.response.data.email || email);
       }
       // NO resetear loginAttempted aquí - dejar que el error se muestre
     }
   };
-  
+
   const handleResendActivation = async () => {
     setResendLoading(true);
     setResendSuccess(false);
-    
+
     try {
-      const authService = (await import('../../services/auth.service')).default;
+      const authService = (await import("../../services/auth.service")).default;
       await authService.resendConfirmation(resendEmail);
       setResendSuccess(true);
     } catch (err) {
-      console.error('Error resending activation:', err);
+      console.error("Error resending activation:", err);
     } finally {
       setResendLoading(false);
     }
@@ -85,13 +87,13 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 lg:flex lg:relative">
       {/* Left Side - Traffic Image with Logo Overlay (Full Coverage) */}
-      <div 
+      <div
         className="hidden lg:block lg:w-[55%] relative overflow-hidden"
         style={{
           backgroundImage: `url(${loginDashboardImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
         }}
       >
         {/* Dark Overlay for better logo visibility */}
@@ -103,19 +105,19 @@ export const LoginPage: React.FC = () => {
             <img
               src={logoTraficSmart}
               alt="TrafiSmart Logo"
-              className={`h-80 w-auto filter drop-shadow-2xl transition-transform duration-1000 ease-in-out ${mounted ? 'animate-flip-in' : 'opacity-0'}`}
+              className={`h-80 w-auto filter drop-shadow-2xl transition-transform duration-1000 ease-in-out ${
+                mounted ? "animate-flip-in" : "opacity-0"
+              }`}
             />
             <h1 className="text-white -mt-8 text-6xl font-bold drop-shadow-2xl">
-               {APP_NAME}
+              {APP_NAME}
             </h1>
           </div>
         </div>
       </div>
 
       {/* Right Side - White Card Overlapping Image with Rounded Left Border */}
-      <div 
-        className="w-full lg:w-1/2 lg:-ml-8 relative z-20 bg-white lg:rounded-l-3xl shadow-2xl flex items-center justify-center px-8 py-12 lg:px-16 min-h-screen"
-      >
+      <div className="w-full lg:w-1/2 lg:-ml-8 relative z-20 bg-white lg:rounded-l-3xl shadow-2xl flex items-center justify-center px-8 py-12 lg:px-16 min-h-screen">
         {/* Form Container - No additional card, just content */}
         <div className="w-full max-w-md">
           {/* Mobile Logo - Only visible on mobile */}
@@ -133,9 +135,7 @@ export const LoginPage: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-1">
               Bienvenido a TrafiSmart
             </h2>
-            <p className="text-gray-500 text-sm">
-              Inicia sesión en tu cuenta
-            </p>
+            <p className="text-gray-500 text-sm">Inicia sesión en tu cuenta</p>
           </div>
 
           {/* Login Form */}
@@ -143,14 +143,15 @@ export const LoginPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Dirección de correo electrónico <span className="text-red-500">*</span>
+                  Dirección de correo electrónico{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    setErrors({ ...errors, email: '' });
+                    setErrors({ ...errors, email: "" });
                     setLoginAttempted(false); // ← Resetear error cuando el usuario edita
                     clearError(); // ← Limpiar error del hook
                   }}
@@ -165,12 +166,13 @@ export const LoginPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Contraseña <span className="text-red-500">*</span>
                 </label>
+                <div className="relative">
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    setErrors({ ...errors, password: '' });
+                    setErrors({ ...errors, password: "" });
                     setLoginAttempted(false); // ← Resetear error cuando el usuario edita
                     clearError(); // ← Limpiar error del hook
                   }}
@@ -179,6 +181,14 @@ export const LoginPage: React.FC = () => {
                   placeholder="Ingresa tu contraseña"
                   className="w-full"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? <EyeOff className="text-gray-500"/> : <Eye className="text-gray-500"/>}
+                </button>
+                </div>
               </div>
             </div>
 
@@ -193,18 +203,18 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
                 />
-                <label 
-                  htmlFor="remember-me" 
+                <label
+                  htmlFor="remember-me"
                   className="ml-2 block text-sm text-gray-600 cursor-pointer"
                 >
                   Recordar mi contraseña
                 </label>
               </div>
-              
+
               {/* Forgot Password Link */}
               <div className="text-sm">
-                <a 
-                  href="/forgot-password" 
+                <a
+                  href="/forgot-password"
                   className="font-medium text-primary-700 hover:text-primary-600 hover:underline"
                 >
                   ¿Olvidaste tu contraseña?
@@ -214,7 +224,7 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Message */}
             {error && (
-              <div 
+              <div
                 className="
                   bg-red-50 border border-red-200 rounded-lg p-3
                   animate-shake
@@ -222,15 +232,15 @@ export const LoginPage: React.FC = () => {
               >
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <svg 
-                      className="h-5 w-5 text-red-500" 
-                      viewBox="0 0 20 20" 
+                    <svg
+                      className="h-5 w-5 text-red-500"
+                      viewBox="0 0 20 20"
                       fill="currentColor"
                     >
-                      <path 
-                        fillRule="evenodd" 
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" 
-                        clipRule="evenodd" 
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
                       />
                     </svg>
                   </div>
@@ -240,14 +250,24 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* Resend Activation Section */}
             {showResendActivation && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 animate-fade-in">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <svg
+                      className="h-6 w-6 text-yellow-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
                     </svg>
                   </div>
                   <div className="ml-3 flex-1">
@@ -257,7 +277,8 @@ export const LoginPage: React.FC = () => {
                     {!resendSuccess ? (
                       <>
                         <p className="mt-1 text-sm text-yellow-700">
-                          Tu cuenta aún no ha sido confirmada. Revisa tu correo <strong>{resendEmail}</strong> para activarla.
+                          Tu cuenta aún no ha sido confirmada. Revisa tu correo{" "}
+                          <strong>{resendEmail}</strong> para activarla.
                         </p>
                         <p className="mt-2 text-xs text-yellow-600">
                           ¿No recibiste el correo de activación?
@@ -267,7 +288,9 @@ export const LoginPage: React.FC = () => {
                           disabled={resendLoading}
                           className="mt-2 text-sm font-medium text-yellow-700 hover:text-yellow-600 underline disabled:opacity-50"
                         >
-                          {resendLoading ? 'Enviando...' : 'Reenviar correo de activación →'}
+                          {resendLoading
+                            ? "Enviando..."
+                            : "Reenviar correo de activación →"}
                         </button>
                       </>
                     ) : (
@@ -276,7 +299,8 @@ export const LoginPage: React.FC = () => {
                           ✅ ¡Correo de activación enviado!
                         </p>
                         <p className="mt-1 text-xs text-green-600">
-                          Revisa tu bandeja de entrada en <strong>{resendEmail}</strong>
+                          Revisa tu bandeja de entrada en{" "}
+                          <strong>{resendEmail}</strong>
                         </p>
                       </div>
                     )}
@@ -299,13 +323,15 @@ export const LoginPage: React.FC = () => {
           {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              ¿No tienes una cuenta?{' '}
-              <a href="/register" className="text-primary-700 hover:text-primary-600 font-semibold hover:underline">
+              ¿No tienes una cuenta?{" "}
+              <a
+                href="/register"
+                className="text-primary-700 hover:text-primary-600 font-semibold hover:underline"
+              >
                 Regístrate aquí
               </a>
             </p>
           </div>
-
         </div>
       </div>
     </div>

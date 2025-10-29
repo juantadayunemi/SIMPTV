@@ -16,6 +16,9 @@ import { trafficService } from "../../services/traffic.service";
 import HistoryHeader from "@/components/historyTraffic/HistoryHeader";
 import HistoryChart from "@/components/historyTraffic/HistoryChart";
 import { handleExport } from "../../utils/exportPdf";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { HistorySummary } from "@/components/historyTraffic/HistorySummary";
+import { LoadingContainer } from "@/components/ui/LoadingContainer";
 
 export default function HistoryTraffic() {
   const [selectedLocation, setSelectedLocation] = useState(0);
@@ -132,27 +135,26 @@ export default function HistoryTraffic() {
 
   return (
     <div className=" w-full min-h-screen">
+      <HistoryHeader
+        locations={locations}
+        trafficType={trafficType}
+        selectedLocation={selectedLocation}
+        setSelectedLocation={setSelectedLocation}
+        dateRangeType={dateRangeType}
+        setTrafficType={setTrafficType}
+        handleDateRangeChange={handleDateRangeChange}
+        onExportClick={onHandleExport}
+      />
       {locationsLoading || isLoading ? (
-        <div className="flex flex-col items-center justify-center h-64 space-y-3">
-          <div className="text-gray-400">Cargando, espere por favor...</div>
-        </div>
+        <LoadingContainer type="section" loading={isLoading} message="Cargando, espere por favor..." />
       ) : (
-        <div ref={pageRef} className="w-full mx-auto py-6 space-y-6 ">
-
-            <HistoryHeader
-              locations={locations}
-              trafficType={trafficType}
-              congestionData={congestionData}
-              velocityData={velocityData}
-              volumeData={volumeData}
-              selectedLocation={selectedLocation}
-              setSelectedLocation={setSelectedLocation}
-              dateRangeType={dateRangeType}
-              setTrafficType={setTrafficType}
-              handleDateRangeChange={handleDateRangeChange}
-              onExportClick={onHandleExport}
-            />
-
+        <div ref={pageRef} className="w-full mx-auto py-6 space-y-6">
+          <HistorySummary
+            trafficType={trafficType}
+            congestionData={congestionData}
+            velocityData={velocityData}
+            volumeData={volumeData}
+          />
 
           <DateRangeModal
             isOpen={isModalOpen}

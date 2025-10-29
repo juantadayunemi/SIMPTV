@@ -11,6 +11,7 @@ import { Location } from "../../types/forecast";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { useToast } from "../../components/ui/ToastContainer";
 import { getNextDate } from "../../utils/dateUtils";
+import { LoadingContainer } from "@/components/ui/LoadingContainer";
 
 export default function PredictionPage() {
   const toast = useToast();
@@ -130,10 +131,8 @@ export default function PredictionPage() {
       />
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-64 space-y-3">
-          <LoadingSpinner />
-          <div className="text-gray-400">Cargando, espere por favor...</div>
-        </div>
+        <LoadingContainer type="global" loading={loading} message="Cargando, espere por favor..." />
+
       ) : (
         <>
           {currentForecast ? (
@@ -156,7 +155,7 @@ export default function PredictionPage() {
                   seasonality_impact={currentForecast?.seasonality}
                 />
                 {loadingComparison ? (
-                  <LoadingSpinner />
+                  <LoadingContainer type="global" loading={loadingComparison} message="Cargando, espere por favor..." />
                 ) : (
                   <>
                     <ComparisonSection
@@ -179,11 +178,7 @@ export default function PredictionPage() {
         </>
       )}
 
-      <div className="bg-blue-50 rounded-lg p-4 text-center">
-        <p className="text-sm text-blue-800">
-          Proyecto de Gestión de tránsito y predicción vehicular - ©UNEMI 2025
-        </p>
-      </div>
+      
     </div>
   );
 }
