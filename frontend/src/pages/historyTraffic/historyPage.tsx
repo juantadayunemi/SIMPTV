@@ -15,12 +15,13 @@ import { Location } from "../../types/forecast";
 import { trafficService } from "../../services/traffic.service";
 import HistoryHeader from "@/components/historyTraffic/HistoryHeader";
 import HistoryChart from "@/components/historyTraffic/HistoryChart";
-import { handleExport } from "../../utils/exportPdf";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { handleExport, useHandleExport } from "../../utils/exportPdf";
+import { useToast } from "../../components/ui/ToastContainer";
 import { HistorySummary } from "@/components/historyTraffic/HistorySummary";
 import { LoadingContainer } from "@/components/ui/LoadingContainer";
 
 export default function HistoryTraffic() {
+  const toast = useToast();
   const [selectedLocation, setSelectedLocation] = useState(0);
   const [locations, setLocations] = useState<Location[]>([]);
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>("7days");
@@ -49,6 +50,7 @@ export default function HistoryTraffic() {
       const data = await trafficService.getLocations();
       setLocations(data);
     } catch (err) {
+      toast.error("Error al cargar las ubicaciones");
       console.error("Error al cargar las ubicaciones:", err);
     } finally {
       setLocationsLoading(false);
@@ -90,10 +92,11 @@ export default function HistoryTraffic() {
       );
 
       console.log(">>>", data);
-      if (data?.detail) {
+      if (data || data?.detail) {
         setCongestionData(null);
         setVelocityData(null);
         setVolumeData(null);
+        toast.error("No hay datos disponibles para el rango seleccionado.");
         return;
       }
 
@@ -104,7 +107,11 @@ export default function HistoryTraffic() {
       } else if (trafficType === "volume") {
         setVolumeData(data as VolumeData);
       }
+      toast.success("Datos cargados con éxito.");
     } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      }
       setError(
         err instanceof Error ? err.message : "Error al cargar los datos"
       );
@@ -129,9 +136,7 @@ export default function HistoryTraffic() {
     setIsModalOpen(false);
   };
 
-  const onHandleExport = () => {
-    handleExport(pageRef);
-  };
+  const onHandleExport = useHandleExport(pageRef);
 
   return (
     <div className=" w-full min-h-screen">
@@ -146,7 +151,11 @@ export default function HistoryTraffic() {
         onExportClick={onHandleExport}
       />
       {locationsLoading || isLoading ? (
-        <LoadingContainer type="section" loading={isLoading} message="Cargando, espere por favor..." />
+        <LoadingContainer
+          type="section"
+          loading={isLoading}
+          message="Cargando, espere por favor..."
+        />
       ) : (
         <div ref={pageRef} className="w-full mx-auto py-6 space-y-6">
           <HistorySummary

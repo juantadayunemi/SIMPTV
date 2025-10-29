@@ -131,7 +131,7 @@ export default function PredictionPage() {
       />
 
       {loading ? (
-        <LoadingContainer type="global" loading={loading} message="Cargando, espere por favor..." />
+        <LoadingContainer type="section" loading={loading} message="Cargando, espere por favor..." />
 
       ) : (
         <>
