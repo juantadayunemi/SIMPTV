@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Camera, Play, Pause, RotateCcw } from 'lucide-react';
 import { trafficService } from '../../services/traffic.service';
@@ -7,6 +7,7 @@ import { getWebSocketService, cleanupWebSocketService } from '../../services/web
 import { DetectionLogPanel } from '../../components/traffic/DetectionLogPanel';
 import BoundingBoxDrawer from '../../components/traffic/BoundingBoxDrawer';
 import type { RealtimeDetectionEvent } from '@traffic-analysis/shared';
+import { useEffect, useRef, useState } from 'react';
 
 interface CameraLiveData {
   vehicleCount: number;

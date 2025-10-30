@@ -9,7 +9,6 @@ import CameraMenuDropdown from '../../components/traffic/CameraMenuDropdown';
 import ConnectPathModal from '../../components/traffic/ConnectPathModal';
 import BoundingBoxDrawer from '../../components/traffic/BoundingBoxDrawer';
 import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
-import { LoadingContainer } from '@/components/ui/LoadingContainer';
 
 interface CameraUIEntity extends CameraEntity {
   location?: string;
@@ -499,7 +498,10 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
 
       {/* Loading State */}
       {isLoading && (
-        <LoadingContainer type="section" loading={isLoading} message="Cargando cámaras..." />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando cámaras...</p>
+        </div>
       )}
 
       {/* Grid de Cámaras */}

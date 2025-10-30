@@ -70,7 +70,6 @@ LOCAL_APPS = [
     "apps.predictions_app",  # Traffic Predictions & ML
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
-    "apps.predictions_app",  # Traffic Predictions & ML
     "apps.notifications_app",  # Notifications
     # "apps.external_apis",  # External APIs
 ]
