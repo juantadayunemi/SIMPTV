@@ -11,6 +11,7 @@ import os
 from decouple import config
 from django.core.exceptions import ImproperlyConfigured
 import sys
+from celery.schedules import crontab
 
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -66,6 +67,7 @@ LOCAL_APPS = [
     # Core apps
     "apps.entities",  # DLL models (abstract)
     "apps.auth_app",  # Auth API (concrete)
+    "apps.predictions_app",  # Traffic Predictions & ML
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
     "apps.predictions_app",  # Traffic Predictions & ML
@@ -195,6 +197,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'], # Agregado para history traffic
 }
 
 # ==============================================================================
@@ -401,6 +404,16 @@ CELERY_TASK_QUEUES = {
         'routing_key': 'default',
     },
 }
+
+# Periodic Task Scheduling at 10-minute intervals
+CELERY_BEAT_SCHEDULE = {
+    "aggregate-prediction-data": {
+        "task": "apps.predictions_app.tasks.aggregate_prediction_data",
+        # "schedule": 10 * 60,  # cada 10 minutos
+        "schedule": crontab(minute="*/10"),  # 00,10,20,30,40,50
+    },
+}
+
 
 # ==============================================================================
 # CHANNELS CONFIGURATION (WebSocket)
