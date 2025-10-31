@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Camera, Play, Pause, RotateCcw } from 'lucide-react';
 import { trafficService } from '../../services/traffic.service';
@@ -18,16 +17,13 @@ interface CameraLiveData {
   elapsedSeconds: number;
 }
 
-interface LocationState {
-  analysisId?: number;
-  videoPath?: string;
-}
-
 interface Detection {
   track_id: number;
   vehicle_type: string;
   bbox: [number, number, number, number];
   confidence: number;
+  speed_kmh?: number;  // ✅ NUEVO
+  speed_category?: string;  // ✅ NUEVO
 }
 
 interface DetectionBuffer {
@@ -49,22 +45,18 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [showProcessedFrames, setShowProcessedFrames] = useState(false);
 
-  // Estado de análisis
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Estado de buffering
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferingProgress, setBufferingProgress] = useState(0);
   const MIN_FRAMES_TO_START = 5;
 
-  // Progreso de carga (YOLOv8, PaddleOCR)
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
 
-  // Métricas de rendimiento (FPS, latencia)
   const [fps, setFps] = useState<number>(0);
   const [latency, setLatency] = useState<number>(0);
   const [framesReceived, setFramesReceived] = useState<number>(0);
@@ -72,7 +64,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const frameTimestamps = useRef<number[]>([]);
   const hasStartedVideo = useRef<boolean>(false);
 
-  // Datos en tiempo real
   const [liveData, setLiveData] = useState<CameraLiveData>({
     vehicleCount: 0,
     avgSpeed: 0,
@@ -94,14 +85,12 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const lastProcessedTimestamp = useRef<number>(0);
 
 
-  // Cargar datos de la cámara
   useEffect(() => {
     if (id) {
       loadCameraData(parseInt(id));
     }
   }, [id]);
 
-  // Conectar WebSocket para análisis en tiempo real
   useEffect(() => {
     if (!analysisId) return;
 
@@ -110,120 +99,109 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
     const connectWebSocket = async () => {
       try {
-
         framesReceivedCount.current = 0;
         await wsService.connect(analysisId);
         setIsConnected(true);
-        console.log('✅ WebSocket conectado para análisis:', analysisId);
+        console.log('✅ WebSocket conectado:', analysisId);
 
-        // Suscribirse a frames procesados con detecciones
-        const unsubFrameProcessed = wsService.on('frame_processed', (data: any) => {
-          console.log('🎥 Frame procesado:', {
-            frame_number: data.frame_number,
-            timestamp: data.timestamp,
-            detections: data.detections?.length || 0
+        // ✅ NUEVO: Procesar batch de frames
+        const unsubFramesBatch = wsService.on('frames_batch', (data: any) => {
+          if (!data.frames || !Array.isArray(data.frames)) return;
+          
+          console.log(`📦 Batch recibido: ${data.frames.length} frames`);
+          
+          data.frames.forEach((frameData: any) => {
+            framesReceivedCount.current++;
+            lastProcessedTimestamp.current = frameData.timestamp;
+
+            const timeKey = Math.round(frameData.timestamp * 100) / 100;
+
+            if (frameData.detections && Array.isArray(frameData.detections)) {
+              const formattedDetections: Detection[] = frameData.detections.map((det: any) => ({
+                track_id: Number(det.track_id || Math.floor(Math.random() * 1000)),
+                vehicle_type: det.vehicle_type || 'unknown',
+                bbox: det.bbox || [0, 0, 0, 0],
+                confidence: Number(det.confidence || 0),
+                speed_kmh: Number(det.speed_kmh || 0),  // ✅ VELOCIDAD
+                speed_category: det.speed_category || 'unknown'  // ✅ CATEGORÍA
+              }));
+
+              setDetectionBuffer(prev => ({
+                ...prev,
+                [timeKey]: formattedDetections
+              }));
+            }
           });
 
-          framesReceivedCount.current++;
-          lastProcessedTimestamp.current = data.timestamp;
-
-          // Guardar en buffer con timestamp redondeado a centésimas
-          const timeKey = Math.round(data.timestamp * 100) / 100;
-
-          if (data.detections && Array.isArray(data.detections)) {
-            const formattedDetections: Detection[] = data.detections.map((det: any) => ({
-              track_id: Number(det.track_id || det.id || Math.floor(Math.random() * 1000)),
-              vehicle_type: det.vehicle_type || det.class_name || 'unknown',
-              bbox: det.bbox || [0, 0, 0, 0],
-              confidence: Number(det.confidence || 0)
-            }));
-
-            setDetectionBuffer(prev => ({
-              ...prev,
-              [timeKey]: formattedDetections
-            }));
-
-            console.log(`📦 Buffer actualizado: ${Object.keys(detectionBuffer).length + 1} frames`);
-          }
-
-          // Iniciar video cuando tengamos suficiente buffer (SOLO LA PRIMERA VEZ)
+          // Iniciar video cuando tengamos suficiente buffer
           if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
             hasStartedVideo.current = true;
-            console.log(`🎬 Buffer listo (${framesReceivedCount.current} frames), iniciando video...`);
+            console.log(`🎬 Buffer listo (${framesReceivedCount.current} frames)`);
             setIsBuffering(false);
             setShowProcessedFrames(true);
 
             setTimeout(() => {
               if (videoRef.current) {
                 videoRef.current.currentTime = 0;
-                videoRef.current.play().then(() => {
-                  videoStartTime.current = Date.now();
-                  console.log('▶️ Video reproduciendo normalmente');
-                }).catch(err => {
+                videoRef.current.play().catch(err => {
                   console.error('❌ Error iniciando video:', err);
                 });
               }
             }, 50);
           }
 
-          // Actualizar progreso de buffering
           if (isBuffering) {
             const progress = Math.min(100, (framesReceivedCount.current / MIN_FRAMES_TO_START) * 100);
             setBufferingProgress(progress);
           }
         });
+        unsubscribers.push(unsubFramesBatch);
 
-        unsubscribers.push(unsubFrameProcessed);
+        // ✅ Mantener frame_processed para compatibilidad
+        const unsubFrameProcessed = wsService.on('frame_processed', (data: any) => {
+          framesReceivedCount.current++;
+          lastProcessedTimestamp.current = data.timestamp;
 
-        // Suscribirse a frames con imagen (para canvas - FALLBACK)
-        const unsubFrames = wsService.on('frame_update', (data: any) => {
-          console.log('📸 Frame update recibido:', data.frame_number);
+          const timeKey = Math.round(data.timestamp * 100) / 100;
 
-          const now = Date.now();
-          const frameTime = data.timestamp ? new Date(data.timestamp).getTime() : now;
-          const currentLatency = now - frameTime;
+          if (data.detections && Array.isArray(data.detections)) {
+            const formattedDetections: Detection[] = data.detections.map((det: any) => ({
+              track_id: Number(det.track_id || Math.floor(Math.random() * 1000)),
+              vehicle_type: det.vehicle_type || 'unknown',
+              bbox: det.bbox || [0, 0, 0, 0],
+              confidence: Number(det.confidence || 0),
+              speed_kmh: Number(det.speed_kmh || 0),
+              speed_category: det.speed_category || 'unknown'
+            }));
 
-          setLatency(currentLatency);
-
-          // Calcular FPS (promedio de últimos 10 frames)
-          frameTimestamps.current.push(now);
-          if (frameTimestamps.current.length > 10) {
-            frameTimestamps.current.shift();
+            setDetectionBuffer(prev => ({
+              ...prev,
+              [timeKey]: formattedDetections
+            }));
           }
 
-          if (frameTimestamps.current.length >= 2) {
-            const timeDiff = (frameTimestamps.current[frameTimestamps.current.length - 1] - frameTimestamps.current[0]) / 1000;
-            const calculatedFps = (frameTimestamps.current.length - 1) / timeDiff;
-            setFps(Math.round(calculatedFps));
+          if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
+            hasStartedVideo.current = true;
+            setIsBuffering(false);
+            setShowProcessedFrames(true);
+
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = 0;
+                videoRef.current.play().catch(console.error);
+              }
+            }, 50);
           }
 
-          setFramesReceived(prev => prev + 1);
-          lastFrameTime.current = now;
-
-          // Dibujar frame en canvas (si no estamos usando video)
-          if (canvasRef.current && data.frame_data && !videoUrl) {
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              const img = new Image();
-              img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-              };
-              img.onerror = (e) => {
-                console.error('❌ Error cargando imagen base64:', e);
-              };
-              img.src = data.frame_data;
-            }
+          if (isBuffering) {
+            const progress = Math.min(100, (framesReceivedCount.current / MIN_FRAMES_TO_START) * 100);
+            setBufferingProgress(progress);
           }
         });
-        unsubscribers.push(unsubFrames);
+        unsubscribers.push(unsubFrameProcessed);
 
-        // Suscribirse a detecciones de vehículos (para el log)
+        // Vehículo detectado (para el log)
         const unsubVehicle = wsService.on('vehicle_detected', (data: any) => {
-          console.log('🚗 Vehículo detectado:', data.vehicle_type, '#', data.track_id);
-
           const detection: RealtimeDetectionEvent = {
             timestamp: data.timestamp || new Date().toISOString(),
             vehicleType: data.vehicle_type || 'desconocido',
@@ -237,9 +215,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           setDetections((prev) => {
             const exists = prev.some(d => d.trackId === detection.trackId);
             if (!exists) {
-              const newDetections = [...prev, detection];
-              console.log('📋 Total detecciones ahora:', newDetections.length);
-              return newDetections;
+              return [...prev, detection];
             }
             return prev;
           });
@@ -252,41 +228,23 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         });
         unsubscribers.push(unsubVehicle);
 
-        // Suscribirse a progreso de CARGA (YOLOv8, PaddleOCR)
-        const unsubLoading = wsService.on('loading_progress', (data: any) => {
-          console.log('⏳ Cargando modelos:', data.message, data.progress + '%');
-          setIsLoadingModels(true);
-          setLoadingProgress(data.progress || 0);
-          setLoadingMessage(data.message || 'Cargando...');
-
-          if (data.progress >= 100) {
-            setTimeout(() => {
-              setIsLoadingModels(false);
-            }, 500);
-          }
-        });
-        unsubscribers.push(unsubLoading);
-
-        // Suscribirse a progreso de análisis
         const unsubProgress = wsService.on('progress_update', (data: any) => {
-          console.log('📊 Progreso procesamiento:', data.percentage + '%');
+          console.log('📊 Progreso:', data.percentage + '%');
         });
         unsubscribers.push(unsubProgress);
 
-        // Suscribirse a completación
         const unsubComplete = wsService.on('processing_complete', (data: any) => {
           console.log('✅ Análisis completado:', data);
           setIsPlaying(false);
           setIsPaused(false);
           setShowProcessedFrames(false);
-          setIsLoadingModels(false);
           setCurrentFrameDetections([]);
           setIsBuffering(false);
         });
         unsubscribers.push(unsubComplete);
 
       } catch (error) {
-        console.error('❌ Error connecting WebSocket:', error);
+        console.error('❌ Error WebSocket:', error);
         setIsConnected(false);
       }
     };
@@ -303,7 +261,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     };
   }, [analysisId]);
 
-  // Función de sincronización con interpolación
+  // ✅ Sincronización mejorada con interpolación
   const getDetectionsForTime = (currentTime: number): Detection[] => {
     if (!detectionBuffer || Object.keys(detectionBuffer).length === 0) return [];
 
@@ -312,19 +270,17 @@ export const CameraLiveAnalysisPage: React.FC = () => {
       .sort((a, b) => a - b);
 
     const pastTimestamps = timestamps.filter(t => t <= currentTime);
-
     if (pastTimestamps.length === 0) return [];
 
     const lastValidTimestamp = pastTimestamps[pastTimestamps.length - 1];
-
-    // Solo usar si no está muy antigua (máximo 1 segundo atrás)
     const timeDifference = currentTime - lastValidTimestamp;
-    if (timeDifference > 1.0) return [];
+    
+    // ✅ Aumentar tolerancia a 0.5s
+    if (timeDifference > 0.5) return [];
 
     return detectionBuffer[lastValidTimestamp];
   };
 
-  // Actualizar tiempo transcurrido cada segundo
   useEffect(() => {
     if (!isPlaying) return;
 
@@ -338,21 +294,17 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // Pausa automática al desmontar componente
   useEffect(() => {
     return () => {
       if (isPlaying && analysisId) {
-        console.log('🛑 Desmontando componente - pausando análisis');
         trafficService.pauseAnalysis(analysisId).catch(console.error);
       }
     };
   }, [isPlaying, analysisId]);
 
-  // Pausa automática al cambiar de ventana/pestaña
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isPlaying && analysisId) {
-        console.log('🛑 Ventana oculta - pausando análisis automáticamente');
         trafficService.pauseAnalysis(analysisId)
           .then(() => {
             setIsPaused(true);
@@ -368,8 +320,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isPlaying, analysisId]);
 
-
-  // useEffect para actualizar detecciones con requestAnimationFrame
+  // ✅ Actualización optimizada de detecciones
   useEffect(() => {
     if (!isPlaying || !videoRef.current) return;
 
@@ -380,6 +331,21 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         const time = videoRef.current.currentTime;
         const detections = getDetectionsForTime(time);
         setCurrentFrameDetections(detections);
+        
+        // ✅ Calcular velocidad promedio
+        if (detections.length > 0) {
+          const speeds = detections
+            .map(d => d.speed_kmh || 0)
+            .filter(s => s > 0);
+          
+          if (speeds.length > 0) {
+            const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            setLiveData(prev => ({
+              ...prev,
+              avgSpeed: Math.round(avgSpeed)
+            }));
+          }
+        }
       }
       animationFrameId = requestAnimationFrame(updateDetections);
     };
@@ -387,7 +353,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     animationFrameId = requestAnimationFrame(updateDetections);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, videoDuration, detectionBuffer]); // Dependencias necesarias
+  }, [isPlaying, videoDuration, detectionBuffer]);
 
 
   const loadCameraData = async (cameraId: number) => {
@@ -405,7 +371,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
       const analysisToLoad = analysisId || cameraData.currentAnalysisId;
 
       if (analysisToLoad) {
-        console.log('🔥 Cargando análisis:', analysisToLoad);
         const analysisData = await trafficService.getAnalysis(analysisToLoad.toString());
 
         if (!analysisId && cameraData.currentAnalysisId) {
@@ -415,42 +380,34 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         if (analysisData.videoPath) {
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
           const videoUrl = `${baseUrl}/media/${analysisData.videoPath}`;
-          console.log('🎥 Video URL:', videoUrl);
           setVideoUrl(videoUrl);
         }
       } else if (cameraData.currentVideoPath) {
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
         const videoUrl = `${baseUrl}/media/${cameraData.currentVideoPath}`;
-        console.log('🎥 Video URL (desde cámara):', videoUrl);
         setVideoUrl(videoUrl);
       }
 
-      // Cargar thumbnail
       if (cameraData.thumbnailPath) {
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
         const thumbUrl = `${baseUrl}/${cameraData.thumbnailPath}`;
         setThumbnailUrl(thumbUrl);
-        console.log('🖼️ Thumbnail URL:', thumbUrl);
       }
 
     } catch (error) {
-      console.error('Error loading camera data:', error);
+      console.error('Error loading camera:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReconnect = async () => {
-    if (!analysisId) {
-      console.warn('No hay análisis activo para reconectar');
-      return;
-    }
+    if (!analysisId) return;
 
     try {
       const wsService = getWebSocketService(analysisId);
       await wsService.connect(analysisId);
       setIsConnected(true);
-      console.log('Reconectado a WebSocket');
     } catch (error) {
       console.error('Error al reconectar:', error);
       setIsConnected(false);
@@ -461,8 +418,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     if (!analysisId) return;
 
     try {
-      const result = await trafficService.pauseAnalysis(analysisId);
-      console.log('⏸️ Análisis pausado:', result);
+      await trafficService.pauseAnalysis(analysisId);
       setIsPaused(true);
       setIsPlaying(false);
       setShowProcessedFrames(false);
@@ -472,57 +428,37 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         videoRef.current.pause();
       }
     } catch (error) {
-      console.error('Error al pausar análisis:', error);
+      console.error('Error al pausar:', error);
     }
   };
 
   const handlePlay = async () => {
-    if (!analysisId) {
-      console.warn('No hay análisis disponible para iniciar');
-      return;
-    }
+    if (!analysisId) return;
 
     try {
-
       if (isPaused) {
-        // Reanudar
-        const result = await trafficService.resumeAnalysis(analysisId);
-        console.log('✅ Análisis reanudado:', result);
-
+        await trafficService.resumeAnalysis(analysisId);
         if (videoRef.current && videoUrl) {
           videoRef.current.play();
         }
       } else {
-
-        //  Iniciar nuevo análisis
         setDetections([]);
-
-        // Resetear contadores y buffer
         framesReceivedCount.current = 0;
         hasStartedVideo.current = false;
         setDetectionBuffer({});
         setBufferingProgress(0);
-        setIsLoadingModels(true);
-        setLoadingProgress(0);
-        setLoadingMessage('Iniciando análisis...');
-
         setIsBuffering(true);
-        console.log('⏳ Buffering iniciado, esperando frames...');
 
-        const result = await trafficService.startAnalysis(analysisId);
-        console.log('✅ Análisis iniciado:', result);
+        await trafficService.startAnalysis(analysisId);
         setLiveData((prev) => ({
           ...prev,
           startTime: new Date().toLocaleTimeString(),
         }));
-
-        console.log('⏳ Esperando buffer de frames antes de iniciar video...');
       }
       setIsPlaying(true);
       setIsPaused(false);
     } catch (error) {
-      console.error('Error al iniciar/reanudar análisis:', error);
-      setIsLoadingModels(false);
+      console.error('Error al iniciar:', error);
       setIsBuffering(false);
     }
   };
@@ -557,8 +493,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -588,19 +522,12 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
       <div className="p-2">
         <div className="w-full">
-
-          {/* Grid de 2 columnas */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-
-            {/* Columna IZQUIERDA: Video + Controles (2/3 del espacio) */}
             <div className="lg:col-span-2 space-y-6">
-
-              {/* Video Player */}
               <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg sticky top-2 z-10">
                 <div className="relative w-full aspect-video min-h-[70vh]">
                   {videoUrl ? (
                     <>
-                      {/* Video principal que se reproduce */}
                       <video
                         ref={videoRef}
                         src={videoUrl}
@@ -608,9 +535,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         muted
                         playsInline
                         preload="auto"
-                        onError={(e) => {
-                          console.error('❌ Error cargando video:', e);
-                        }}
                         onLoadedMetadata={() => {
                           if (videoRef.current) {
                             setVideoDuration(videoRef.current.duration);
@@ -620,16 +544,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                           setCurrentTime(e.currentTarget.currentTime);
                           setVideoProgress((e.currentTarget.currentTime / videoDuration) * 100);
                         }}
-                        onEnded={() => {
-                          console.log('🎬 Video finalizado');
-                          setCurrentTime(0);
-                          setVideoProgress(0);
-                          framesReceivedCount.current = 0;
-                          setCurrentFrameDetections([]);
-                        }}
                       />
 
-                      {/* Overlay de Bounding Boxes */}
                       {showProcessedFrames && currentFrameDetections.length > 0 && (
                         <BoundingBoxDrawer
                           videoRef={videoRef}
@@ -637,7 +553,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         />
                       )}
 
-                      {/* Thumbnail cuando NO está procesando */}
                       {!showProcessedFrames && !isBuffering && (
                         <div className="absolute inset-0 bg-black">
                           {thumbnailUrl ? (
@@ -660,20 +575,19 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                                 <Play className="w-10 h-10 text-white" />
                               </div>
                               <p className="text-white text-xl font-semibold">Video Cargado</p>
-                              <p className="text-gray-300 mt-2">Presiona "Iniciar" para comenzar el análisis</p>
+                              <p className="text-gray-300 mt-2">Presiona "Iniciar"</p>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Indicador de BUFFERING */}
                       {isBuffering && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
                           <div className="text-center">
                             <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
                             <p className="text-white text-xl font-semibold">Buffering...</p>
                             <p className="text-gray-300 mt-2">
-                              Esperando frames procesados ({framesReceivedCount.current}/{MIN_FRAMES_TO_START})
+                              Esperando frames ({framesReceivedCount.current}/{MIN_FRAMES_TO_START})
                             </p>
                             <div className="w-64 bg-gray-700 rounded-full h-2 mt-4 mx-auto">
                               <div
@@ -685,7 +599,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Indicador de procesamiento */}
                       {showProcessedFrames && !isBuffering && (
                         <div className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 z-20">
                           <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
@@ -693,56 +606,41 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Contador de detecciones */}
+                      {/* ✅ NUEVO: Mostrar velocidades */}
                       {showProcessedFrames && !isBuffering && (
-                        <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-mono z-20">
+                        <div className="absolute bottom-3 left-3 bg-black/80 text-white px-4 py-3 rounded-lg space-y-1 z-20">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span>{currentFrameDetections.length} vehículos</span>
+                            <span className="text-sm font-semibold">{currentFrameDetections.length} vehículos</span>
                           </div>
+                          {currentFrameDetections.some(d => (d.speed_kmh || 0) > 0) && (
+                            <div className="text-xs space-y-1 mt-2 border-t border-white/30 pt-2">
+                              {currentFrameDetections
+                                .filter(d => (d.speed_kmh || 0) > 0)
+                                .slice(0, 3)
+                                .map(d => (
+                                  <div key={d.track_id} className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-300">#{d.track_id}</span>
+                                    <span className={`font-bold ${
+                                      d.speed_category === 'slow' ? 'text-green-400' :
+                                      d.speed_category === 'medium' ? 'text-yellow-400' :
+                                      d.speed_category === 'fast' ? 'text-orange-400' :
+                                      'text-red-400'
+                                    }`}>
+                                      {d.speed_kmh?.toFixed(1)} km/h
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* Indicador de buffer */}
                       {showProcessedFrames && !isBuffering && (
                         <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg text-xs font-mono z-20">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             <span>Buffer: {Object.keys(detectionBuffer).length} frames</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Indicador de rendimiento */}
-                      {showProcessedFrames && isPlaying && !isBuffering && (
-                        <div className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg space-y-1 z-20">
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium">FPS:</span>
-                            <span className="text-lg font-bold">{fps}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium">Latencia:</span>
-                            <span className="text-lg font-bold">{latency}ms</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium">Frames:</span>
-                            <span className="text-lg font-bold">{framesReceived}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium">Detecciones:</span>
-                            <span className="text-lg font-bold">{currentFrameDetections.length}</span>
-                          </div>
-                          {/* Indicador de color según latencia */}
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className={`w-3 h-3 rounded-full ${latency < 100 ? 'bg-green-500' :
-                                latency < 200 ? 'bg-yellow-500' :
-                                  latency < 500 ? 'bg-orange-500' : 'bg-red-500'
-                              }`} />
-                            <span className="text-xs">
-                              {latency < 100 ? 'Excelente' :
-                                latency < 200 ? 'Bueno' :
-                                  latency < 500 ? 'Regular' : 'Lento'}
-                            </span>
                           </div>
                         </div>
                       )}
@@ -755,19 +653,13 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         <p className="text-gray-400">
                           {analysisId ? 'Cargando video...' : 'Sin video disponible'}
                         </p>
-                        <p className="text-gray-500 text-sm mt-2">
-                          {analysisId
-                            ? 'Por favor espera mientras se carga el video...'
-                            : 'Sube un video desde la página de cámaras'}
-                        </p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="flex justify-center gap-4 sticky top-[calc(600px+1rem)] z-10 bg-gray-50 py-4">
+              <div className="flex justify-center gap-4">
                 <button
                   onClick={handleReconnect}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
@@ -792,58 +684,26 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                   {isBuffering ? 'Buffering...' : 'Iniciar'}
                 </button>
               </div>
-
-              {/* Debug Info - Debajo de botones */}
-              {analysisId && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
-                    <strong>Análisis ID:</strong> {analysisId}
-                  </p>
-                  {videoUrl && (
-                    <p className="text-sm text-blue-900 mt-1">
-                      <strong>Video URL:</strong> {videoUrl}
-                    </p>
-                  )}
-                  <p className="text-sm text-blue-700 mt-1">
-                    {isConnected ? '✅ WebSocket conectado' : '⏳ Conectando WebSocket...'}
-                  </p>
-                  <p className="text-sm text-blue-700 mt-1">
-                    <strong>Buffer:</strong> {Object.keys(detectionBuffer).length} frames |
-                    <strong> Detecciones actuales:</strong> {currentFrameDetections.length}
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Columna DERECHA: Panel de datos (1/3 del espacio) */}
             <div className="lg:col-span-1">
               <div className="bg-gray-900 text-white rounded-lg p-6 shadow-lg sticky top-2">
-
-                {/* Camera Info - Compacto */}
                 <div className="grid grid-cols-1 gap-3 mb-4 pb-4 border-b border-gray-700">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 text-xs">UBICACIÓN</span>
                     <span className="font-mono text-xs text-right">{location?.description || 'INSIV-001'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-xs">INICIO</span>
-                    <span className="font-mono text-xs">
-                      {liveData.startTime || new Date().toLocaleTimeString('es-EC')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-xs">TIEMPO</span>
-                    <span className="font-mono text-xs">
-                      {Math.floor(liveData.elapsedSeconds / 60)}m {liveData.elapsedSeconds % 60}s
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
                     <span className="text-gray-400 text-xs">VEHÍCULOS</span>
                     <span className="font-mono text-xl font-bold text-green-400">{liveData.vehicleCount}</span>
                   </div>
+                  {/* ✅ NUEVO: Mostrar velocidad promedio */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">VELOCIDAD AVG</span>
+                    <span className="font-mono text-lg font-bold text-blue-400">{liveData.avgSpeed} km/h</span>
+                  </div>
                 </div>
 
-                {/* Barra de progreso de reproducción */}
                 {showProcessedFrames && videoDuration > 0 && (
                   <div className="mb-4 p-3 bg-blue-900 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
@@ -858,13 +718,9 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         style={{ width: `${videoProgress}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-blue-300 mt-1">
-                      {videoProgress.toFixed(1)}%
-                    </p>
                   </div>
                 )}
 
-                {/* Barra de progreso de BUFFERING */}
                 {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
                   <div className="mb-4 p-3 bg-purple-900 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
@@ -879,13 +735,9 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         style={{ width: `${bufferingProgress}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-purple-300 mt-1">
-                      Cargando frames...
-                    </p>
                   </div>
                 )}
 
-                {/* Logs - Con altura fija y scroll */}
                 <div className="h-[calc(100vh-300px)] overflow-y-auto">
                   <DetectionLogPanel detections={[...detections].reverse()} />
                 </div>
@@ -894,7 +746,6 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };

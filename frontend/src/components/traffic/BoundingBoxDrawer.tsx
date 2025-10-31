@@ -1,129 +1,113 @@
-/**
- * BoundingBoxDrawer.tsx
- * Componente para dibujar bounding boxes sobre el video/canvas en tiempo real
- * ✅ Compatible con HTMLVideoElement y HTMLCanvasElement
- */
-
 import React, { useEffect, useRef } from 'react';
 
 interface Detection {
   track_id: number;
   vehicle_type: string;
-  bbox: [number, number, number, number]; // [x, y, width, height]
+  bbox: [number, number, number, number];
   confidence: number;
+  speed_kmh?: number;
+  speed_category?: string;
 }
 
 interface BoundingBoxDrawerProps {
-  videoRef: React.RefObject<HTMLVideoElement | HTMLCanvasElement>;
+  videoRef: React.RefObject<HTMLVideoElement>;
   detections: Detection[];
-  width?: number;
-  height?: number;
 }
 
-const COLORS: Record<string, string> = {
-  car: '#3b82f6',        // azul
-  truck: '#ef4444',      // rojo
-  motorcycle: '#10b981', // verde
-  bus: '#f59e0b',        // naranja
-  bicycle: '#8b5cf6',    // morado
-  unknown: '#6b7280'     // gris
-};
-
-const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({
-  videoRef,
-  detections,
-  width,
-  height
-}) => {
+const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({ videoRef, detections }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const videoOrCanvas = videoRef.current;
-    
-    if (!canvas || !videoOrCanvas) {
-      console.warn('⚠️ BoundingBoxDrawer: canvas o videoRef no disponible');
-      return;
-    }
+    const video = videoRef.current;
+
+    if (!canvas || !video) return;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('❌ BoundingBoxDrawer: No se pudo obtener contexto 2D');
-      return;
-    }
+    if (!ctx) return;
 
-    // ✅ Obtener dimensiones según el tipo de elemento
-    let canvasWidth: number;
-    let canvasHeight: number;
+    const updateCanvas = () => {
+      // Ajustar tamaño del canvas al video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-    if (videoOrCanvas instanceof HTMLVideoElement) {
-      // Es un video
-      canvasWidth = width || videoOrCanvas.videoWidth || 640;
-      canvasHeight = height || videoOrCanvas.videoHeight || 480;
-    } else if (videoOrCanvas instanceof HTMLCanvasElement) {
-      // Es un canvas
-      canvasWidth = width || videoOrCanvas.width || 640;
-      canvasHeight = height || videoOrCanvas.height || 480;
-    } else {
-      // Fallback para el objeto dummy
-      canvasWidth = width || (videoOrCanvas as any).videoWidth || 640;
-      canvasHeight = height || (videoOrCanvas as any).videoHeight || 480;
-    }
+      // Limpiar canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Ajustar tamaño del canvas overlay
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+      // Dibujar cada detección
+      detections.forEach((det) => {
+        const [x, y, w, h] = det.bbox;
+        
+        // Color según tipo de vehículo
+        let color = '#00FF00'; // verde por defecto
+        switch (det.vehicle_type) {
+          case 'car':
+            color = '#00FF00'; // verde
+            break;
+          case 'truck':
+            color = '#FF6B00'; // naranja
+            break;
+          case 'bus':
+            color = '#0099FF'; // azul
+            break;
+          case 'motorcycle':
+            color = '#FFD700'; // amarillo
+            break;
+        }
 
+        // ✅ Color según velocidad (prioridad sobre tipo)
+        if (det.speed_kmh && det.speed_kmh > 0) {
+          if (det.speed_category === 'slow') {
+            color = '#00FF00'; // verde
+          } else if (det.speed_category === 'medium') {
+            color = '#FFFF00'; // amarillo
+          } else if (det.speed_category === 'fast') {
+            color = '#FF9900'; // naranja
+          } else if (det.speed_category === 'very_fast') {
+            color = '#FF0000'; // rojo
+          }
+        }
 
-    // Limpiar canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Dibujar bounding box
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
 
-    // Si no hay detecciones, no dibujar nada
-    if (!detections || detections.length === 0) {
+        // ✅ Fondo para el texto (más grande para velocidad)
+        const labelHeight = det.speed_kmh ? 50 : 30;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(x, y - labelHeight, Math.max(w, 150), labelHeight);
 
-      return;
-    }
+        // Texto del label
+        ctx.fillStyle = color;
+        ctx.font = 'bold 16px Arial';
+        const label = `#${det.track_id} ${det.vehicle_type.toUpperCase()}`;
+        ctx.fillText(label, x + 5, y - labelHeight + 20);
 
-    // Dibujar cada detección
-    detections.forEach((detection, index) => {
-      const [x, y, w, h] = detection.bbox;
-      const color = COLORS[detection.vehicle_type.toLowerCase()] || COLORS.unknown;
-  
+        // ✅ MOSTRAR VELOCIDAD
+        if (det.speed_kmh && det.speed_kmh > 0) {
+          ctx.font = 'bold 14px Arial';
+          ctx.fillStyle = '#FFFFFF';
+          const speedText = `${det.speed_kmh.toFixed(1)} km/h`;
+          ctx.fillText(speedText, x + 5, y - labelHeight + 40);
+        }
 
-      // Dibujar bounding box
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, w, h);
+        // Confianza
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        const confText = `${(det.confidence * 100).toFixed(0)}%`;
+        ctx.fillText(confText, x + w - 50, y - labelHeight + 20);
+      });
+    };
 
-      // Dibujar fondo para label
-      const label = `${detection.vehicle_type} #${detection.track_id} (${(detection.confidence * 100).toFixed(0)}%)`;
-      ctx.font = 'bold 14px sans-serif';
-      const labelWidth = ctx.measureText(label).width;
-      const labelHeight = 25;
-      
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(x, y - labelHeight, labelWidth + 10, labelHeight);
-
-      // Dibujar texto
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(label, x + 5, y - 7);
-    });
-
-
-  }, [detections, videoRef, width, height]);
+    updateCanvas();
+  }, [detections, videoRef]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none"
-      style={{ 
-        width: '100%', 
-        height: '100%', 
-        objectFit: 'contain',
-        zIndex: 10
-      }}
+      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 10 }}
     />
   );
 };

@@ -185,7 +185,6 @@ def analyze_video_async(self, analysis_id, video_path):
             return inter_area / union_area if union_area > 0 else 0
         
         
-      
         def assign_track_ids(detections, active_tracks):
             """Asignar IDs a detecciones usando tracking simple"""
             nonlocal next_vehicle_id  # ✅ AGREGAR ESTA LÍNEA AL INICIO
@@ -323,6 +322,7 @@ def analyze_video_async(self, analysis_id, video_path):
                         "y1": int(y1),
                         "x2": int(x2),
                         "y2": int(y2),
+                        "speed_kmh": 0.0, 
                     })
            
            
@@ -337,6 +337,7 @@ def analyze_video_async(self, analysis_id, video_path):
             # ====================================================================
             for det in detections_to_send:
                 track_id = det['track_id']
+                det["speed_kmh"] = tracked_vehicles.get(track_id, {}).get("speed_kmh", 0.0)
                 vehicle_type = det['vehicle_type']
                 conf = det['confidence']
                 x1, y1 = det['x1'], det['y1']
@@ -358,12 +359,12 @@ def analyze_video_async(self, analysis_id, video_path):
                     }
                     
                     # Notificar nuevo vehículo detectado
-                    send_ws("vehicle_detected", {
-                        "track_id": track_id,
-                        "vehicle_type": vehicle_type,
-                        "frame": frame_count,
-                        "total_vehicles": len(tracked_vehicles),
-                    })
+                    if detections_to_send and frame_count % 3 == 0:
+                        send_ws("frame_processed", {
+                            "frame_number": frame_count,
+                            "timestamp": round(timestamp_seconds, 2),
+                            "detections": detections_to_send,
+                        })
                 else:
                     # Actualizar información del vehículo existente
                     tracked_vehicles[track_id]["last_frame"] = frame_count
