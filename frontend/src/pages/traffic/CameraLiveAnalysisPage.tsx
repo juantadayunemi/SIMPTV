@@ -40,7 +40,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const locationState = useLocation().state as LocationState;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   const [camera, setCamera] = useState<CameraEntity | null>(null);
   const [location, setLocation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,22 +48,22 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
   const [showProcessedFrames, setShowProcessedFrames] = useState(false);
-  
+
   // Estado de análisis
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  
+
   // Estado de buffering
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferingProgress, setBufferingProgress] = useState(0);
   const MIN_FRAMES_TO_START = 5;
-  
+
   // Progreso de carga (YOLOv8, PaddleOCR)
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
-  
+
   // Métricas de rendimiento (FPS, latencia)
   const [fps, setFps] = useState<number>(0);
   const [latency, setLatency] = useState<number>(0);
@@ -88,7 +88,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [videoProgress, setVideoProgress] = useState<number>(0);
-  
+
   const framesReceivedCount = useRef<number>(0);
   const videoStartTime = useRef<number>(0);
   const lastProcessedTimestamp = useRef<number>(0);
@@ -111,7 +111,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     const connectWebSocket = async () => {
       try {
 
-        framesReceivedCount.current  = 0; 
+        framesReceivedCount.current = 0;
         await wsService.connect(analysisId);
         setIsConnected(true);
         console.log('✅ WebSocket conectado para análisis:', analysisId);
@@ -129,7 +129,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
           // Guardar en buffer con timestamp redondeado a centésimas
           const timeKey = Math.round(data.timestamp * 100) / 100;
-          
+
           if (data.detections && Array.isArray(data.detections)) {
             const formattedDetections: Detection[] = data.detections.map((det: any) => ({
               track_id: Number(det.track_id || det.id || Math.floor(Math.random() * 1000)),
@@ -148,11 +148,11 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
           // Iniciar video cuando tengamos suficiente buffer (SOLO LA PRIMERA VEZ)
           if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
-             hasStartedVideo.current = true;
+            hasStartedVideo.current = true;
             console.log(`🎬 Buffer listo (${framesReceivedCount.current} frames), iniciando video...`);
             setIsBuffering(false);
             setShowProcessedFrames(true);
-            
+
             setTimeout(() => {
               if (videoRef.current) {
                 videoRef.current.currentTime = 0;
@@ -178,28 +178,28 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         // Suscribirse a frames con imagen (para canvas - FALLBACK)
         const unsubFrames = wsService.on('frame_update', (data: any) => {
           console.log('📸 Frame update recibido:', data.frame_number);
-          
+
           const now = Date.now();
           const frameTime = data.timestamp ? new Date(data.timestamp).getTime() : now;
           const currentLatency = now - frameTime;
-          
+
           setLatency(currentLatency);
-          
+
           // Calcular FPS (promedio de últimos 10 frames)
           frameTimestamps.current.push(now);
           if (frameTimestamps.current.length > 10) {
             frameTimestamps.current.shift();
           }
-          
+
           if (frameTimestamps.current.length >= 2) {
             const timeDiff = (frameTimestamps.current[frameTimestamps.current.length - 1] - frameTimestamps.current[0]) / 1000;
             const calculatedFps = (frameTimestamps.current.length - 1) / timeDiff;
             setFps(Math.round(calculatedFps));
           }
-          
+
           setFramesReceived(prev => prev + 1);
           lastFrameTime.current = now;
-          
+
           // Dibujar frame en canvas (si no estamos usando video)
           if (canvasRef.current && data.frame_data && !videoUrl) {
             const canvas = canvasRef.current;
@@ -223,7 +223,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         // Suscribirse a detecciones de vehículos (para el log)
         const unsubVehicle = wsService.on('vehicle_detected', (data: any) => {
           console.log('🚗 Vehículo detectado:', data.vehicle_type, '#', data.track_id);
-          
+
           const detection: RealtimeDetectionEvent = {
             timestamp: data.timestamp || new Date().toISOString(),
             vehicleType: data.vehicle_type || 'desconocido',
@@ -243,7 +243,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
             }
             return prev;
           });
-          
+
           setLiveData((prev) => ({
             ...prev,
             vehicleCount: prev.vehicleCount + 1,
@@ -258,7 +258,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           setIsLoadingModels(true);
           setLoadingProgress(data.progress || 0);
           setLoadingMessage(data.message || 'Cargando...');
-          
+
           if (data.progress >= 100) {
             setTimeout(() => {
               setIsLoadingModels(false);
@@ -316,7 +316,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     if (pastTimestamps.length === 0) return [];
 
     const lastValidTimestamp = pastTimestamps[pastTimestamps.length - 1];
-    
+
     // Solo usar si no está muy antigua (máximo 1 segundo atrás)
     const timeDifference = currentTime - lastValidTimestamp;
     if (timeDifference > 1.0) return [];
@@ -363,10 +363,32 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           .catch(console.error);
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isPlaying, analysisId]);
+
+
+  // useEffect para actualizar detecciones con requestAnimationFrame
+  useEffect(() => {
+    if (!isPlaying || !videoRef.current) return;
+
+    let animationFrameId: number;
+
+    const updateDetections = () => {
+      if (videoRef.current) {
+        const time = videoRef.current.currentTime;
+        const detections = getDetectionsForTime(time);
+        setCurrentFrameDetections(detections);
+      }
+      animationFrameId = requestAnimationFrame(updateDetections);
+    };
+
+    animationFrameId = requestAnimationFrame(updateDetections);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isPlaying, videoDuration, detectionBuffer]); // Dependencias necesarias
+
 
   const loadCameraData = async (cameraId: number) => {
     try {
@@ -374,22 +396,22 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
       const cameraData: CameraEntity = await trafficService.getCamera(cameraId);
       setCamera(cameraData);
-      
+
       if (cameraData.locationId) {
         const locationData = await trafficService.getLocation(cameraData.locationId);
         setLocation(locationData);
       }
 
       const analysisToLoad = analysisId || cameraData.currentAnalysisId;
-      
+
       if (analysisToLoad) {
         console.log('🔥 Cargando análisis:', analysisToLoad);
         const analysisData = await trafficService.getAnalysis(analysisToLoad.toString());
-        
+
         if (!analysisId && cameraData.currentAnalysisId) {
           setAnalysisId(cameraData.currentAnalysisId);
         }
-        
+
         if (analysisData.videoPath) {
           const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
           const videoUrl = `${baseUrl}/media/${analysisData.videoPath}`;
@@ -410,7 +432,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         setThumbnailUrl(thumbUrl);
         console.log('🖼️ Thumbnail URL:', thumbUrl);
       }
-      
+
     } catch (error) {
       console.error('Error loading camera data:', error);
     } finally {
@@ -445,7 +467,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
       setIsPlaying(false);
       setShowProcessedFrames(false);
       setCurrentFrameDetections([]);
-      
+
       if (videoRef.current) {
         videoRef.current.pause();
       }
@@ -461,35 +483,39 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     }
 
     try {
- 
-     if (isPaused) {
+
+      if (isPaused) {
         // Reanudar
         const result = await trafficService.resumeAnalysis(analysisId);
         console.log('✅ Análisis reanudado:', result);
-        
+
         if (videoRef.current && videoUrl) {
           videoRef.current.play();
         }
       } else {
+
+        //  Iniciar nuevo análisis
+        setDetections([]);
+
         // Resetear contadores y buffer
         framesReceivedCount.current = 0;
-        hasStartedVideo.current = false;  
+        hasStartedVideo.current = false;
         setDetectionBuffer({});
         setBufferingProgress(0);
         setIsLoadingModels(true);
         setLoadingProgress(0);
         setLoadingMessage('Iniciando análisis...');
-        
+
         setIsBuffering(true);
         console.log('⏳ Buffering iniciado, esperando frames...');
-        
+
         const result = await trafficService.startAnalysis(analysisId);
         console.log('✅ Análisis iniciado:', result);
         setLiveData((prev) => ({
           ...prev,
           startTime: new Date().toLocaleTimeString(),
         }));
-        
+
         console.log('⏳ Esperando buffer de frames antes de iniciar video...');
       }
       setIsPlaying(true);
@@ -531,6 +557,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -542,9 +569,9 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h4 className="text-xl font-bold text-gray-900">
                 {camera.name} - En Línea
-              </h1>
+              </h4>
               {location && (
                 <p className="text-sm text-gray-600">
                   {location.description}, {location.city}
@@ -559,323 +586,315 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Debug Info */}
-          {analysisId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-900">
-                <strong>Análisis ID:</strong> {analysisId}
-              </p>
-              {videoUrl && (
-                <p className="text-sm text-blue-900 mt-1">
-                  <strong>Video URL:</strong> {videoUrl}
-                </p>
-              )}
-              <p className="text-sm text-blue-700 mt-1">
-                {isConnected ? '✅ WebSocket conectado' : '⏳ Conectando WebSocket...'}
-              </p>
-              <p className="text-sm text-blue-700 mt-1">
-                <strong>Buffer:</strong> {Object.keys(detectionBuffer).length} frames | 
-                <strong> Detecciones actuales:</strong> {currentFrameDetections.length}
-              </p>
-            </div>
-          )}
+      <div className="p-2">
+        <div className="w-full">
 
-          {/* Video Player */}
-          <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg mb-6">
-            <div className="relative aspect-video">
-              {videoUrl ? (
-                <>
-                  {/* Video principal que se reproduce */}
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className={`w-full h-full object-contain ${showProcessedFrames ? 'block' : 'hidden'}`}
-                    muted
-                    playsInline
-                    preload="auto"
-                    onError={(e) => {
-                      console.error('❌ Error cargando video:', e);
-                    }}
-                    onLoadedMetadata={() => {
-                       if (videoRef.current) {
-                          setVideoDuration(videoRef.current.duration);
-                        }
-                    }}
-                    onTimeUpdate={(e) => {
-                      setCurrentTime(e.currentTarget.currentTime);
-                      setVideoProgress((e.currentTarget.currentTime / videoDuration) * 100);
-                      const detections = getDetectionsForTime(e.currentTarget.currentTime);
-                      setCurrentFrameDetections(detections);
-                    }}
-                    onEnded={() => {
-                      console.log('🎬 Video finalizado');
-                      setCurrentTime(0);
-                      setVideoProgress(0);
-                      framesReceivedCount.current = 0;
-                      setCurrentFrameDetections([]);
-                    }}
-                  />
+          {/* Grid de 2 columnas */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
 
-                  {/* Overlay de Bounding Boxes */}
-                  {showProcessedFrames && currentFrameDetections.length > 0 && (
-                    <BoundingBoxDrawer
-                      videoRef={videoRef}
-                      detections={currentFrameDetections}
-                    />
-                  )}
-                  
-                  {/* Thumbnail cuando NO está procesando */}
-                  {!showProcessedFrames && !isBuffering && (
-                    <div className="absolute inset-0 bg-black">
-                      {thumbnailUrl ? (
-                        <img
-                          src={thumbnailUrl}
-                          alt="Video preview"
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <video
-                          src={videoUrl}
-                          className="w-full h-full object-contain"
-                          muted
-                          preload="metadata"
+            {/* Columna IZQUIERDA: Video + Controles (2/3 del espacio) */}
+            <div className="lg:col-span-2 space-y-6">
+
+              {/* Video Player */}
+              <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg sticky top-2 z-10">
+                <div className="relative w-full aspect-video min-h-[70vh]">
+                  {videoUrl ? (
+                    <>
+                      {/* Video principal que se reproduce */}
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className={`w-full h-full object-cover ${showProcessedFrames ? 'block' : 'hidden'}`}
+                        muted
+                        playsInline
+                        preload="auto"
+                        onError={(e) => {
+                          console.error('❌ Error cargando video:', e);
+                        }}
+                        onLoadedMetadata={() => {
+                          if (videoRef.current) {
+                            setVideoDuration(videoRef.current.duration);
+                          }
+                        }}
+                        onTimeUpdate={(e) => {
+                          setCurrentTime(e.currentTarget.currentTime);
+                          setVideoProgress((e.currentTarget.currentTime / videoDuration) * 100);
+                        }}
+                        onEnded={() => {
+                          console.log('🎬 Video finalizado');
+                          setCurrentTime(0);
+                          setVideoProgress(0);
+                          framesReceivedCount.current = 0;
+                          setCurrentFrameDetections([]);
+                        }}
+                      />
+
+                      {/* Overlay de Bounding Boxes */}
+                      {showProcessedFrames && currentFrameDetections.length > 0 && (
+                        <BoundingBoxDrawer
+                          videoRef={videoRef}
+                          detections={currentFrameDetections}
                         />
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                        <div className="text-center">
-                          <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mb-4 mx-auto">
-                            <Play className="w-10 h-10 text-white" />
+
+                      {/* Thumbnail cuando NO está procesando */}
+                      {!showProcessedFrames && !isBuffering && (
+                        <div className="absolute inset-0 bg-black">
+                          {thumbnailUrl ? (
+                            <img
+                              src={thumbnailUrl}
+                              alt="Video preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <video
+                              src={videoUrl}
+                              className="w-full h-full object-cover"
+                              muted
+                              preload="metadata"
+                            />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                            <div className="text-center">
+                              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mb-4 mx-auto">
+                                <Play className="w-10 h-10 text-white" />
+                              </div>
+                              <p className="text-white text-xl font-semibold">Video Cargado</p>
+                              <p className="text-gray-300 mt-2">Presiona "Iniciar" para comenzar el análisis</p>
+                            </div>
                           </div>
-                          <p className="text-white text-xl font-semibold">Video Cargado</p>
-                          <p className="text-gray-300 mt-2">Presiona "Iniciar" para comenzar el análisis</p>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Indicador de BUFFERING */}
-                  {isBuffering && (
-              
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
+                      )}
+
+                      {/* Indicador de BUFFERING */}
+                      {isBuffering && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-30">
+                          <div className="text-center">
+                            <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
+                            <p className="text-white text-xl font-semibold">Buffering...</p>
+                            <p className="text-gray-300 mt-2">
+                              Esperando frames procesados ({framesReceivedCount.current}/{MIN_FRAMES_TO_START})
+                            </p>
+                            <div className="w-64 bg-gray-700 rounded-full h-2 mt-4 mx-auto">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${bufferingProgress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Indicador de procesamiento */}
+                      {showProcessedFrames && !isBuffering && (
+                        <div className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 z-20">
+                          <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                          <span className="font-semibold">ANÁLISIS EN TIEMPO REAL</span>
+                        </div>
+                      )}
+
+                      {/* Contador de detecciones */}
+                      {showProcessedFrames && !isBuffering && (
+                        <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-mono z-20">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span>{currentFrameDetections.length} vehículos</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Indicador de buffer */}
+                      {showProcessedFrames && !isBuffering && (
+                        <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg text-xs font-mono z-20">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>Buffer: {Object.keys(detectionBuffer).length} frames</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Indicador de rendimiento */}
+                      {showProcessedFrames && isPlaying && !isBuffering && (
+                        <div className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg space-y-1 z-20">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm font-medium">FPS:</span>
+                            <span className="text-lg font-bold">{fps}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm font-medium">Latencia:</span>
+                            <span className="text-lg font-bold">{latency}ms</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm font-medium">Frames:</span>
+                            <span className="text-lg font-bold">{framesReceived}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-sm font-medium">Detecciones:</span>
+                            <span className="text-lg font-bold">{currentFrameDetections.length}</span>
+                          </div>
+                          {/* Indicador de color según latencia */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className={`w-3 h-3 rounded-full ${latency < 100 ? 'bg-green-500' :
+                                latency < 200 ? 'bg-yellow-500' :
+                                  latency < 500 ? 'bg-orange-500' : 'bg-red-500'
+                              }`} />
+                            <span className="text-xs">
+                              {latency < 100 ? 'Excelente' :
+                                latency < 200 ? 'Bueno' :
+                                  latency < 500 ? 'Regular' : 'Lento'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
                       <div className="text-center">
-                        <div className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
-                        <p className="text-white text-xl font-semibold">Buffering...</p>
-                        <p className="text-gray-300 mt-2">
-                          Esperando frames procesados ({framesReceivedCount.current}/{MIN_FRAMES_TO_START})
+                        <Camera className="w-20 h-20 text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-400">
+                          {analysisId ? 'Cargando video...' : 'Sin video disponible'}
                         </p>
-                        <div className="w-64 bg-gray-700 rounded-full h-2 mt-4 mx-auto">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${bufferingProgress}%` }}
-                          ></div>
-                        </div>
+                        <p className="text-gray-500 text-sm mt-2">
+                          {analysisId
+                            ? 'Por favor espera mientras se carga el video...'
+                            : 'Sube un video desde la página de cámaras'}
+                        </p>
                       </div>
                     </div>
                   )}
-                  
-                  {/* Indicador de procesamiento */}
-                  {showProcessedFrames && !isBuffering && (
-                    <div className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 z-20">
-                      <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                      <span className="font-semibold">ANÁLISIS EN TIEMPO REAL</span>
-                    </div>
-                  )}
-                  
-                  {/* Contador de detecciones */}
-                  {showProcessedFrames && !isBuffering && (
-                    <div className="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-2 rounded-lg text-sm font-mono z-20">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span>{currentFrameDetections.length} vehículos</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Indicador de buffer */}
-                  {showProcessedFrames && !isBuffering && (
-                    <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg text-xs font-mono z-20">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span>Buffer: {Object.keys(detectionBuffer).length} frames</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Indicador de rendimiento */}
-                  {showProcessedFrames && isPlaying && !isBuffering && (
-                    <div className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg space-y-1 z-20">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium">FPS:</span>
-                        <span className="text-lg font-bold">{fps}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium">Latencia:</span>
-                        <span className="text-lg font-bold">{latency}ms</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium">Frames:</span>
-                        <span className="text-lg font-bold">{framesReceived}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium">Detecciones:</span>
-                        <span className="text-lg font-bold">{currentFrameDetections.length}</span>
-                      </div>
-                      {/* Indicador de color según latencia */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          latency < 100 ? 'bg-green-500' : 
-                          latency < 200 ? 'bg-yellow-500' : 
-                          latency < 500 ? 'bg-orange-500' : 'bg-red-500'
-                        }`} />
-                        <span className="text-xs">
-                          {latency < 100 ? 'Excelente' : 
-                           latency < 200 ? 'Bueno' : 
-                           latency < 500 ? 'Regular' : 'Lento'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <Camera className="w-20 h-20 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">
-                      {analysisId ? 'Cargando video...' : 'Sin video disponible'}
-                    </p>
-                    <p className="text-gray-500 text-sm mt-2">
-                      {analysisId 
-                        ? 'Por favor espera mientras se carga el video...' 
-                        : 'Sube un video desde la página de cámaras'}
-                    </p>
-                  </div>
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Controls */}
-          <div className="flex justify-center gap-4 mb-6">
-            <button
-              onClick={handleReconnect}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-            >
-              <RotateCcw className="w-5 h-5" />
-              Reconectar
-            </button>
-            <button
-              onClick={handlePause}
-              disabled={!isPlaying || isBuffering}
-              className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-            >
-              <Pause className="w-5 h-5" />
-              Pausar
-            </button>
-            <button
-              onClick={handlePlay}
-              disabled={isPlaying || isBuffering}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-            >
-              <Play className="w-5 h-5" />
-              {isBuffering ? 'Buffering...' : 'Iniciar'}
-            </button>
-          </div>
+              {/* Controls */}
+              <div className="flex justify-center gap-4 sticky top-[calc(600px+1rem)] z-10 bg-gray-50 py-4">
+                <button
+                  onClick={handleReconnect}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Reconectar
+                </button>
+                <button
+                  onClick={handlePause}
+                  disabled={!isPlaying || isBuffering}
+                  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
+                >
+                  <Pause className="w-5 h-5" />
+                  Pausar
+                </button>
+                <button
+                  onClick={handlePlay}
+                  disabled={isPlaying || isBuffering}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
+                >
+                  <Play className="w-5 h-5" />
+                  {isBuffering ? 'Buffering...' : 'Iniciar'}
+                </button>
+              </div>
 
-          {/* Info Panel */}
-          <div className="bg-gray-900 text-white rounded-lg p-6 shadow-lg">
-            {/* Camera Info - Compacto arriba */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-700">
-              <div className="flex flex-col">
-                <span className="text-gray-400 text-xs mb-1">UBICACIÓN</span>
-                <span className="font-mono text-sm">{location?.description || 'INSIV-001'}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-gray-400 text-xs mb-1">INICIO</span>
-                <span className="font-mono text-sm">
-                  {liveData.startTime || new Date().toLocaleString('es-EC', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }).replace(',', ':')}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-gray-400 text-xs mb-1">TIEMPO</span>
-                <span className="font-mono text-sm">
-                  {(() => {
-                    const hours = Math.floor(liveData.elapsedSeconds / 3600);
-                    const minutes = Math.floor((liveData.elapsedSeconds % 3600) / 60);
-                    const secs = liveData.elapsedSeconds % 60;
-                    return `${hours}h${minutes}m${secs}s`;
-                  })()}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-gray-400 text-xs mb-1">ELEM. CONTADO</span>
-                <span className="font-mono text-sm">{liveData.vehicleCount}</span>
-              </div>
-            </div>
-
-            {/* Logs en tiempo real - Panel más grande */}
-            <div className="flex flex-col h-full">
-              {showProcessedFrames && videoDuration > 0 && (
-              <div className="mb-4 p-4 bg-blue-900 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-blue-200">
-                    ▶️ Reproducción del análisis
-                  </span>
-                  <span className="text-sm font-mono text-blue-200">
-                    {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
-                  </span>
-                </div>
-                <div className="w-full bg-blue-950 rounded-full h-2.5">
-                  <div 
-                    className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                    style={{ width: `${videoProgress}%` }}
-                  ></div>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-blue-300">
-                    {videoProgress < 100 ? 'Analizando video en tiempo real...' : 'Análisis completado ✓'}
+              {/* Debug Info - Debajo de botones */}
+              {analysisId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-900">
+                    <strong>Análisis ID:</strong> {analysisId}
                   </p>
-                  <span className="text-xs font-mono text-blue-200">
-                    {videoProgress.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            )} 
-              {/* Barra de progreso de BUFFERING */}
-                 {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
-                <div className="mb-4 p-4 bg-purple-900 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-purple-200">
-                      ⏳ Cargando frames iniciales...
-                    </span>
-                    <span className="text-sm font-mono text-purple-200">
-                      {framesReceivedCount.current}/{MIN_FRAMES_TO_START}
-                    </span>
-                  </div>
-                  <div className="w-full bg-purple-950 rounded-full h-2.5">
-                    <div 
-                      className="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${bufferingProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-purple-300 mt-2">
-                    El video iniciará automáticamente cuando haya suficiente buffer
+                  {videoUrl && (
+                    <p className="text-sm text-blue-900 mt-1">
+                      <strong>Video URL:</strong> {videoUrl}
+                    </p>
+                  )}
+                  <p className="text-sm text-blue-700 mt-1">
+                    {isConnected ? '✅ WebSocket conectado' : '⏳ Conectando WebSocket...'}
+                  </p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    <strong>Buffer:</strong> {Object.keys(detectionBuffer).length} frames |
+                    <strong> Detecciones actuales:</strong> {currentFrameDetections.length}
                   </p>
                 </div>
               )}
-              
-              <DetectionLogPanel detections={detections} />
+            </div>
+
+            {/* Columna DERECHA: Panel de datos (1/3 del espacio) */}
+            <div className="lg:col-span-1">
+              <div className="bg-gray-900 text-white rounded-lg p-6 shadow-lg sticky top-2">
+
+                {/* Camera Info - Compacto */}
+                <div className="grid grid-cols-1 gap-3 mb-4 pb-4 border-b border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">UBICACIÓN</span>
+                    <span className="font-mono text-xs text-right">{location?.description || 'INSIV-001'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">INICIO</span>
+                    <span className="font-mono text-xs">
+                      {liveData.startTime || new Date().toLocaleTimeString('es-EC')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">TIEMPO</span>
+                    <span className="font-mono text-xs">
+                      {Math.floor(liveData.elapsedSeconds / 60)}m {liveData.elapsedSeconds % 60}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">VEHÍCULOS</span>
+                    <span className="font-mono text-xl font-bold text-green-400">{liveData.vehicleCount}</span>
+                  </div>
+                </div>
+
+                {/* Barra de progreso de reproducción */}
+                {showProcessedFrames && videoDuration > 0 && (
+                  <div className="mb-4 p-3 bg-blue-900 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-blue-200">▶️ Reproducción</span>
+                      <span className="text-xs font-mono text-blue-200">
+                        {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-950 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${videoProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-blue-300 mt-1">
+                      {videoProgress.toFixed(1)}%
+                    </p>
+                  </div>
+                )}
+
+                {/* Barra de progreso de BUFFERING */}
+                {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
+                  <div className="mb-4 p-3 bg-purple-900 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-purple-200">⏳ Buffering</span>
+                      <span className="text-xs font-mono text-purple-200">
+                        {framesReceivedCount.current}/{MIN_FRAMES_TO_START}
+                      </span>
+                    </div>
+                    <div className="w-full bg-purple-950 rounded-full h-2">
+                      <div
+                        className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${bufferingProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-purple-300 mt-1">
+                      Cargando frames...
+                    </p>
+                  </div>
+                )}
+
+                {/* Logs - Con altura fija y scroll */}
+                <div className="h-[calc(100vh-300px)] overflow-y-auto">
+                  <DetectionLogPanel detections={[...detections].reverse()} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 };

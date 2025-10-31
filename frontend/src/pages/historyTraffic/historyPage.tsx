@@ -49,6 +49,7 @@ export default function HistoryTraffic() {
     try {
       const data = await trafficService.getLocations();
       setLocations(data);
+      console.log("Locations loaded:", data);
     } catch (err) {
       toast.error("Error al cargar las ubicaciones");
       console.error("Error al cargar las ubicaciones:", err);
@@ -84,6 +85,7 @@ export default function HistoryTraffic() {
       }
 
       console.log("dateRange:", dateRangeType);
+      console.log("->> selectedLocation:", selectedLocation);
       const data = await getHistoryTraffic(
         trafficType,
         selectedLocation,

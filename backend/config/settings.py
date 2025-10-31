@@ -12,6 +12,7 @@ from decouple import config
 from django.core.exceptions import ImproperlyConfigured
 import sys
 from celery.schedules import crontab
+import rpds
 
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -357,6 +358,7 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_FROM = config("EMAIL_FROM", default="TrafiSmart <noreply@trafismart.com>")
 
+
 # ==============================================================================
 # CELERY CONFIGURATION (Async Task Processing)
 # ==============================================================================
@@ -478,5 +480,5 @@ STREAM_RECONNECT_ATTEMPTS = 3
 STREAM_TIMEOUT = 10  # seconds
 
 # Frontend URL for email links
-FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5174")
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5174')
 LOGO_URL = os.getenv("LOGO_URL", "https://via.placeholder.com/80")

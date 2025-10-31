@@ -31,9 +31,12 @@ export default function HistoryHeader({
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
           >
             {locations.map((element) => (
+              
               <option key={element?.id} value={element?.id}>
                 {element?.description}
               </option>
+
+              
             ))}
           </select>
 

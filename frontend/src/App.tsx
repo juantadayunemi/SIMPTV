@@ -31,6 +31,7 @@ import { FCMInitializer } from './components/notifications/FCMInitializer'; // I
 
 // Styles
 import './App.css';
+import { ToastProvider } from './components/ui/ToastContainer';
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   }
 
   return (
+    <ToastProvider>
     <Router>
       <div className="App min-h-screen bg-gray-50">
         {/* FCM Initializer - Solo se activa cuando el usuario está autenticado */}
@@ -168,6 +170,7 @@ const App: React.FC = () => {
         </Routes>
       </div>
     </Router>
+    </ToastProvider>
   );
 };
 

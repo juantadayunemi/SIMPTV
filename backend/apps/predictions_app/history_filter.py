@@ -1,3 +1,4 @@
+import re
 import django_filters
 from apps.traffic_app.models import Vehicle
 from django.db.models import Avg, Count, Max, Min
@@ -22,11 +23,15 @@ class HistoryTrafficFilter(django_filters.FilterSet):
         location = self.request.query_params.get("locationId")
         date_from = self.request.query_params.get("dateFrom")
         date_to = self.request.query_params.get("dateTo")
+
         if location and date_from and date_to:
-            return queryset.filter(
+            qs = queryset.filter(
                 trafficAnalysisId__locationId=location,
                 firstDetectedAt__range=[date_from, date_to],
             ).select_related("trafficAnalysisId")
+            print("Filtered queryset:", qs)
+            return qs
+
         return queryset
 
     def _days_analyzed(self, qs):
