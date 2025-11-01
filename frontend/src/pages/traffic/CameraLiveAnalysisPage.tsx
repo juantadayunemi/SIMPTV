@@ -83,6 +83,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const framesReceivedCount = useRef<number>(0);
   const videoStartTime = useRef<number>(0);
   const lastProcessedTimestamp = useRef<number>(0);
+  const processedTrackIds = useRef<Set<number>>(new Set());
 
 
   useEffect(() => {
@@ -104,8 +105,10 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         setIsConnected(true);
         console.log('✅ WebSocket conectado:', analysisId);
 
+        
         // ✅ NUEVO: Procesar batch de frames
         const unsubFramesBatch = wsService.on('frames_batch', (data: any) => {
+
           if (!data.frames || !Array.isArray(data.frames)) return;
           
           console.log(`📦 Batch recibido: ${data.frames.length} frames`);
@@ -132,6 +135,34 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               }));
             }
           });
+
+
+
+           // ✅ Agregar detecciones al log (solo vehículos nuevos)
+          formattedDetections.forEach((det) => {
+            if (!processedTrackIds.current.has(det.track_id)) {
+              processedTrackIds.current.add(det.track_id);
+              
+              const detection: RealtimeDetectionEvent = {
+                timestamp: new Date(frameData.timestamp * 1000).toISOString(),
+                vehicleType: det.vehicle_type,
+                plateNumber: null,
+                confidence: det.confidence,
+                bbox: det.bbox,
+                frameNumber: frameData.frame_number || 0,
+                trackId: det.track_id.toString(),
+              };
+
+              setDetections((prev) => [...prev, detection]);
+              setLiveData((prev) => ({
+                ...prev,
+                vehicleCount: prev.vehicleCount + 1,
+                lastUpdate: new Date().toLocaleTimeString(),
+              }));
+            }
+          });
+        
+
 
           // Iniciar video cuando tengamos suficiente buffer
           if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
@@ -444,7 +475,9 @@ export const CameraLiveAnalysisPage: React.FC = () => {
       } else {
         setDetections([]);
         framesReceivedCount.current = 0;
+        processedTrackIds.current.clear();
         hasStartedVideo.current = false;
+        setLiveData(prev => ({ ...prev, vehicleCount: 0, avgSpeed: 0 }));
         setDetectionBuffer({});
         setBufferingProgress(0);
         setIsBuffering(true);

@@ -127,8 +127,8 @@ export class TrafficWebSocketService {
    * Manejar mensaje recibido del WebSocket
    */
   private handleMessage(message: WebSocketMessage): void {
-    console.log(`📨 Mensaje recibido VVVVVVVVVV `, message)
-    console.log(`📨 Mensaje recibido [${message.type}]:`, message.data);
+
+    console.log(`📨 Mensaje recibido :`, message.data);
 
     const handlers = this.handlers.get(message.type);
     if (handlers) {
