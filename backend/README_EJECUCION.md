@@ -12,6 +12,7 @@
 ### Paso 1: Entrar al directorio backend y activar entorno virtual
 ```cmd
 cd backend
+python -m venv venv
 venv\Scripts\activate
 ```
 
@@ -20,7 +21,9 @@ venv\Scripts\activate
 cd redis
 .\redis-server.exe redis.windows.conf
 ```
-
+---------------------------------------------------------------
+pip install -r requirements.txt
+---------------------------------------------------------------
 ### Paso 3: Iniciar Celery Worker (en terminal separado, estar en backend)
 ```cmd
 # PRERREQUISITOS: Redis debe estar corriendo
@@ -38,8 +41,18 @@ python manage.py runserver
 
 ### Paso 5: Lanzando (iniciando) un servidor Daphne
 ```cmd
-# Desde el directorio backend (con venv activado)
-daphne -b 0.0.0.0 -p 8001 config.asgi:application  
+# Desde el directorio backend (IMPORTANTE: debes estar en el directorio backend)
+# OPCIÓN 1: Usando el Python del venv directamente (RECOMENDADO)
+cd S:\Construccion\SIMPTV\backend
+.\venv\Scripts\python.exe -m daphne -b 0.0.0.0 -p 8001 config.asgi:application
+
+# OPCIÓN 2: Activando el venv primero
+cd S:\Construccion\SIMPTV\backend
+.\venv\Scripts\Activate.ps1
+daphne -b 0.0.0.0 -p 8001 config.asgi:application
+
+# ⚠️ NOTA: Asegúrate de escribir "asgi" (no "aspi")
+# ⚠️ NOTA: Debe ejecutarse desde el directorio backend
 ```
 
 

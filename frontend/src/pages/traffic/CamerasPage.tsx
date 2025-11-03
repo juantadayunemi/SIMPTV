@@ -527,7 +527,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
                         ref={(el) => { 
                           videoRefs.current[camera.id] = el;
                           if (el) {
-                            el.playbackRate = 1;  // 100% velocidad
+                            el.playbackRate = 0.75;  // 100% velocidad
                             // el.playbackRate = 0.25;  // 25% velocidad (cuarto)
                             // el.playbackRate = 0.75;  // 75% velocidad
                           }

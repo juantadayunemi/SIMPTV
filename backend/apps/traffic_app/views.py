@@ -18,7 +18,7 @@ import os
 import logging
 import traceback
 
-from .models import Location, Camera, TrafficAnalysis, Vehicle, VehicleFrame
+from .models import Location, Camera, TrafficAnalysis, Vehicle, VehicleFrame, DetectedPlate
 from .serializers import (
     LocationSerializer,
     CameraSerializer,
@@ -27,8 +27,10 @@ from .serializers import (
     VehicleSerializer,
     VehicleFrameSerializer,
     CreateTrafficAnalysisSerializer,
+    DetectedPlateSerializer,
+    TrafficAnalysisWithPlatesSerializer,
 )
-from .tasks import analyze_video_async
+from .tasks import analyze_video_async, process_video_with_plate_detection
 from rest_framework.decorators import api_view, parser_classes
 
 
@@ -635,3 +637,176 @@ def analyze_video_endpoint( request):
         traceback.print_exc()
 
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# 🆕 PLATE DETECTION ENDPOINTS (Phase 3 - Parallel Implementation)
+# ============================================================================
+
+
+@api_view(["POST"])
+@parser_classes([JSONParser])
+def start_plate_detection(request):
+    """
+    🆕 NUEVO ENDPOINT: Iniciar detección de placas en un análisis existente
+    
+    Request JSON:
+    {
+        "analysis_id": 123,
+        "confidence_threshold": 0.3,  // opcional, default 0.3
+        "save_raw_plates": true        // opcional, default true
+    }
+    
+    Response:
+    {
+        "analysis_id": 123,
+        "task_id": "celery-task-uuid",
+        "message": "Plate detection started successfully",
+        "video_path": "/path/to/video.mp4"
+    }
+    """
+    try:
+        analysis_id = request.data.get("analysis_id")
+        confidence_threshold = request.data.get("confidence_threshold", 0.3)
+        save_raw_plates = request.data.get("save_raw_plates", True)
+        
+        if not analysis_id:
+            return Response(
+                {"error": "analysis_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar que existe el análisis
+        try:
+            analysis = TrafficAnalysis.objects.get(id=analysis_id)
+        except TrafficAnalysis.DoesNotExist:
+            return Response(
+                {"error": f"TrafficAnalysis with id={analysis_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verificar que tiene video
+        if not analysis.videoPath:
+            return Response(
+                {"error": "Analysis does not have a video file"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Construir path completo del video
+        video_path = os.path.join(settings.MEDIA_ROOT, analysis.videoPath)
+        if not os.path.exists(video_path):
+            return Response(
+                {"error": f"Video file not found: {video_path}"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 🚀 Lanzar tarea Celery de detección de placas
+        logger.info(f"🔍 Iniciando detección de placas para análisis {analysis_id}")
+        task = process_video_with_plate_detection.delay(
+            analysis_id=analysis_id,
+            video_path=video_path,
+            confidence_threshold=confidence_threshold,
+            save_raw_plates=save_raw_plates
+        )
+        
+        logger.info(f"✅ Tarea de detección de placas iniciada: task_id={task.id}")
+        
+        return Response(
+            {
+                "analysis_id": analysis_id,
+                "task_id": task.id,
+                "message": "Plate detection started successfully",
+                "video_path": analysis.videoPath,
+                "confidence_threshold": confidence_threshold,
+                "save_raw_plates": save_raw_plates
+            },
+            status=status.HTTP_202_ACCEPTED
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error en start_plate_detection: {e}")
+        traceback.print_exc()
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(["GET"])
+def plate_list(request):
+    """
+    🆕 NUEVO ENDPOINT: Listar placas detectadas de un análisis
+    
+    Query params:
+    - analysis_id: ID del análisis (requerido)
+    - vehicle_type: Filtrar por tipo de vehículo (opcional)
+    - min_confidence: Confianza mínima (opcional)
+    
+    Response:
+    {
+        "analysis_id": 123,
+        "total_plates": 45,
+        "plates": [
+            {
+                "id": 1,
+                "image_url": "http://...",
+                "bounding_box": [x, y, w, h],
+                "confidence": 0.85,
+                "vehicle_class": 2,
+                "vehicle_class_name": "car",
+                ...
+            }
+        ]
+    }
+    """
+    try:
+        analysis_id = request.query_params.get("analysis_id")
+        vehicle_type = request.query_params.get("vehicle_type")
+        min_confidence = request.query_params.get("min_confidence")
+        
+        if not analysis_id:
+            return Response(
+                {"error": "analysis_id query parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar que existe el análisis
+        try:
+            analysis = TrafficAnalysis.objects.get(id=analysis_id)
+        except TrafficAnalysis.DoesNotExist:
+            return Response(
+                {"error": f"TrafficAnalysis with id={analysis_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Filtrar placas detectadas
+        plates_query = DetectedPlate.objects.filter(analysis=analysis)
+        
+        if vehicle_type:
+            plates_query = plates_query.filter(vehicle_class=int(vehicle_type))
+        
+        if min_confidence:
+            plates_query = plates_query.filter(confidence__gte=float(min_confidence))
+        
+        # Ordenar por timestamp
+        plates_query = plates_query.order_by("-timestamp")
+        
+        # Serializar
+        serializer = DetectedPlateSerializer(plates_query, many=True, context={"request": request})
+        
+        return Response(
+            {
+                "analysis_id": analysis_id,
+                "total_plates": plates_query.count(),
+                "plates": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error en plate_list: {e}")
+        traceback.print_exc()
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

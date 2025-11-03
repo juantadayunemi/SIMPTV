@@ -155,7 +155,7 @@ def analyze_video_async(self, analysis_id, video_path):
         MAX_FRAMES_MISSING = 5  # Máximo frames sin detectar antes de eliminar track
         IOU_THRESHOLD_TRACKING = 0.3  # IoU mínimo para asociar detección con track
         SKIP_FRAMES = 3          # Procesar cada 3 frames
-        IMGSZ = 480            # Resolución de entrada [616x346 para 16:9, 608x352 para 16:9, 384x216 para pruebas rápidas]
+        IMGSZ = 370            # Resolución de entrada [616x346 para 16:9, 608x352 para 16:9, 384x216 para pruebas rápidas]
         CONF_THRESHOLD = 0.5     # Umbral de confianza
         IOU_THRESHOLD = 0.45     # IoU para NMS
         USE_HALF_PRECISION = False  # ✅ CAMBIAR DE OFF A False
@@ -661,3 +661,312 @@ def cleanup_old_analyses(days: int = 30):
 
     logger.info(f"🧹 Limpieza completada: {deleted_count} análisis eliminados, {deleted_files} archivos eliminados")
     return {"deleted_analyses": deleted_count, "deleted_files": deleted_files}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NUEVA FUNCIONALIDAD: DETECCIÓN DE PLACAS VEHICULARES
+# ══════════════════════════════════════════════════════════════════════════════
+# Esta sección NO afecta las tareas existentes arriba.
+# Es una funcionalidad ADICIONAL que trabaja en paralelo.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from .plate_detector import PlateDetector
+from .models import DetectedPlate
+from pathlib import Path
+from django.core.files import File
+import cv2
+
+
+@shared_task(bind=True, max_retries=3)
+def process_video_with_plate_detection(self, analysis_id):
+    """
+    🚗 NUEVA TAREA: Procesa video detectando vehículos y placas
+    
+    Arquitectura:
+    1. YOLOv8n detecta vehículos
+    2. Haarcascade detecta placas en ROI del vehículo
+    3. Guarda imágenes de placas cuando cruzan línea de detección
+    4. Envía actualizaciones en tiempo real por WebSocket
+    
+    Args:
+        analysis_id: ID del TrafficAnalysis a procesar
+    
+    Returns:
+        dict: Estadísticas del procesamiento
+    """
+    from apps.traffic_app.models import TrafficAnalysis
+    
+    # Canal WebSocket
+    channel_layer = get_channel_layer()
+    room_group_name = f"traffic_analysis_{analysis_id}"
+    
+    def send_ws(message_type, data):
+        """Envía mensaje WebSocket al frontend"""
+        try:
+            async_to_sync(channel_layer.group_send)(
+                room_group_name,
+                {"type": message_type, "data": data}
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ Error enviando WebSocket: {e}")
+    
+    try:
+        logger.info(f"🚗 Iniciando análisis con detección de placas #{analysis_id}")
+        
+        # Obtener análisis
+        try:
+            analysis = TrafficAnalysis.objects.get(id=analysis_id)
+        except TrafficAnalysis.DoesNotExist:
+            logger.error(f"❌ Análisis #{analysis_id} no encontrado")
+            return {"status": "error", "message": "Análisis no encontrado"}
+        
+        # Actualizar estado
+        analysis.status = "PROCESSING"
+        analysis.save(update_fields=["status"])
+        
+        # Notificar inicio
+        send_ws("plate_detection_started", {
+            "analysis_id": analysis_id,
+            "message": "Iniciando detección de placas"
+        })
+        
+        # Obtener ruta del video
+        video_path = str(analysis.videoPath)
+        
+        if not os.path.exists(video_path):
+            logger.error(f"❌ Video no encontrado: {video_path}")
+            analysis.status = "FAILED"
+            analysis.errorMessage = "Video no encontrado"
+            analysis.save(update_fields=["status", "errorMessage"])
+            
+            send_ws("plate_detection_error", {
+                "analysis_id": analysis_id,
+                "error": "Video no encontrado"
+            })
+            
+            return {"status": "error", "message": "Video no encontrado"}
+        
+        # Inicializar detector de placas
+        logger.info("   Inicializando PlateDetector...")
+        detector = PlateDetector()
+        logger.info("   ✅ PlateDetector listo")
+        
+        # Abrir video
+        cap = cv2.VideoCapture(video_path)
+        
+        if not cap.isOpened():
+            logger.error(f"❌ No se puede abrir el video: {video_path}")
+            analysis.status = "FAILED"
+            analysis.errorMessage = "Error al abrir video"
+            analysis.save(update_fields=["status", "errorMessage"])
+            
+            send_ws("plate_detection_error", {
+                "analysis_id": analysis_id,
+                "error": "Error al abrir video"
+            })
+            
+            return {"status": "error", "message": "Error al abrir video"}
+        
+        # Obtener información del video
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"📹 Video: {total_frames} frames @ {fps} FPS ({width}x{height})")
+        
+        # Directorio para guardar placas
+        save_dir = Path(settings.MEDIA_ROOT) / 'plates' / 'raw'
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Variables de control
+        frame_count = 0
+        all_detections = []
+        last_ws_update = 0
+        ws_update_interval = 30  # Actualizar cada 30 frames
+        
+        # Procesar video frame por frame
+        while True:
+            ret, frame = cap.read()
+            
+            if not ret:
+                break
+            
+            frame_count += 1
+            
+            # Procesar frame con detección de placas
+            processed_frame, detections = detector.detect_in_frame(
+                frame,
+                save_dir=str(save_dir)
+            )
+            
+            # Guardar detecciones en base de datos
+            for detection in detections:
+                # Solo guardar si cruzó la línea
+                if detection['crossed_line']:
+                    vehicle = detection['vehicle']
+                    
+                    for plate in detection['plates']:
+                        # Solo guardar si se guardó la imagen
+                        if plate.get('saved', False):
+                            try:
+                                # Crear registro de placa detectada
+                                detected_plate = DetectedPlate.objects.create(
+                                    analysis=analysis,
+                                    frame_number=detection['frame'],
+                                    vehicle_bbox=vehicle['bbox'],
+                                    plate_bbox=plate['bbox_relative'],
+                                    plate_bbox_absolute=plate['bbox_absolute'],
+                                    vehicle_confidence=vehicle['confidence'],
+                                    vehicle_class=vehicle['class'],
+                                    crossed_detection_line=True,
+                                    detection_line_y=detection['line_y'],
+                                    metadata={
+                                        'width': plate['bbox_relative'][2],
+                                        'height': plate['bbox_relative'][3],
+                                        'area': plate['bbox_relative'][2] * plate['bbox_relative'][3]
+                                    }
+                                )
+                                
+                                # Asignar imagen al registro
+                                plate_file_path = Path(plate['filepath'])
+                                if plate_file_path.exists():
+                                    with open(plate_file_path, 'rb') as f:
+                                        detected_plate.image.save(
+                                            plate['filename'],
+                                            File(f),
+                                            save=True
+                                        )
+                                
+                                logger.info(
+                                    f"✅ Placa #{detected_plate.id} guardada: "
+                                    f"Frame {frame_count}"
+                                )
+                                
+                            except Exception as e:
+                                logger.error(f"❌ Error guardando placa: {str(e)}")
+            
+            all_detections.extend(detections)
+            
+            # Enviar actualización por WebSocket cada X frames
+            if frame_count - last_ws_update >= ws_update_interval:
+                progress = (frame_count / total_frames) * 100
+                stats = detector.get_stats()
+                
+                send_ws("plate_detection_progress", {
+                    "analysis_id": analysis_id,
+                    "progress": round(progress, 2),
+                    "frame": frame_count,
+                    "total_frames": total_frames,
+                    "detections_count": stats['total_detections'],
+                    "plates_saved": stats['plates_saved']
+                })
+                
+                last_ws_update = frame_count
+                
+                logger.info(
+                    f"📊 Progreso: {progress:.1f}% - "
+                    f"Frame {frame_count}/{total_frames} - "
+                    f"Placas: {stats['plates_saved']}"
+                )
+        
+        # Cerrar video
+        cap.release()
+        
+        # Obtener estadísticas finales
+        stats = detector.get_stats()
+        
+        # Actualizar análisis con resultados
+        analysis.status = "COMPLETED"
+        analysis.endedAt = timezone.now()
+        analysis.plates_detected = stats['total_detections']
+        analysis.plates_captured = stats['plates_saved']
+        
+        # Actualizar o crear campo de resultados
+        if analysis.analysisData:
+            analysis.analysisData['plate_detection'] = {
+                'total_frames': frame_count,
+                'total_detections': stats['total_detections'],
+                'plates_saved': stats['plates_saved'],
+                'fps': fps,
+                'video_resolution': f"{width}x{height}"
+            }
+        else:
+            analysis.analysisData = {
+                'plate_detection': {
+                    'total_frames': frame_count,
+                    'total_detections': stats['total_detections'],
+                    'plates_saved': stats['plates_saved'],
+                    'fps': fps,
+                    'video_resolution': f"{width}x{height}"
+                }
+            }
+        
+        analysis.save(update_fields=[
+            "status", 
+            "endedAt", 
+            "plates_detected", 
+            "plates_captured",
+            "analysisData"
+        ])
+        
+        # Notificar finalización
+        send_ws("plate_detection_complete", {
+            "analysis_id": analysis_id,
+            "stats": {
+                "total_frames": frame_count,
+                "total_detections": stats['total_detections'],
+                "plates_saved": stats['plates_saved'],
+                "fps": fps
+            }
+        })
+        
+        logger.info(
+            f"✅ Análisis #{analysis_id} completado - "
+            f"{stats['plates_saved']} placas capturadas de "
+            f"{stats['total_detections']} detecciones"
+        )
+        
+        return {
+            "status": "success",
+            "analysis_id": analysis_id,
+            "stats": {
+                "total_frames": frame_count,
+                "total_detections": stats['total_detections'],
+                "plates_saved": stats['plates_saved']
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error procesando análisis #{analysis_id}: {str(e)}")
+        logger.exception(e)  # Log completo del stack trace
+        
+        # Marcar como fallido
+        try:
+            analysis = TrafficAnalysis.objects.get(id=analysis_id)
+            analysis.status = "FAILED"
+            analysis.errorMessage = str(e)
+            analysis.endedAt = timezone.now()
+            analysis.save(update_fields=["status", "errorMessage", "endedAt"])
+            
+            send_ws("plate_detection_error", {
+                "analysis_id": analysis_id,
+                "error": str(e),
+                "message": "Error durante el procesamiento"
+            })
+            
+        except Exception as inner_e:
+            logger.error(f"❌ Error actualizando estado de análisis: {inner_e}")
+        
+        # Reintentar si es posible
+        if self.request.retries < self.max_retries:
+            countdown = 60 * (2 ** self.request.retries)
+            logger.info(f"🔄 Reintentando en {countdown} segundos...")
+            raise self.retry(exc=e, countdown=countdown)
+        else:
+            logger.error(f"❌ Máximo de reintentos alcanzado para análisis #{analysis_id}")
+            return {
+                "status": "error",
+                "analysis_id": analysis_id,
+                "message": str(e)
+            }

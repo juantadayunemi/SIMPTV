@@ -15,6 +15,8 @@ from .views import (
     VehicleViewSet,
     VehicleFrameViewSet,
     analyze_video_endpoint,
+    start_plate_detection,  # 🆕 NUEVO: Endpoint detección de placas
+    plate_list,             # 🆕 NUEVO: Endpoint listado de placas
 )
 
 
@@ -38,4 +40,8 @@ urlpatterns = [
     # Endpoint para frontend
     path("analyze-video/", analyze_video_endpoint, name="analyze-video"),
     path("upload-chunk/", TrafficChunkedUploadView.as_view(), name="upload-chunk"),
+    
+    # 🆕 NUEVOS ENDPOINTS: Detección de placas (Phase 3)
+    path("start-plate-detection/", start_plate_detection, name="start-plate-detection"),
+    path("plates/", plate_list, name="plate-list"),
 ]
