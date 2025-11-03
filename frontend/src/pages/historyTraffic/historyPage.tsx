@@ -22,7 +22,7 @@ import { LoadingContainer } from "@/components/ui/LoadingContainer";
 
 export default function HistoryTraffic() {
   const toast = useToast();
-  const [selectedLocation, setSelectedLocation] = useState(0);
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(0);
   const [locations, setLocations] = useState<Location[]>([]);
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>("7days");
   const [customDateRange, setCustomDateRange] = useState<DateRange | null>(
@@ -39,6 +39,7 @@ export default function HistoryTraffic() {
   const [velocityData, setVelocityData] = useState<VelocityData | null>(null);
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     loadLocationsData();
@@ -50,6 +51,7 @@ export default function HistoryTraffic() {
       const data = await trafficService.getLocations();
       setLocations(data);
       console.log("Locations loaded:", data);
+      setSelectedLocation(data.length > 0 ? data[0].id : null);
     } catch (err) {
       toast.error("Error al cargar las ubicaciones");
       console.error("Error al cargar las ubicaciones:", err);
@@ -86,6 +88,10 @@ export default function HistoryTraffic() {
 
       console.log("dateRange:", dateRangeType);
       console.log("->> selectedLocation:", selectedLocation);
+      if (selectedLocation === undefined || selectedLocation === null) {
+        toast.error("Por favor, seleccione una ubicación.");
+        return;
+      }
       const data = await getHistoryTraffic(
         trafficType,
         selectedLocation,
@@ -94,11 +100,10 @@ export default function HistoryTraffic() {
       );
 
       console.log(">>>", data);
-      if (data || data?.detail) {
+      if (data?.detail) {
         setCongestionData(null);
         setVelocityData(null);
         setVolumeData(null);
-        toast.error("No hay datos disponibles para el rango seleccionado.");
         return;
       }
 
@@ -137,8 +142,27 @@ export default function HistoryTraffic() {
     setCustomDateRange(dateRange);
     setIsModalOpen(false);
   };
-
-  const onHandleExport = useHandleExport(pageRef);
+  
+  const exportData = useHandleExport(pageRef);
+  const onHandleExport = async () => {
+    console.log("Exporting data...");
+    if (!congestionData && !velocityData && !volumeData) {
+      toast.error("No hay datos disponibles para exportar.");
+      return;
+    }
+    setIsExporting(true);
+    if (isExporting) {
+      toast.info("La exportación ya está en curso. Por favor, espere.");
+      return;
+    }
+    try {
+      await exportData();
+    } catch (error) {
+      toast.error("Error durante la exportación: " + (error instanceof Error ? error.message : "Desconocido"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className=" w-full min-h-screen">
@@ -151,6 +175,7 @@ export default function HistoryTraffic() {
         setTrafficType={setTrafficType}
         handleDateRangeChange={handleDateRangeChange}
         onExportClick={onHandleExport}
+        isExporting={isExporting}
       />
       {locationsLoading || isLoading ? (
         <LoadingContainer

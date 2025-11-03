@@ -14,3 +14,16 @@ export const getForecast = async (
   return resp.data
 }
 
+export const getForecastSpeed = async (
+  locationId: number,
+  date: string,
+  hour: string,
+  minute: string,
+):Promise<ForecastData[]>=>{
+  const resp = await api.get(
+    `/api/predictions/speed-predictions/?locationId=${locationId}&date=${date}&hour=${hour}&minute=${minute}`
+);
+  return resp.data
+}
+
+

@@ -6,11 +6,12 @@ Rutas REST para predicciones de tráfico vehicular
 """
 
 from django.urls import path, include
-from .views import PredictionView
+from .views import SpeedPredictionView, TrafficPredictionView
 from .views import HistoryTrafficAPIView
 
 
 urlpatterns = [
-    path("traffic-predictions/", PredictionView.as_view(), name="traffic-predictions"),
+    path("traffic-predictions/", TrafficPredictionView.as_view(), name="traffic-predictions"),
+    path("speed-predictions/", SpeedPredictionView.as_view(), name="speed-predictions"),
     path("history-traffic/", HistoryTrafficAPIView.as_view(), name="history-traffic"),
 ]

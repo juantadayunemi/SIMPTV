@@ -1,4 +1,5 @@
 import { Location } from "../../types/forecast";
+import { useToast } from "../ui/ToastContainer";
 
 interface ForecastSummaryProps {
   locations: Location[];
@@ -23,12 +24,19 @@ export default function ForecastSummary({
   levelTraffic,
   factors,
 }: ForecastSummaryProps) {
+  const toast = useToast();
+
   const getStatus = () => {
+    try {
     if (levelTraffic == "Alto")
       return { label:levelTraffic , color: "text-red-600 bg-red-100" };
     if (levelTraffic == "Medio")
       return { label: levelTraffic, color: "text-orange-600 bg-orange-100" };
     return { label: levelTraffic, color: "text-green-600 bg-green-100" };
+    } catch (error) {
+      toast.error("Error al obtener el estado del tráfico");
+      return { label: "Desconocido", color: "text-gray-600 bg-gray-100" };
+    }
   };
 
   const status = getStatus();
@@ -56,7 +64,7 @@ export default function ForecastSummary({
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-blue-50 rounded-lg p-4 text-center">
-          <div className="text-3xl font-bold text-blue-600">{speed}</div>
+          <div className="text-3xl font-bold text-blue-600">{speed?.toFixed(0)}</div>
           <div className="text-sm text-gray-600 mt-1">km/h estimados</div>
         </div>
 
@@ -68,7 +76,7 @@ export default function ForecastSummary({
         </div>
 
         <div className="bg-green-50 rounded-lg p-4 text-center">
-          <div className="text-3xl font-bold text-green-600">{confidence}%</div>
+          <div className="text-3xl font-bold text-green-600">{confidence?.toFixed(0)}%</div>
           <div className="text-sm text-gray-600 mt-1">nivel de confianza</div>
         </div>
       </div>
@@ -77,7 +85,7 @@ export default function ForecastSummary({
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-gray-600">Factores Considerados:</span>
           <span className="text-sm font-medium text-gray-800">
-            {confidence}%
+            {confidence?.toFixed(0)}%
           </span>
         </div>
         <div className="flex gap-2 mb-2">

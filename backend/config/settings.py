@@ -128,8 +128,8 @@ else:
         "default": {
             "ENGINE": "mssql",  # Correcto: usa mssql-django
             "NAME": config("DB_NAME", default="UrbiaDb"),
-            "USER": config("DB_USER", default="jsofuseradmin"),
-            "PASSWORD": config("DB_PASSWORD", default="xxxxxxxxx"),
+            "USER": config("DB_USER", default="usr_develop"),
+            "PASSWORD": config("DB_PASSWORD", default="1234567890"),
             "HOST": config("DB_HOST", default="."),
             "PORT": config("DB_PORT", default="1433"),
             "OPTIONS": {
@@ -416,7 +416,7 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
         # "schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute="*/10"),  # 00,10,20,30,40,50
+        "schedule": crontab(minute="*/1"), 
     },
     # Limpieza de dispositivos FCM inactivos (cada semana, domingos a las 3 AM)
     "cleanup-inactive-fcm-devices": {

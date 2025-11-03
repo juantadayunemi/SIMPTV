@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ForecastData } from "../types/forecast";
+import { useToast } from "../ui/ToastContainer";
 
 interface ForecastChartProps {
   data: ForecastData | null;
@@ -18,7 +19,16 @@ export default function ForecastChart({
   selectedDate,
 }: ForecastChartProps) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
-  if (!data || !data.forecast || data.forecast.length === 0) {
+
+  console.log("Forecast Chart Data:", data);
+  console.log("True or False", data === null);
+
+  if (
+    !data ||
+    !Array.isArray(data) ||
+    data.length === 0
+  ) {
+    
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -31,9 +41,9 @@ export default function ForecastChart({
     );
   }
 
-  const forecastPoints = data.forecast;
+  const forecastPoints = data;
 
-  const values = forecastPoints.map((d) => d.yhat);
+  const values = forecastPoints?.map((d) => d.yhat);
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const range = maxValue - minValue || 1;
@@ -43,7 +53,7 @@ export default function ForecastChart({
   const adjustedMin = minValue - padding;
   const adjustedRange = adjustedMax - adjustedMin;
 
-  const points = forecastPoints.map((d, index) => {
+  const points = forecastPoints?.map((d, index) => {
     const x = (index / (forecastPoints.length - 1)) * 100;
     const y = 100 - ((d.yhat - adjustedMin) / adjustedRange) * 100;
     return { x, y, value: d.yhat, time: d.ds };
@@ -62,43 +72,57 @@ export default function ForecastChart({
   });
 
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return `${date.getHours().toString().padStart(2, "0")}:${date
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
+    try {
+      const date = new Date(dateStr);
+      return `${date.getHours().toString().padStart(2, "0")}:${date
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}`;
+    } catch {
+      toast.error("Error al formatear la hora");
+      return "";
+    }
   };
 
   const formatDateTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+    try {
+      const date = new Date(dateStr);
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, "0");
+      const minutes = date.getMinutes().toString().padStart(2, "0");
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+      toast.error("Error al formatear la fecha y hora");
+      return "";
+    }
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const relativeX = (x / rect.width) * 100;
+    try {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const relativeX = (x / rect.width) * 100;
 
-    const closestPoint = points.reduce((prev, curr) => {
-      return Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX)
-        ? curr
-        : prev;
-    });
-
-    if (Math.abs(closestPoint.x - relativeX) < 5) {
-      setTooltip({
-        x: (closestPoint.x / 100) * rect.width,
-        y: (closestPoint.y / 100) * rect.height,
-        value: closestPoint.value,
-        time: closestPoint.time,
+      const closestPoint = points.reduce((prev, curr) => {
+        return Math.abs(curr.x - relativeX) < Math.abs(prev.x - relativeX)
+          ? curr
+          : prev;
       });
-    } else {
-      setTooltip(null);
+
+      if (Math.abs(closestPoint.x - relativeX) < 5) {
+        setTooltip({
+          x: (closestPoint.x / 100) * rect.width,
+          y: (closestPoint.y / 100) * rect.height,
+          value: closestPoint.value,
+          time: closestPoint.time,
+        });
+      } else {
+        setTooltip(null);
+      }
+    } catch {
+      toast.error("Error al manejar el movimiento del ratón");
     }
   };
 
@@ -215,7 +239,7 @@ export default function ForecastChart({
       <div className="mt-4 flex justify-center gap-4 text-xs text-gray-600">
         <div className="flex items-center gap-2">
           <div className="w-8 h-0.5 bg-orange-500"></div>
-          <span>Predicción (yhat)</span>
+          <span>Predicción (Cantidad)</span>
         </div>
         <div className="flex items-center gap-2">
           <span>Total de puntos: {forecastPoints.length}</span>

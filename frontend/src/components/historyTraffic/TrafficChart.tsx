@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { DayData } from '../../types/historyTraffic';
+import { useToast } from '../ui/ToastContainer';
 
 interface TrafficChartProps {
   data: DayData[];
@@ -10,7 +11,12 @@ interface TrafficChartProps {
 
 export default function TrafficChart({ data, color, title, subtitle }: TrafficChartProps) {
   const [hoveredPoint, setHoveredPoint] = useState<{ index: number; x: number; y: number } | null>(null);
-
+  const toast = useToast();
+  if (data === undefined) {
+    data = [];
+    toast.error("No hay datos disponibles");
+    return
+  }
   const chartDimensions = {
     width: 1000,
     height: 400,

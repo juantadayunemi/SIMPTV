@@ -5,7 +5,29 @@ from apps.predictions_app.utils.calculations import (
     calculate_previous_growth_decrease,
 )
 import datetime
+from prophet import Prophet
 
+def get_forecast(df, periods: int, holidays: pd.DataFrame, freq: str = "10T") -> pd.DataFrame:
+    """
+    Genera un DataFrame de predicciones utilizando el modelo Prophet.
+    Args:
+        df : pd.DataFrame
+            DataFrame que contiene los datos históricos con columnas 'ds' (fechas) y 'y' (valores).
+        periods : int
+            Número de períodos futuros para los cuales se desea generar predicciones.
+        holidays : pd.DataFrame
+            DataFrame que contiene las fechas de días festivos para incluir en el modelo.
+        freq : str, optional
+            Frecuencia de los datos (por defecto es "10T" para intervalos de 10 minutos).
+    Returns:
+        pd.DataFrame
+        DataFrame que contiene las predicciones generadas por Prophet.
+    """
+    model = Prophet(holidays=holidays)
+    model.fit(df)
+    future = model.make_future_dataframe(periods=periods, freq=freq)
+
+    return model.predict(future)
 
 def get_forecast_by_date(forecast, target_datetime: datetime) -> pd.DataFrame:
     """
