@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ForecastHeader from "../../components/predictions/ForecastHeader";
 import ForecastSummary from "../../components/predictions/ForecastSummery";
 import ImpactSection from "../../components/predictions/ImpactSection";
 import ComparisonSection from "../../components/predictions/ComparisionSection";
 import ForecastChart from "../../components/predictions/ForecastChart";
-import { ForecastData, ChangePercent } from "../../types/forecast";
+import { ForecastData, ChangePercent, ForecastDataSpeed } from "../../types/forecast";
 import { trafficService } from "../../services/traffic.service";
-import { getForecast } from "../../services/prediction.service";
+import { getForecast, getForecastSpeed } from "../../services/prediction.service";
 import { Location } from "../../types/forecast";
-import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { useToast } from "../../components/ui/ToastContainer";
 import { getNextDate } from "../../utils/dateUtils";
 import { LoadingContainer } from "@/components/ui/LoadingContainer";
@@ -31,17 +30,25 @@ export default function PredictionPage() {
       yhat_change: 0,
       trend_change: 0,
     });
+  const [forecastSpeedData, setForecastSpeedData] = useState<ForecastDataSpeed[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingComparison, setLoadingComparison] = useState(false);
+  const currentForecast = useMemo(() => forecastData[0], [forecastData]);
 
   useEffect(() => {
     loadLocationData();
   }, []);
 
   const loadLocationData = async () => {
-    const data = await trafficService.getLocations();
-    console.log(">>>", data);
-    setLocations(data);
+    try {
+      const data = await trafficService.getLocations();
+      console.log(">>>", data);
+      setLocations(data);
+      setLocation(data.length > 0 ? data[0].id : 0);
+    } catch (error) {
+      toast.error("Error al cargar las ubicaciones");
+      console.error("Error loading locations:", error);
+    }
   };
 
   useEffect(() => {
@@ -53,16 +60,15 @@ export default function PredictionPage() {
     return date !== "" && time !== "";
   };
 
-  const onForecastCalculation = async () => {
-    console.log(">>>Entra");
+  const onForecastCalculation =async () => {
     setLoading(true);
     try {
-      console.log(time);
       const [hour, minute] = time.split(":");
-      console.log([hour, minute]);
 
       if (!validateInputs()) {
-        toast.warning("Por favor, complete todos los campos antes de continuar.");
+        toast.warning(
+          "Por favor, complete todos los campos antes de continuar."
+        );
         setLoading(false);
         return;
       }
@@ -74,7 +80,17 @@ export default function PredictionPage() {
         minute,
         selectedPeriod
       );
-      console.log(">>>", resp);
+      
+      const respSpeed = await getForecastSpeed(
+        location,
+        date,
+        hour,
+        minute
+      );  
+
+      console.log(">>>", respSpeed);
+      setForecastSpeedData([respSpeed]);
+
       setForecastChangePercent(resp?.variation_forecast_metrics);
       setForecastData([resp]);
       console.log(resp);
@@ -113,7 +129,8 @@ export default function PredictionPage() {
     console.log("Cambiar periodo");
   };
 
-  const currentForecast = forecastData[0];
+  //const currentForecast = forecastData[0];
+  const currentForecastSpeed = forecastSpeedData[0];
   console.log("Forecast Change Percent", forecastChangePercent);
   console.log("Forecast Chart Data", currentForecast?.forecast);
 
@@ -131,8 +148,11 @@ export default function PredictionPage() {
       />
 
       {loading ? (
-        <LoadingContainer type="section" loading={loading} message="Cargando, espere por favor..." />
-
+        <LoadingContainer
+          type="section"
+          loading={loading}
+          message="Cargando, espere por favor..."
+        />
       ) : (
         <>
           {currentForecast ? (
@@ -142,11 +162,11 @@ export default function PredictionPage() {
                 location={location}
                 date={date}
                 time={time}
-                speed={currentForecast.yhat > 200 ? 27 : 45}
-                numberVehicles={currentForecast.yhat}
-                confidence={currentForecast.confidenceLevel * 100}
-                levelTraffic={currentForecast.levelTraffic}
-                factors={currentForecast.holidays_name}
+                speed={currentForecastSpeed?.yhat_speed}
+                numberVehicles={currentForecast?.yhat}
+                confidence={currentForecast?.confidenceLevel}
+                levelTraffic={currentForecast?.levelTraffic}
+                factors={currentForecast?.holidays_name}
               />
 
               <div className="grid grid-cols-2 gap-6">
@@ -155,7 +175,11 @@ export default function PredictionPage() {
                   seasonality_impact={currentForecast?.seasonality}
                 />
                 {loadingComparison ? (
-                  <LoadingContainer type="global" loading={loadingComparison} message="Cargando, espere por favor..." />
+                  <LoadingContainer
+                    type="global"
+                    loading={loadingComparison}
+                    message="Cargando, espere por favor..."
+                  />
                 ) : (
                   <>
                     <ComparisonSection
@@ -168,7 +192,7 @@ export default function PredictionPage() {
                 )}
               </div>
 
-              <ForecastChart data={currentForecast} selectedDate={date} />
+              <ForecastChart data={currentForecast?.forecast} selectedDate={date} />
             </>
           ) : (
             <div className="flex items-center justify-center h-64">
@@ -177,8 +201,6 @@ export default function PredictionPage() {
           )}
         </>
       )}
-
-      
     </div>
   );
 }

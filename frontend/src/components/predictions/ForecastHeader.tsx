@@ -24,6 +24,7 @@ export default function ForecastHeader({
   onForecastCalculation,
 }: ForecastHeaderProps) {
   useEffect(() => {}, []);
+  
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">

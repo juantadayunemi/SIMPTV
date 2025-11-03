@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { ComparisonPeriod } from '../../types/forecast';
 

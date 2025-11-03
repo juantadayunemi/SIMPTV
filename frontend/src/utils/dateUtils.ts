@@ -2,7 +2,7 @@ import { DateRangeType, DateRange } from '../types/historyTraffic';
 
 export function getDateRangeFromType(type: DateRangeType): DateRange | null {
   const today = new Date();
-  const dateTo = today.toISOString().split('T')[0];
+  const dateTo = getLocalDateString(today);
 
   switch (type) {
     case 'today':
@@ -43,4 +43,8 @@ export function getNextDate(date: Date): string {
   tomorrow.setDate(date.getDate() + 1);
 
   return tomorrow.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
+}
+
+export function getLocalDateString(date: Date): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' });
 }

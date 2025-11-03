@@ -1,9 +1,10 @@
-import re
 import django_filters
 from apps.traffic_app.models import Vehicle
 from django.db.models import Avg, Count, Max, Min
 from django.db.models.functions import ExtractHour, TruncDate, TruncHour
 from django.utils import timezone
+from datetime import datetime, timedelta
+
 
 
 class HistoryTrafficFilter(django_filters.FilterSet):
@@ -23,6 +24,9 @@ class HistoryTrafficFilter(django_filters.FilterSet):
         location = self.request.query_params.get("locationId")
         date_from = self.request.query_params.get("dateFrom")
         date_to = self.request.query_params.get("dateTo")
+        
+        date_from = datetime.strptime(date_from, "%Y-%m-%d")
+        date_to = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1) - timedelta(microseconds=1)
 
         if location and date_from and date_to:
             qs = queryset.filter(

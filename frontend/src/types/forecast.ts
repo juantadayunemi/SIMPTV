@@ -10,6 +10,11 @@ export interface ForecastData {
   forecast: forecast[]
 }
 
+export interface ForecastDataSpeed {
+    yhat_speed: number;
+    forecast_speed: forecast[]
+}
+
 export interface ImpactMetrics {
   holidays_impact: number;
   seasonality_impact: number;

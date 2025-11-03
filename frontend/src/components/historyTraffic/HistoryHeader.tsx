@@ -1,5 +1,6 @@
 import { Download } from "lucide-react";
 import { TrafficType } from "../../types/historyTraffic";
+import { LoadingContainer } from "../ui/LoadingContainer";
 
 export default function HistoryHeader({
   locations,
@@ -10,6 +11,7 @@ export default function HistoryHeader({
   setTrafficType,
   handleDateRangeChange,
   onExportClick,
+  isExporting,
 }: any) {
   return (
     <div className="w-full mx-auto pl-0 pr-0 pt-6 pb-0 ">
@@ -31,12 +33,9 @@ export default function HistoryHeader({
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
           >
             {locations.map((element) => (
-              
               <option key={element?.id} value={element?.id}>
                 {element?.description}
               </option>
-
-              
             ))}
           </select>
 
@@ -64,9 +63,14 @@ export default function HistoryHeader({
           <button
             className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             onClick={() => onExportClick()}
+            disabled={isExporting}
           >
-            <Download className="w-4 h-4" />
-            Exportar
+            {isExporting ? (
+              <div className="w-4 h-4 animate-spin border-b-2 border-white rounded-full"></div>
+            ) : (
+              <Download className="w-4 h-4" /> 
+            )}
+            {isExporting ? "Exportando" : "Exportar"}
           </button>
         </div>
       </div>
