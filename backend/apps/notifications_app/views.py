@@ -36,10 +36,19 @@ class FCMDeviceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def register_token(self, request):
         """Register or update FCM token for current user."""
+        logger.info(
+            f"📥 Registro de token FCM solicitado por usuario: {request.user.email if request.user.is_authenticated else 'Anonymous'}"
+        )
+        logger.info(f"📦 Datos recibidos: {request.data}")
+
         serializer = RegisterFCMTokenSerializer(data=request.data)
         if serializer.is_valid():
             try:
+                logger.info(f"✅ Datos validados correctamente")
                 device = serializer.create_device(request.user)
+                logger.info(
+                    f"✅ Dispositivo creado/actualizado: ID={device.id}, Token={device.token[:20]}..., Usuario={device.user.email}"
+                )
                 return Response(
                     {
                         "message": "Token registrado exitosamente",
@@ -49,11 +58,13 @@ class FCMDeviceViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_201_CREATED,
                 )
             except Exception as e:
-                logger.error(f"Error registering FCM token: {e}")
+                logger.error(f"❌ Error registering FCM token: {e}", exc_info=True)
                 return Response(
                     {"error": "Error al registrar el token"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
+
+        logger.error(f"❌ Errores de validación: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["delete"])
@@ -140,8 +151,12 @@ def send_stolen_vehicle_alert(request):
     This endpoint can be called by the traffic analysis system.
     """
     try:
-        # Get admin users (you might want to filter by role)
-        admin_users = User.objects.filter(is_staff=True)  # Or use a custom role
+        # Get admin users by role
+        from apps.auth_app.models import UserRole
+
+        admin_roles = UserRole.objects.filter(role="ADMIN")
+        admin_user_ids = admin_roles.values_list("user_id", flat=True).distinct()
+        admin_users = User.objects.filter(id__in=admin_user_ids)
 
         if not admin_users.exists():
             return Response(
@@ -219,7 +234,12 @@ def send_traffic_violation_alert(request):
     This endpoint can be called by the traffic analysis system.
     """
     try:
-        admin_users = User.objects.filter(is_staff=True)
+        # Get admin users by role
+        from apps.auth_app.models import UserRole
+
+        admin_roles = UserRole.objects.filter(role="ADMIN")
+        admin_user_ids = admin_roles.values_list("user_id", flat=True).distinct()
+        admin_users = User.objects.filter(id__in=admin_user_ids)
 
         if not admin_users.exists():
             return Response(

@@ -8,7 +8,7 @@ Este microservicio proporciona un endpoint sencillo para consultar denuncias o r
 
 Contenido principal
 ------------------
-- `gov_vehicle_report/`: configuración del proyecto Django (settings, urls, wsgi, etc.).
+- `config/`: configuración del proyecto Django (settings, urls, wsgi, etc.).
 - `vehicles/`: aplicación que contiene los modelos principales (`Vehicle`, `Denuncia`), vistas y comandos de carga de datos.
 - `manage.py`: entrada de Django; está preparada para leer un archivo `.env` y usar la variable `PORT` como puerto por defecto.
 - `runserver.ps1` y `run_load_fake_data.ps1`: scripts PowerShell que facilitan levantar el servidor y cargar datos de prueba en Windows.

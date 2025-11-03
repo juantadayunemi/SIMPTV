@@ -1,8 +1,12 @@
 import os
 import logging
+import django
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from datetime import datetime
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+django.setup()
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)

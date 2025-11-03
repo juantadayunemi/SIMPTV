@@ -1,6 +1,7 @@
 from django.db import models
-from .base import BaseModel
+from .base import BaseModel, BaseModelString
 import uuid
+import decimal
 from ..constants import (
     ALERT_TYPE_CHOICES,
     ANALYSIS_STATUS_CHOICES,
@@ -14,20 +15,37 @@ from ..constants import (
 )
 
 
-class WeatherDataEntity(BaseModel):
+class FCMDeviceEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface FCMDeviceEntity"""
+    """USAGE: Inherit in other apps - class User(FCMDeviceEntity): pass"""
+
+    user_id = models.ForeignKey('auth_app.User', on_delete=models.CASCADE, related_name='fcmdeviceentity_user__set')
+    token = models.CharField(max_length=255, unique=True)
+    deviceName = models.CharField(max_length=100, blank=True, null=True)
+    deviceType = models.CharField(max_length=50, blank=True, null=True)
+    lastUsedAt = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract FCMDeviceEntity"
+        verbose_name_plural = "Abstract FCMDeviceEntitys"
+
+    def __str__(self):
+        return f'FCMDeviceEntity ({self.pk})'
+
+class WeatherDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface WeatherDataEntity"""
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
-    id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='weatherdataentity_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
-    temperature = models.DecimalField(max_digits=5, decimal_places=2, default='0')
-    humidity = models.DecimalField(max_digits=5, decimal_places=2, default='0')
-    precipitation = models.DecimalField(max_digits=6, decimal_places=2, default='0')
-    windSpeed = models.DecimalField(max_digits=5, decimal_places=2, default='0')
+    temperature = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
+    humidity = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
+    precipitation = models.DecimalField(max_digits=6, decimal_places=2, default=decimal.Decimal("0"))
+    windSpeed = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
     weatherCondition = models.CharField(max_length=50)
-    visibility = models.DecimalField(max_digits=6, decimal_places=2, default='10')
+    visibility = models.DecimalField(max_digits=6, decimal_places=2, default=decimal.Decimal("10"))
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -37,12 +55,11 @@ class WeatherDataEntity(BaseModel):
     def __str__(self):
         return f'WeatherDataEntity ({self.pk})'
 
-class EventDataEntity(BaseModel):
+class EventDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface EventDataEntity"""
     """USAGE: Inherit in other apps - class User(EventDataEntity): pass"""
 
-    id = models.CharField(max_length=50, primary_key=True, editable=False)
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationid_location_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='eventdataentity_location_set')
     eventName = models.CharField(max_length=200)
     eventType = models.CharField(max_length=50)
     startDate = models.DateTimeField()
@@ -58,7 +75,7 @@ class EventDataEntity(BaseModel):
     def __str__(self):
         return f'EventDataEntity ({self.pk})'
 
-class Permission(BaseModel):
+class Permission(BaseModelString):
     """Abstract DLL model from TypeScript interface Permission"""
     """USAGE: Inherit in other apps - class User(Permission): pass"""
 
@@ -204,7 +221,7 @@ class TimeSlot(BaseModel):
     def __str__(self):
         return f'TimeSlot ({self.pk})'
 
-class PredictiveAnalysis(BaseModel):
+class PredictiveAnalysis(BaseModelString):
     """Abstract DLL model from TypeScript interface PredictiveAnalysis"""
     """USAGE: Inherit in other apps - class User(PredictiveAnalysis): pass"""
 
@@ -436,7 +453,7 @@ class FileUploadRequestDTO(BaseModel):
     def __str__(self):
         return f'FileUploadRequestDTO ({self.pk})'
 
-class FileUploadResponseDTO(BaseModel):
+class FileUploadResponseDTO(BaseModelString):
     """Abstract DLL model from TypeScript interface FileUploadResponseDTO"""
     """USAGE: Inherit in other apps - class User(FileUploadResponseDTO): pass"""
 

@@ -1,210 +1,186 @@
-#!/usr/bin/env python
-"""
-Script to simulate FCM notifications using Django settings initialization.
-Firebase is initialized in settings.py using environment variables.
-"""
-
 import os
 import sys
+import logging
 import django
+from datetime import datetime
 
-# Add backend path
-backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, backend_dir)
-
-# Configure Django
+# Configurar Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 django.setup()
 
-# Imports after Django setup
-
-# Inicializar Firebase usando firebase_config.py
-from config.firebase_config import get_firebase_app
-
-get_firebase_app()
-
-import logging
 from django.contrib.auth import get_user_model
 from apps.notifications_app.models import FCMDevice
 from utils.fcm_service import FCMService
+from firebase_admin import messaging
 
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 User = get_user_model()
 
 
 def check_fcm_config():
-    """Check that Firebase and FCM are correctly initialized."""
-    print(" Checking FCM Configuration...")
-
+    """Verifica la configuración de Firebase."""
     try:
-        import firebase_admin
+        print("\n ✓ Checking FCM Configuration...")
 
-        # Django settings.py should have initialized Firebase already
-        if not firebase_admin._apps:
-            print(
-                " ❌ Firebase not initialized. Check your Django settings configuration."
-            )
+        # Verificar Firebase
+        try:
+            messaging.Message(notification=messaging.Notification(title="test"))
+            print(" ✓ Firebase initialized successfully via Django settings.")
+        except Exception as e:
+            print(f" ❌ Firebase initialization failed: {e}")
             return False
 
-        print(" ✓ Firebase initialized successfully via Django settings.")
+        # Verificar modelos
+        try:
+            _ = FCMDevice.objects.all()
+            print(" ✓ FCM models imported successfully")
+        except Exception as e:
+            print(f" ❌ FCM models import failed: {e}")
+            return False
+
+        # Verificar servicio
+        try:
+            _ = FCMService
+            print(" ✓ FCM service imported successfully")
+        except Exception as e:
+            print(f" ❌ FCM service import failed: {e}")
+            return False
+
+        print(" ✅ FCM configuration check passed")
+        return True
     except Exception as e:
-        print(f" Firebase initialization failed: {e}")
+        print(f" ❌ Configuration check failed: {e}")
         return False
-
-    # Check FCM models
-    try:
-        from apps.notifications_app.models import FCMDevice, NotificationLog
-
-        print(" ✓ FCM models imported successfully")
-    except ImportError as e:
-        print(f" Error importing FCM models: {e}")
-        return False
-
-    # Check FCM service
-    try:
-        from utils.fcm_service import FCMService
-
-        print(" ✓ FCM service imported successfully")
-    except ImportError as e:
-        print(f" Error importing FCM service: {e}")
-        return False
-
-    print(" ✅ FCM configuration check passed")
-    return True
 
 
 def simulate_stolen_vehicle_detection():
-    """Simulate detection of a stolen vehicle and send notifications."""
+    """Simula la detección de un vehículo robado."""
+    print("\n 🚨 Simulando detección de vehículo robado...")
+
     vehicle_info = {
         "plate": "ABC-123",
-        "make": "Toyota",
-        "model": "Corolla",
+        "make": "Honda",
+        "model": "Civic",
         "color": "Rojo",
         "year": "2020",
     }
 
     camera_location = "Cámara Norte - Avenida Principal"
-    detection_time = "2025-10-17T22:30:00Z"
+    detection_time = datetime.now().isoformat() + "Z"
 
-    print("🚨 Simulando detección de vehículo robado...")
-    print(f"  Placa: {vehicle_info['plate']}")
+    print(f"\n  Placa: {vehicle_info['plate']}")
     print(f"  Ubicación: {camera_location}")
     print(f"  Hora: {detection_time}")
-    print()
 
-    admin_users = User.objects.filter(is_active=True).distinct()
+    # Obtener usuarios administradores activos
+    admin_users = User.objects.filter(is_active=True, is_staff=True)
+    print(f"\n Enviando notificaciones a {admin_users.count()} usuario(s) activo(s)...")
 
-    if not admin_users.exists():
-        print(" ⚠️ No hay usuarios administradores activos")
-        return False
+    for user in admin_users:
+        devices = FCMDevice.objects.filter(user=user, is_active=True)
+        device_count = devices.count()
+        print(f"   {user.email}: {device_count} dispositivo(s)")
 
-    print(f" Enviando notificaciones a {admin_users.count()} usuario(s) activo(s)...")
+    # Obtener tokens
+    admin_tokens = list(
+        FCMDevice.objects.filter(user__in=admin_users, is_active=True).values_list(
+            "token", flat=True
+        )
+    )
 
-    all_tokens = []
-    for admin in admin_users:
-        admin_devices = FCMDevice.objects.filter(user=admin, is_active=True)
-        token_count = admin_devices.count()
-        print(f"   {admin.username}: {token_count} dispositivo(s)")
-        all_tokens.extend(list(admin_devices.values_list("token", flat=True)))
-
-    if not all_tokens:
+    if not admin_tokens:
         print(" ⚠️ No hay dispositivos registrados para administradores")
-        return False
+        return
 
-    print(f" Enviando a {len(all_tokens)} dispositivo(s)...")
-
+    # Enviar notificación
     result = FCMService.send_stolen_vehicle_alert(
-        admin_tokens=all_tokens,
+        admin_tokens=admin_tokens,
         vehicle_info=vehicle_info,
         camera_location=camera_location,
         detection_time=detection_time,
     )
 
-    print(" Resultados:")
-    print(f"   Éxitos: {result['success']}")
+    print(f"\n   Éxitos: {result['success']}")
     print(f"   Fallos: {result['failure']}")
-    print()
-
-    if result["success"] > 0:
-        print(" ✅ ¡Notificaciones enviadas exitosamente!")
-        return True
-    else:
-        print(" ❌ No se pudieron enviar las notificaciones")
-        return False
 
 
 def simulate_traffic_violation():
-    """Simulate detection of a traffic violation and send notifications."""
-    violation_type = "Exceso de velocidad"
+    """Simula la detección de una infracción de tránsito."""
+    print("\n ⚠️ Simulando infracción de tránsito...")
+
     vehicle_info = {
         "plate": "XYZ-789",
-        "make": "Honda",
-        "model": "Civic",
-        "color": "Azul",
+        "make": "Toyota",
+        "model": "Corolla",
+        "color": "Blanco",
     }
 
+    violation_type = "Exceso de velocidad"
     camera_location = "Cámara Sur - Carretera Nacional"
-    detection_time = "2025-10-17T22:35:00Z"
+    detection_time = datetime.now().isoformat() + "Z"
 
-    print("⚠️ Simulando infracción de tránsito...")
-    print(f"  Tipo: {violation_type}")
+    print(f"\n  Tipo: {violation_type}")
     print(f"  Placa: {vehicle_info['plate']}")
     print(f"  Ubicación: {camera_location}")
-    print()
 
-    admin_users = User.objects.filter(is_active=True).distinct()
+    # Obtener usuarios administradores activos
+    admin_users = User.objects.filter(is_active=True, is_staff=True)
 
-    if not admin_users.exists():
-        print(" ⚠️ No hay usuarios administradores activos")
-        return False
+    # Obtener tokens
+    admin_tokens = list(
+        FCMDevice.objects.filter(user__in=admin_users, is_active=True).values_list(
+            "token", flat=True
+        )
+    )
 
-    all_tokens = []
-    for admin in admin_users:
-        admin_devices = FCMDevice.objects.filter(user=admin, is_active=True)
-        all_tokens.extend(list(admin_devices.values_list("token", flat=True)))
-
-    if not all_tokens:
+    if not admin_tokens:
         print(" ⚠️ No hay dispositivos registrados para administradores")
-        return False
+        return
 
+    # Enviar notificación
     result = FCMService.send_traffic_violation_alert(
-        admin_tokens=all_tokens,
+        admin_tokens=admin_tokens,
         violation_type=violation_type,
         vehicle_info=vehicle_info,
         camera_location=camera_location,
         detection_time=detection_time,
     )
 
-    print(" Resultados:")
-    print(f"   Éxitos: {result['success']}")
+    print(f"\n   Éxitos: {result['success']}")
     print(f"   Fallos: {result['failure']}")
-    print()
-
-    if result["success"] > 0:
-        print(" ✅ ¡Notificación de infracción enviada!")
-        return True
-    else:
-        print(" ❌ No se pudo enviar la notificación")
-        return False
 
 
 def main():
-    """Main script entrypoint."""
+    """Script principal."""
+    print("\n" + "=" * 50)
     print(" Sistema de Notificaciones FCM - Simulador")
     print("=" * 50)
 
     if not check_fcm_config():
-        print(" ❌ Configuración incorrecta. Corrige los errores antes de continuar.")
+        print("\n ❌ Configuración incorrecta.")
         return
 
-    print()
+    print("\n" + "=" * 50)
     print("1️⃣ Simulando detección de vehículo robado:")
+    print("=" * 50)
     simulate_stolen_vehicle_detection()
-    print()
+
+    print("\n" + "=" * 50)
     print("2️⃣ Simulando infracción de tránsito:")
+    print("=" * 50)
     simulate_traffic_violation()
-    print()
+
+    print("\n" + "=" * 50)
     print("✅ Simulación completada")
+    print("=" * 50)
+    print("\n💡 Verifica las notificaciones en:")
+    print("   http://localhost:5174/dashboard")
+    print("\n")
 
 
 if __name__ == "__main__":

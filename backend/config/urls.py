@@ -49,7 +49,7 @@ def get_available_endpoints():
                 "traffic_app": "traffic",
                 "plates_app": "plates",
                 "external_apis": "external",
-                "notifications": "notifications",
+                "notifications_app": "notifications",
                 "predictions_app": "predictions",
                 "users_app": "users",
             }
@@ -122,7 +122,7 @@ def include_app_urls():
         "traffic_app": "traffic",
         "plates_app": "plates",
         "external_apis": "external",
-        "notifications": "notifications",
+        "notifications_app": "notifications",
         "predictions_app": "predictions",
         "users_app": "users",
     }

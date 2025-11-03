@@ -367,6 +367,7 @@ class TypeScriptEntityParser:
         Anotaciones soportadas:
         - @db:primary - Campo primary key
         - @db:identity - IDENTITY(1,1) autoincremental
+        - @db:unique - Restricción UNIQUE
         - @db:foreignKey ModelName - Foreign Key
         - @db:varchar(n) - VARCHAR(n)
         - @db:int - INT
@@ -381,6 +382,7 @@ class TypeScriptEntityParser:
             Dict con: {
                 'is_primary': bool,
                 'is_identity': bool,
+                'is_unique': bool,
                 'foreign_key': str | None,
                 'db_type': str | None,
                 'default_value': str | None
@@ -389,6 +391,7 @@ class TypeScriptEntityParser:
         annotations = {
             "is_primary": False,
             "is_identity": False,
+            "is_unique": False,
             "foreign_key": None,
             "db_type": None,
             "default_value": None,
@@ -407,6 +410,10 @@ class TypeScriptEntityParser:
         # Detectar @db:identity
         if "@db:identity" in comment:
             annotations["is_identity"] = True
+
+        # Detectar @db:unique
+        if "@db:unique" in comment:
+            annotations["is_unique"] = True
 
         # Detectar @db:foreignKey ModelName or @db:foreignKey app.ModelName
         fk_match = re.search(r"@db:foreignKey\s+([\w.]+)", comment)
@@ -510,7 +517,7 @@ class TypeScriptEntityParser:
                 clean_field_name = prop_name.lower()
 
             field_options: dict[str, Any] = {}
-            
+
             field_options = {
                 "on_delete": "models.CASCADE",
                 "related_name": f"%(class)s_{clean_field_name}_set",
@@ -552,6 +559,10 @@ class TypeScriptEntityParser:
         if annotations.get("db_type") == "varchar":
             max_length = annotations.get("max_length", 255)
             field_options = {"max_length": max_length}
+
+            # Agregar unique=True si está marcado con @db:unique
+            if annotations.get("is_unique"):
+                field_options["unique"] = True
 
             if is_optional:
                 field_options["blank"] = True
@@ -615,7 +626,9 @@ class TypeScriptEntityParser:
             }
 
             if annotations.get("default_value"):
-                field_options["default"] = annotations["default_value"]
+                default_val = annotations["default_value"]
+                # Para DecimalField, usar decimal.Decimal() para valores numéricos
+                field_options["default"] = f'decimal.Decimal("{default_val}")'
 
             if is_optional:
                 field_options["blank"] = True
@@ -625,6 +638,7 @@ class TypeScriptEntityParser:
                 "field_type": "DecimalField",
                 "options": field_options,
                 "import": "from django.db import models",
+                "decimal_import": "import decimal",  # Marker para agregar import
             }
 
         # Handle @db:float
@@ -791,6 +805,10 @@ class TypeScriptEntityParser:
         if ts_type.lower() in type_mapping:
             field_type, base_options = type_mapping[ts_type.lower()]
             field_options = base_options.copy()
+
+            # Apply @db:unique si está especificado
+            if annotations.get("is_unique") and field_type == "CharField":
+                field_options["unique"] = True
 
             # Apply optional (nullable) rules
             if is_optional:
@@ -1000,14 +1018,22 @@ class DjangoModelGenerator:
         return categorized
 
     def _generate_base_file(self) -> str:
-        """Generate the base.py file with BaseModel - CONVENCIÓN CAMELCASE"""
+        """Generate the base.py file with BaseModel, BaseModelString - CONVENCIÓN CAMELCASE"""
         lines = []
         lines.append("from django.db import models")
+        lines.append("import uuid")
         lines.append("")
         lines.append("")
-        lines.append("class BaseModel(models.Model):")
+        lines.append("def generate_string_id():")
+        lines.append('    """Genera un UUID v4 convertido a string para CharField"""')
+        lines.append("    return str(uuid.uuid4())")
+        lines.append("")
+        lines.append("")
+        lines.append("class BaseModelDefault(models.Model):")
         lines.append('    """')
-        lines.append("    Base abstract model with common fields for all entities")
+        lines.append(
+            "    Base abstract model con campos comunes para todas las entidades"
+        )
         lines.append("")
         lines.append("    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos")
         lines.append("    - Consistencia total: TypeScript, Python, Base de Datos")
@@ -1015,15 +1041,12 @@ class DjangoModelGenerator:
         lines.append("    - Mismo nombre en DB, backend y frontend")
         lines.append("")
         lines.append("    IMPORTANTE: Para SQL Server migrations:")
-        lines.append(
-            "    - createdAt: usar default=models.functions.Now() o raw SQL default=getdate()"
-        )
+        lines.append("    - createdAt: usar auto_now_add=True")
         lines.append(
             "    - updatedAt: Django lo maneja automáticamente con auto_now=True"
         )
         lines.append('    """')
         lines.append("")
-        lines.append("    id = models.BigAutoField(primary_key=True, editable=False)")
         lines.append("    createdAt = models.DateTimeField(")
         lines.append(
             '        auto_now_add=True, verbose_name="Created At", db_column="createdAt"'
@@ -1045,6 +1068,64 @@ class DjangoModelGenerator:
         lines.append("")
         lines.append("    def __str__(self):")
         lines.append('        return f"{self.__class__.__name__} ({self.pk})"')
+        lines.append("")
+        lines.append("")
+        lines.append("class BaseModel(BaseModelDefault):")
+        lines.append('    """')
+        lines.append(
+            "    Base abstract model para entidades con ID NUMÉRICO (BigAutoField - IDENTITY)"
+        )
+        lines.append("")
+        lines.append("    Uso: Entidades con id: number en TypeScript")
+        lines.append(
+            "    Ejemplo: LocationEntity, CameraEntity, VehicleEntity, TrafficHistoricalDataEntity"
+        )
+        lines.append("")
+        lines.append("    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos")
+        lines.append('    """')
+        lines.append("")
+        lines.append("    id = models.BigAutoField(primary_key=True, editable=False)")
+        lines.append("")
+        lines.append("    class Meta:")
+        lines.append("        abstract = True")
+        lines.append("")
+        lines.append("    def __str__(self):")
+        lines.append('        return f"{self.__class__.__name__} ({self.pk})"')
+        lines.append("")
+        lines.append("")
+        lines.append("class BaseModelString(BaseModelDefault):")
+        lines.append('    """')
+        lines.append(
+            "    Base abstract model para entidades con ID STRING (VARCHAR - UUID autogenerado)"
+        )
+        lines.append("")
+        lines.append("    Uso: Entidades con id: string en TypeScript")
+        lines.append(
+            "    Ejemplo: PredictionModelEntity, TrafficPredictionEntity, BatchPredictionEntity"
+        )
+        lines.append("")
+        lines.append(
+            "    El ID es VARCHAR(50) con valores UUID generados automáticamente."
+        )
+        lines.append("    Se autogenera en la aplicación Python usando uuid.uuid4().")
+        lines.append("")
+        lines.append("    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos")
+        lines.append('    """')
+        lines.append("")
+        lines.append("    id = models.CharField(")
+        lines.append("        primary_key=True,")
+        lines.append("        max_length=50,")
+        lines.append("        editable=False,")
+        lines.append('        db_column="id",')
+        lines.append('        verbose_name="ID",')
+        lines.append("        default=generate_string_id,  # Se autogenera con UUID v4")
+        lines.append("    )")
+        lines.append("")
+        lines.append("    class Meta:")
+        lines.append("        abstract = True")
+        lines.append("")
+        lines.append("    def __str__(self):")
+        lines.append('        return f"{self.__class__.__name__} ({self.pk})"')
 
         return "\n".join(lines)
 
@@ -1054,9 +1135,11 @@ class DjangoModelGenerator:
         """Generate models for a specific category"""
         lines = []
         lines.append("from django.db import models")
-        lines.append("from .base import BaseModel")
-        # Check if any property uses uuid.uuid4 as default
+        lines.append("from .base import BaseModel, BaseModelString")
+
+        # Check if any property uses uuid.uuid4 as default or decimal.Decimal
         needs_uuid_import = False
+        needs_decimal_import = False
         for interface_info in interfaces.values():
             for prop in interface_info.get("properties", {}).values():
                 django_field = prop.get("django_field", {})
@@ -1065,8 +1148,17 @@ class DjangoModelGenerator:
                     and django_field.get("options", {}).get("default") == "uuid.uuid4"
                 ):
                     needs_uuid_import = True
+                if (
+                    django_field.get("field_type") == "DecimalField"
+                    and isinstance(django_field.get("options", {}).get("default"), str)
+                    and "decimal.Decimal"
+                    in str(django_field.get("options", {}).get("default"))
+                ):
+                    needs_decimal_import = True
         if needs_uuid_import:
             lines.append("import uuid")
+        if needs_decimal_import:
+            lines.append("import decimal")
         lines.append("from ..constants import (")
 
         # Add constants imports based on category
@@ -1131,7 +1223,7 @@ class DjangoModelGenerator:
         lines.append("Auto-generated from TypeScript entities")
         lines.append('"""')
         lines.append("")
-        lines.append("from .base import BaseModel")
+        lines.append("from .base import BaseModel, BaseModelString")
         lines.append("")
 
         # Import all models from each category
@@ -1302,17 +1394,63 @@ class DjangoModelGenerator:
 
         return "\n".join(lines)
 
+    def _get_base_model_class(
+        self, interface_info: Dict
+    ) -> Tuple[str, Dict[str, Dict]]:
+        """
+        Detecta el tipo de ID (number o string) y retorna:
+        - Nombre de la clase base (BaseModel o BaseModelString)
+        - Propiedades filtradas (sin el ID que ya viene de la base)
+
+        Returns:
+            (base_class_name, filtered_properties)
+        """
+        properties = interface_info.get("properties", {})
+
+        # Revisar el campo 'id' para determinar el tipo
+        id_field = properties.get("id", {})
+        id_type = id_field.get("type", "").strip()
+
+        # Si el id es string, usa BaseModelString; si es number, usa BaseModel
+        if id_type.lower() == "string":
+            base_class = "BaseModelString"
+        else:
+            base_class = "BaseModel"
+
+        # Filtrar propiedades base que ya están en la clase base
+        base_model_fields = {
+            "id",
+            "created_at",
+            "createdat",
+            "createat",
+            "createdAt",
+            "updated_at",
+            "updatedat",
+            "updateat",
+            "updatedAt",
+            "is_active",
+            "isactive",
+            "isActive",
+        }
+
+        filtered_properties = {}
+        for prop_name, prop_info in properties.items():
+            if prop_name.lower() in base_model_fields:
+                # Excluir campos que ya están en BaseModel o BaseModelString
+                continue
+            else:
+                filtered_properties[prop_name] = prop_info
+
+        return base_class, filtered_properties
+
     def _generate_single_model(self, interface_name: str, interface_info: Dict) -> str:
         """Generate code for a single Django model"""
         lines = []
 
-        # Class definition
-        base_class = "BaseModel"
-        if interface_info.get("extends"):
-            # TODO: Handle inheritance properly
-            pass
+        # Detectar tipo de ID y elegir base correcta
+        base_class, filtered_properties = self._get_base_model_class(interface_info)
 
-        lines.append(f"class {interface_name}(BaseModel):")
+        lines.append(f"class {interface_name}({base_class}):")
         lines.append(
             f'    """Abstract DLL model from TypeScript interface {interface_name}"""'
         )
@@ -1321,47 +1459,14 @@ class DjangoModelGenerator:
         )
         lines.append("")
 
-        # Generate fields
-        properties = interface_info.get("properties", {})
-
-        # Campos que ya están en BaseModel - NO los generes
-        # CONVENCIÓN: Tanto snake_case (legacy) como camelCase (actual)
-        base_model_fields = {
-            "id",  # Ya está en BaseModel como BigAutoField
-            "created_at",  # Legacy snake_case
-            "createdat",  # Variante lowercase
-            "createdAt",  # ✅ ACTUAL: camelCase
-            "updated_at",  # Legacy snake_case
-            "updatedat",  # Variante lowercase
-            "updatedAt",  # ✅ ACTUAL: camelCase
-            "is_active",  # Legacy snake_case
-            "isactive",  # Variante lowercase
-            "isActive",  # ✅ ACTUAL: camelCase
-        }
-
-        # Filtrar propiedades para evitar duplicación
-        # PERO: NO filtrar 'id' si tiene anotación @db:primary con tipo custom (CharField para CUID)
-        filtered_properties = {}
-        for prop_name, prop_info in properties.items():
-            if prop_name.lower() in base_model_fields:
-                # Si es 'id' y tiene primary key custom, incluirlo
-                annotations = prop_info.get("annotations", {})
-                if (
-                    prop_name.lower() == "id"
-                    and annotations.get("is_primary")
-                    and not annotations.get("is_identity")
-                ):
-                    filtered_properties[prop_name] = prop_info
-                # Si es otro campo de BaseModel, excluirlo
-                continue
-            else:
-                filtered_properties[prop_name] = prop_info
-
+        # Generate fields (sin id, createdAt, updatedAt, isActive - ya en la base)
         if not filtered_properties:
             lines.append("    pass")
         else:
             for prop_name, prop_info in filtered_properties.items():
-                field_code = self._generate_field_code(prop_name, prop_info)
+                field_code = self._generate_field_code(
+                    prop_name, prop_info, interface_name
+                )
                 # Solo agregar si el campo no es None (skippeado)
                 if field_code:
                     lines.append(f"    {field_code}")
@@ -1377,7 +1482,8 @@ class DjangoModelGenerator:
         lines.append("")
         lines.append("    def __str__(self):")
         # Try to find a reasonable field for string representation
-        name_fields = ["name", "title", "label", "description"]
+        properties = interface_info.get("properties", {})
+        name_fields = ["name", "title", "label", "description", "modelName"]
         str_field = None
         for field in name_fields:
             if field in properties:
@@ -1391,7 +1497,9 @@ class DjangoModelGenerator:
 
         return "\n".join(lines)
 
-    def _generate_field_code(self, prop_name: str, prop_info: Dict) -> str:
+    def _generate_field_code(
+        self, prop_name: str, prop_info: Dict, interface_name: str = ""
+    ) -> str:
         """Generate Django field code for a property"""
         django_field = prop_info["django_field"]
         field_type = django_field["field_type"]
@@ -1422,9 +1530,9 @@ class DjangoModelGenerator:
                 if key == "on_delete":
                     option_parts.append(f"on_delete={value}")
                 elif key == "related_name":
-                    # Reemplazar %(class)s con nombre actual
-                    if "%(class)s" in value:
-                        value = value.replace("%(class)s", prop_name.lower())
+                    # Reemplazar %(class)s con nombre del modelo (interface_name)
+                    if "%(class)s" in value and interface_name:
+                        value = value.replace("%(class)s", interface_name.lower())
                     option_parts.append(f"related_name='{value}'")
                 elif isinstance(value, bool):
                     option_parts.append(f"{key}={value}")
@@ -1445,7 +1553,7 @@ class DjangoModelGenerator:
             if annotations.get("is_identity"):
                 # Ya está en BaseModel como id
                 return ""
-            
+
             elif field_type == "CharField":
                 # Primary key VARCHAR para CUIDs
                 option_parts = []
@@ -1469,12 +1577,20 @@ class DjangoModelGenerator:
                 option_parts.append(f"{key}={value}")
             elif key == "default" and value == "uuid.uuid4":
                 option_parts.append(f"{key}=uuid.uuid4")
+            elif (
+                key == "default"
+                and isinstance(value, str)
+                and value.startswith("decimal.Decimal")
+            ):
+                # Para valores Decimal, no agregar comillas
+                option_parts.append(f"{key}={value}")
             elif key == "on_delete":
                 option_parts.append(f"{key}={value}")
             elif isinstance(value, str) and key not in [
                 "choices",
                 "on_delete",
                 "related_name",
+                "default",
             ]:
                 # Evitar comillas dobles para valores que ya tienen comillas
                 if value.startswith("'") and value.endswith("'"):

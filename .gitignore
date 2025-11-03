@@ -157,3 +157,9 @@ out/
 *.tar.gz
 *.zip
 *.rar
+
+# Ignorar el service worker real con claves
+public/firebase-messaging-sw.js
+public/firebase-messaging-sw.js.map
+public/sw.js
+public/sw.js.map

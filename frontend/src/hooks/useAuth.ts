@@ -131,10 +131,10 @@ export const useAuth = () => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
-      // Clear authentication service data
-      authService.logout();
+      // Clear authentication service data (calls backend to deactivate FCM devices)
+      await authService.logout();
       
       // Update state immediately
       setState({

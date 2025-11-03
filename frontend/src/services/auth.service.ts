@@ -114,13 +114,27 @@ class AuthService {
   }
 
   // Logout
-  logout(): void {
-    // Limpiar solo localStorage
+  async logout(): Promise<void> {
+    // Limpiar localStorage PRIMERO para evitar que otras peticiones usen el token
+    const token = localStorage.getItem('access_token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     localStorage.removeItem('token_expires_at');
     localStorage.removeItem('remember_me');
+    
+    // Luego intentar desactivar dispositivos FCM (sin bloquear si falla)
+    if (token) {
+      try {
+        await api.post('/api/auth/logout/', {}, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        console.log('✓ Logout exitoso - dispositivos FCM desactivados');
+      } catch (error) {
+        // No fallar el logout si hay error en el backend
+        console.warn('⚠️ Error al desactivar dispositivos FCM:', error);
+      }
+    }
   }
 
   // Get stored token (solo localStorage)

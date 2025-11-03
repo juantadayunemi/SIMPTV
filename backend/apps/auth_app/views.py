@@ -25,8 +25,17 @@ from .email_utils import (
     send_confirmation_email,
     generate_password_reset_token,
     send_password_reset_email,
-    send_welcome_email
+    send_welcome_email,
 )
+
+# Import FCMDevice for logout device deactivation
+try:
+    from apps.notifications_app.models import FCMDevice
+
+    FCM_AVAILABLE = True
+except ImportError:
+    FCM_AVAILABLE = False
+    print("⚠️ FCMDevice not available - logout will skip device deactivation")
 
 
 class RegisterView(APIView):
@@ -329,31 +338,15 @@ class LoginView(APIView):
                 )
 
             # Generate tokens
-            # ⚠️ IMPORTANTE: SimpleJWT requiere un usuario de Django estándar
-            # Crear o actualizar el usuario Django asociado
-            from django.contrib.auth.models import User as DjangoUser
-
-            django_user, created = DjangoUser.objects.get_or_create(
-                username=user.email,  # Usar email como username
-                defaults={
-                    "email": user.email,
-                    "first_name": user.firstName,
-                    "last_name": user.lastName,
-                    "is_active": user.isActive,
-                },
-            )
-
-            # Actualizar datos si el usuario ya existía
-            if not created:
-                django_user.email = user.email
-                django_user.first_name = user.firstName
-                django_user.last_name = user.lastName
-                django_user.is_active = user.isActive
-                django_user.save()
-
+            # ⚠️ IMPORTANTE: El User de auth_app ES el usuario de Django (AUTH_USER_MODEL swapped)
+            # No necesitamos crear un usuario separado, usamos directamente el user de auth_app
             token_expired_hours = 24
-            refresh = RefreshToken.for_user(django_user)  # ✅ Usar django_user
-            access_token = AccessToken.for_user(django_user)  # ✅ Usar django_user
+            refresh = RefreshToken.for_user(
+                user
+            )  # ✅ Usar user de auth_app directamente
+            access_token = AccessToken.for_user(
+                user
+            )  # ✅ Usar user de auth_app directamente
             access_token.set_exp(lifetime=timedelta(hours=token_expired_hours))
 
             # Update last login
@@ -626,5 +619,70 @@ class ProfileView(APIView):
             traceback.print_exc()
             return Response(
                 {"error": f"Error al actualizar perfil: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class LogoutView(APIView):
+    """
+    Logout endpoint: POST /api/auth/logout/
+
+    Desactiva todos los dispositivos FCM asociados al usuario para que no reciban más notificaciones.
+    No es necesario enviar el token en el body, se desactivan todos los dispositivos del usuario autenticado.
+
+    Headers: {
+        "Authorization": "Bearer <access_token>"
+    }
+
+    Body: {} (opcional)
+
+    Returns: {
+        "message": "Logout exitoso. Dispositivos desactivados: 2",
+        "devicesDeactivated": 2
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            user = request.user
+            devices_count = 0
+
+            # Desactivar dispositivos FCM si está disponible
+            if FCM_AVAILABLE:
+                try:
+                    devices = FCMDevice.objects.filter(user=user, is_active=True)
+                    devices_count = devices.count()
+
+                    if devices_count > 0:
+                        devices.update(is_active=False)
+                        print(
+                            f"✓ Logout [{user.email}]: {devices_count} dispositivos desactivados"
+                        )
+                    else:
+                        print(f"ℹ️ Logout [{user.email}]: No hay dispositivos activos")
+
+                except Exception as e:
+                    print(
+                        f"⚠️ Error desactivando dispositivos FCM [{user.email}]: {str(e)}"
+                    )
+                    # No fallar el logout por errores en FCM
+
+            return Response(
+                {
+                    "message": f"Logout exitoso. Dispositivos desactivados: {devices_count}",
+                    "devicesDeactivated": devices_count,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ ERROR LOGOUT [{request.user.email}]: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
+            return Response(
+                {"error": f"Error en logout: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

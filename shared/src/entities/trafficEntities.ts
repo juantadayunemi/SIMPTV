@@ -6,7 +6,7 @@
  * 
  * @db:primary - Campo primary key
  * @db:identity - IDENTITY(1,1) autoincremental en SQL Server
- * @db:foreignKey ModelName - Foreign Key a otro modelo
+ * @db:foreignKey app_name.ModelName - Foreign Key a otro modelo (formato: app_name.ModelName)
  * @db:varchar(n) - VARCHAR(n) en SQL Server
  * @db:int - INT en SQL Server (default para number)
  * @db:bigint - BIGINT en SQL Server
@@ -14,13 +14,15 @@
  * @db:decimal(p,s) - DECIMAL(precision, scale)
  * @db:text - TEXT/NVARCHAR(MAX)
  * @db:datetime - DATETIME2 en SQL Server
+ * @db:unique - Restricción UNIQUE en SQL Server
+ * @db:json - JSON en SQL Server
  * @default(value) - Valor por defecto (ej: @default(0), @default(cuid()))
  * 
  * REGLAS AUTOMÁTICAS:
  * - `field?: type` → blank=True, null=True en Django
  * - `field: type` (sin ?) → blank=False, null=False
  * - `id: number` → BigAutoField (IDENTITY) automático
- * - `*Id: number` → IntegerField (FK se define con @db:foreignKey)
+ * - `*Id: number` → IntegerField (FK se define con @db:foreignKey app_name.ModelName)
  */
 
 import { 
@@ -63,7 +65,7 @@ export interface CameraEntity {
   model?: string; // @db:varchar(50) - Modelo (Ej: "DS-2CD2143G0-I")
   resolution?: string; // @db:varchar(20) - Resolución (Ej: "1920x1080")
   fps?: number; // @db:int - Frames por segundo (Ej: 30)
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (se actualiza cuando la cámara se mueve)
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (se actualiza cuando la cámara se mueve)
   isActive: boolean; // @default(true) - Si la cámara está activa
   status: StatusCameraKey; // @db:varchar(20) @default(ACTIVE) - Estado de la cámara: 'ACTIVE', 'INACTIVE', 'MAINTENANCE'
   lanes: number; // @db:int @default(2) - Número de carriles que cubre (Ej: 2, 4)
@@ -71,7 +73,7 @@ export interface CameraEntity {
 
    // Video asignado a esta cámara
   currentVideoPath?: string; // @db:varchar(500) - Ruta del video actualmente asignado a esta cámara
-  currentAnalysisId?: number; // @db:foreignKey TrafficAnalysis @db:int - FK al análisis activo de esta cámara
+  currentAnalysisId?: number; // @db:foreignKey traffic_app.TrafficAnalysis @db:int - FK al análisis activo de esta cámara
   thumbnailPath?: string; // @db:varchar(500) - Ruta del thumbnail (primer frame del video)
   
   notes?: string; // @db:text - Notas adicionales (puede incluir historial de ubicaciones si necesario)
@@ -85,8 +87,8 @@ export interface CameraEntity {
 
 export interface TrafficAnalysisEntity {
   id: number; // @db:primary @db:identity - ID autoincremental
-  cameraId: number; // @db:foreignKey Camera @db:int - FK a Camera
-  locationId: number; // @db:foreignKey Location @db:int - FK a Location (ubicación en el momento del análisis)
+  cameraId: number; // @db:foreignKey traffic_app.Camera @db:int - FK a Camera
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación en el momento del análisis)
   videoPath?: string; // @db:varchar(500) - Ruta del video (si es desde archivo)
   userId?: number; // @db:int - FK a User que inició el análisis
   
@@ -136,7 +138,7 @@ export interface TrafficAnalysisEntity {
 
 export interface VehicleEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID generado en frontend para tracking único
-  trafficAnalysisId: number; // @db:foreignKey TrafficAnalysis @db:int - FK a TrafficAnalysis
+  trafficAnalysisId: number; // @db:foreignKey traffic_app.TrafficAnalysis @db:int - FK a TrafficAnalysis
   
   // Información del vehículo
   vehicleType: VehicleTypeKey; // @db:varchar(20) - Tipo de vehículo detectado
@@ -181,7 +183,7 @@ export interface VehicleEntity {
 
 export interface VehicleFrameEntity {
   id: number; // @db:primary @db:identity - ID autoincremental
-  vehicleId: string; // @db:foreignKey Vehicle @db:varchar(50) - FK a Vehicle (CUID)
+  vehicleId: string; // @db:foreignKey traffic_app.Vehicle @db:varchar(50) - FK a Vehicle (CUID)
   
   // Información del frame
   frameNumber: number; // @db:int - Número de frame en el video

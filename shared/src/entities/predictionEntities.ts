@@ -87,7 +87,7 @@ export interface PredictionModelEntity {
  */
 export interface ModelTrainingJobEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del trabajo de entrenamiento
-  modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo que se está entrenando
+  modelId: string; // @db:foreignKey predictions_app.PredictionModel @db:varchar(50) - FK al modelo que se está entrenando
   status: string; // @db:varchar(20) - Estado: 'pending' (pendiente), 'running' (ejecutando), 'completed' (completado), 'failed' (fallido)
   startTime: Date; // @db:datetime - Hora de inicio del entrenamiento
   endTime?: Date; // @db:datetime - Hora de finalización del entrenamiento
@@ -106,7 +106,7 @@ export interface ModelTrainingJobEntity {
  */
 export interface TrafficPredictionEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID único de la predicción
-  modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo usado para predecir
+  modelId: string; // @db:foreignKey predictions_app.PredictionModel @db:varchar(50) - FK al modelo usado para predecir
   locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la predicción)
   predictionDate: Date; // @db:datetime - Fecha/hora para la que se hizo la predicción
   predictionHour: number; // @db:int - Hora específica predicha (0-23)
@@ -129,7 +129,7 @@ export interface TrafficPredictionEntity {
  */
 export interface BatchPredictionEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del lote de predicciones
-  modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo usado
+  modelId: string; // @db:foreignKey predictions_app.PredictionModel @db:varchar(50) - FK al modelo usado
   locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación del batch)
   predictionStartDate: Date; // @db:datetime - Fecha de inicio del rango de predicción
   predictionEndDate: Date; // @db:datetime - Fecha de fin del rango de predicción
@@ -148,7 +148,7 @@ export interface BatchPredictionEntity {
  */
 export interface PredictionAccuracyEntity {
   id: string; // @db:primary @db:varchar(50) @default(cuid()) - CUID del registro de precisión
-  modelId: string; // @db:foreignKey PredictionModel @db:varchar(50) - FK al modelo evaluado
+  modelId: string; // @db:foreignKey predictions_app.PredictionModel @db:varchar(50) - FK al modelo evaluado
   locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación evaluada)
   evaluationPeriod: string; // @db:varchar(50) - Período de evaluación (Ej: "2024-01-01_2024-01-31")
   predictionHorizon: number; // @db:int - Horizonte evaluado en horas adelante (1, 6, 24, etc.)

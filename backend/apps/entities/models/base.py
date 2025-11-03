@@ -1,9 +1,15 @@
 from django.db import models
+import uuid
 
 
-class BaseModel(models.Model):
+def generate_string_id():
+    """Genera un UUID v4 convertido a string para CharField"""
+    return str(uuid.uuid4())
+
+
+class BaseModelDefault(models.Model):
     """
-    Base abstract model with common fields for all entities
+    Base abstract model con campos comunes para todas las entidades
 
     CONVENCIÓN TrafiSmart: camelCase en TODOS los campos
     - Consistencia total: TypeScript, Python, Base de Datos
@@ -11,11 +17,10 @@ class BaseModel(models.Model):
     - Mismo nombre en DB, backend y frontend
 
     IMPORTANTE: Para SQL Server migrations:
-    - createdAt: usar default=models.functions.Now() o raw SQL default=getdate()
+    - createdAt: usar auto_now_add=True
     - updatedAt: Django lo maneja automáticamente con auto_now=True
     """
 
-    id = models.BigAutoField(primary_key=True, editable=False)
     createdAt = models.DateTimeField(
         auto_now_add=True, verbose_name="Created At", db_column="createdAt"
     )
@@ -24,6 +29,54 @@ class BaseModel(models.Model):
     )
     isActive = models.BooleanField(
         default=True, verbose_name="Is Active", db_column="isActive"
+    )
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return f"{self.__class__.__name__} ({self.pk})"
+
+
+class BaseModel(BaseModelDefault):
+    """
+    Base abstract model para entidades con ID NUMÉRICO (BigAutoField - IDENTITY)
+
+    Uso: Entidades con id: number en TypeScript
+    Ejemplo: LocationEntity, CameraEntity, VehicleEntity, TrafficHistoricalDataEntity
+
+    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos
+    """
+
+    id = models.BigAutoField(primary_key=True, editable=False)
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return f"{self.__class__.__name__} ({self.pk})"
+
+
+class BaseModelString(BaseModelDefault):
+    """
+    Base abstract model para entidades con ID STRING (VARCHAR - UUID autogenerado)
+
+    Uso: Entidades con id: string en TypeScript
+    Ejemplo: PredictionModelEntity, TrafficPredictionEntity, BatchPredictionEntity
+
+    El ID es VARCHAR(50) con valores UUID generados automáticamente.
+    Se autogenera en la aplicación Python usando uuid.uuid4().
+
+    CONVENCIÓN TrafiSmart: camelCase en TODOS los campos
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=50,
+        editable=False,
+        db_column="id",
+        verbose_name="ID",
+        default=generate_string_id,  # Se autogenera con UUID v4
     )
 
     class Meta:

@@ -80,14 +80,11 @@ class FCMService {
     try {
       const token = await this.getToken();
       if (!token) {
+        console.warn('⚠️ No FCM token obtained');
         return false;
       }
 
-      // Evitar registrar el mismo token repetidamente
-      const lastRegisteredToken = localStorage.getItem('fcm_registered_token');
-      if (lastRegisteredToken === token) {
-        return true; // Ya registrado
-      }
+      console.log('🔑 Token FCM obtenido:', token.substring(0, 20) + '...');
 
       const data: FCMTokenData = {
         token,
@@ -95,11 +92,27 @@ class FCMService {
         device_type: deviceType || this.getDeviceType(),
       };
 
-      await api.post('/api/notifications/devices/register_token/', data);
+      console.log('📤 Enviando token FCM al backend...', {
+        device_name: data.device_name,
+        device_type: data.device_type,
+        token_length: token.length
+      });
+
+      // Usar la ruta correcta del endpoint
+      const response = await api.post('/api/notifications/devices/register_token/', data);
+      
+      console.log('✅ Respuesta del servidor:', response.data);
       localStorage.setItem('fcm_registered_token', token);
       return true;
-    } catch (error) {
-      console.error('Error registering FCM token:', error);
+    } catch (error: any) {
+      console.error('❌ Error registering FCM token:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        headers: error.config?.headers,
+      });
       return false;
     }
   }
@@ -219,7 +232,8 @@ class FCMService {
     try {
       // Register service worker for background messages
       if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('✅ Service Worker registrado:', registration.scope);
       }
 
       // Try to register token automatically

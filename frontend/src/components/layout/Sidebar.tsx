@@ -85,11 +85,9 @@ export const Sidebar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      logout();
+      await logout(); // ← Esperar a que termine el logout
       // Force navigation to login immediately
       navigate('/login', { replace: true });
-      // Also reload the page to ensure clean state
-      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
       // Fallback: force navigation to login

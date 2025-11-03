@@ -27,10 +27,10 @@ def load_dotenv(path: str = ".env"):
 
 
 if __name__ == "__main__":
-    # Load .env early so subsequent logic (default port) can read it.
+    # Load .env early so subsequent logic (default port) can read it. 
     load_dotenv()
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gov_vehicle_report.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
