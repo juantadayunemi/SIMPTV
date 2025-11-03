@@ -418,6 +418,17 @@ CELERY_BEAT_SCHEDULE = {
         # "schedule": 10 * 60,  # cada 10 minutos
         "schedule": crontab(minute="*/10"),  # 00,10,20,30,40,50
     },
+    # Limpieza de dispositivos FCM inactivos (cada semana, domingos a las 3 AM)
+    "cleanup-inactive-fcm-devices": {
+        "task": "apps.notifications_app.tasks.cleanup_inactive_fcm_devices",
+        "schedule": crontab(hour="3", minute="0", day_of_week="0"),  # Domingos 3:00 AM
+        "kwargs": {"days_threshold": 30},  # Eliminar dispositivos inactivos >30 días
+    },
+    # Limpieza de dispositivos de prueba (cada día a las 4 AM)
+    "cleanup-test-fcm-devices": {
+        "task": "apps.notifications_app.tasks.cleanup_test_fcm_devices",
+        "schedule": crontab(hour="4", minute="0"),  # Diariamente 4:00 AM
+    },
 }
 
 

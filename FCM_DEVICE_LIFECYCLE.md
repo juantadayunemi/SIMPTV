@@ -338,21 +338,69 @@ device, created = FCMDevice.objects.update_or_create(
 **Alternativa (si se requiere):**
 - Desactivar solo el dispositivo actual (requiere enviar `token` en body de logout)
 
-### 3. **Limpieza de Dispositivos Antiguos**
+### 3. **Limpieza de Dispositivos Antiguos** ✅ IMPLEMENTADO
 
-Se recomienda tarea periódica para limpiar dispositivos inactivos:
+El sistema incluye **tareas automáticas de limpieza** para mantener la tabla limpia:
 
+#### **Tarea 1: Limpieza de Dispositivos Inactivos Antiguos**
 ```python
-# Eliminar dispositivos inactivos por más de 30 días
-from django.utils import timezone
-from datetime import timedelta
-
-cutoff_date = timezone.now() - timedelta(days=30)
-FCMDevice.objects.filter(
-    is_active=False,
-    updated_at__lt=cutoff_date
-).delete()
+# Ejecuta cada domingo a las 3:00 AM
+# Elimina dispositivos inactivos por más de 30 días
+@shared_task
+def cleanup_inactive_fcm_devices(days_threshold=30):
+    cutoff_date = timezone.now() - timedelta(days=days_threshold)
+    old_inactive_devices = FCMDevice.objects.filter(
+        is_active=False,
+        updated_at__lt=cutoff_date
+    )
+    old_inactive_devices.delete()
 ```
+
+**Configuración en settings.py:**
+```python
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-inactive-fcm-devices": {
+        "task": "apps.notifications_app.tasks.cleanup_inactive_fcm_devices",
+        "schedule": crontab(hour="3", minute="0", day_of_week="0"),  # Domingos 3AM
+        "kwargs": {"days_threshold": 30},
+    },
+}
+```
+
+#### **Tarea 2: Limpieza de Dispositivos de Prueba**
+```python
+# Ejecuta diariamente a las 4:00 AM
+# Elimina tokens que empiezan con TEST_TOKEN_
+@shared_task
+def cleanup_test_fcm_devices():
+    test_devices = FCMDevice.objects.filter(token__startswith="TEST_TOKEN_")
+    test_devices.delete()
+```
+
+**Configuración en settings.py:**
+```python
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-test-fcm-devices": {
+        "task": "apps.notifications_app.tasks.cleanup_test_fcm_devices",
+        "schedule": crontab(hour="4", minute="0"),  # Diariamente 4AM
+    },
+}
+```
+
+#### **Limpieza Manual**
+
+Puedes ejecutar manualmente con el script interactivo:
+```bash
+cd backend
+python scripts/cleanup_fcm_devices.py
+```
+
+**Opciones del script:**
+1. Limpiar dispositivos de prueba (TEST_TOKEN_*)
+2. Limpiar dispositivos inactivos >7 días
+3. Limpiar dispositivos inactivos >30 días
+4. Limpiar dispositivos inactivos >90 días
+
 
 ---
 
