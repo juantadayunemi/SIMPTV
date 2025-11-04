@@ -893,6 +893,11 @@ class DjangoModelGenerator:
                 "PlateAnalysisEntity",
                 "PlateOcrResultEntity",
                 "PlateVerificationEntity",
+                "DetectedPlateEntity",
+                "DetectedPlateImageEntity",
+                "VehicleComplaintDetectionEntity",
+                "VehicleComplaintEntity",
+                "ComplaintEvidenceImageEntity",
             ],
             "predictions": [
                 "PredictionModelEntity",
@@ -998,7 +1003,8 @@ class DjangoModelGenerator:
                 ):
                     categorized["traffic"][interface_name] = interface_info
                 elif any(
-                    keyword in interface_name.lower() for keyword in ["plate", "ocr"]
+                    keyword in interface_name.lower()
+                    for keyword in ["plate", "ocr", "complaint", "detected"]
                 ):
                     categorized["plates"][interface_name] = interface_info
                 elif any(

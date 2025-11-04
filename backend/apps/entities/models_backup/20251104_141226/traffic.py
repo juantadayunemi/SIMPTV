@@ -13,45 +13,6 @@ from ..constants import (
 )
 
 
-class CreateVehicleComplaintDetectionDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDetectionDTO"""
-    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDetectionDTO): pass"""
-
-    detectedPlateId = models.IntegerField()
-    ownerName = models.CharField(max_length=255)
-    ownerIdNumber = models.UUIDField(default=uuid.uuid4, editable=False)
-    ownerAddress = models.CharField(max_length=255)
-    caseNumber = models.CharField(max_length=255)
-    totalComplaintsCount = models.IntegerField()
-    severity = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateVehicleComplaintDetectionDTO"
-        verbose_name_plural = "Abstract CreateVehicleComplaintDetectionDTOs"
-
-    def __str__(self):
-        return f'CreateVehicleComplaintDetectionDTO ({self.pk})'
-
-class CreateVehicleComplaintDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDTO"""
-    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDTO): pass"""
-
-    detectionId = models.IntegerField()
-    complaintText = models.CharField(max_length=255)
-    complaintType = models.CharField(max_length=255, blank=True, null=True)
-    complaintDate = models.DateTimeField(blank=True, null=True)
-    severity = models.CharField(max_length=255, blank=True, null=True)
-    sequenceNumber = models.IntegerField()
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateVehicleComplaintDTO"
-        verbose_name_plural = "Abstract CreateVehicleComplaintDTOs"
-
-    def __str__(self):
-        return f'CreateVehicleComplaintDTO ({self.pk})'
-
 class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""

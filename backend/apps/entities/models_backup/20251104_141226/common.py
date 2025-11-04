@@ -33,24 +33,6 @@ class FCMDeviceEntity(BaseModel):
     def __str__(self):
         return f'FCMDeviceEntity ({self.pk})'
 
-class UpdateCloudUploadDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface UpdateCloudUploadDTO"""
-    """USAGE: Inherit in other apps - class User(UpdateCloudUploadDTO): pass"""
-
-    uploadedToCloud = models.BooleanField(default=False)
-    cloudUrl = models.CharField(max_length=255)
-    cloudUploadedAt = models.DateTimeField()
-    cloudBlobName = models.CharField(max_length=255)
-    cloudContainerName = models.CharField(max_length=255)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract UpdateCloudUploadDTO"
-        verbose_name_plural = "Abstract UpdateCloudUploadDTOs"
-
-    def __str__(self):
-        return f'UpdateCloudUploadDTO ({self.pk})'
-
 class WeatherDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface WeatherDataEntity"""
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""

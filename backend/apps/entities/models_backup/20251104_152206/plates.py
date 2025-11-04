@@ -57,72 +57,6 @@ class DetectedPlateImageEntity(BaseModel):
     def __str__(self):
         return f'DetectedPlateImageEntity ({self.pk})'
 
-class VehicleComplaintDetectionEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface VehicleComplaintDetectionEntity"""
-    """USAGE: Inherit in other apps - class User(VehicleComplaintDetectionEntity): pass"""
-
-    detectedPlateId = models.ForeignKey('plates_app.DetectedPlate', on_delete=models.CASCADE, related_name='vehiclecomplaintdetectionentity_detectedplate_set')
-    ownerName = models.CharField(max_length=200)
-    ownerIdNumber = models.CharField(max_length=32)
-    ownerAddress = models.CharField(max_length=400)
-    caseNumber = models.CharField(max_length=64)
-    totalComplaintsCount = models.IntegerField(default=0)
-    severity = models.CharField(max_length=20, blank=True, null=True)
-    wasNotified = models.BooleanField(default=False)
-    notifiedAt = models.DateTimeField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract VehicleComplaintDetectionEntity"
-        verbose_name_plural = "Abstract VehicleComplaintDetectionEntitys"
-
-    def __str__(self):
-        return f'VehicleComplaintDetectionEntity ({self.pk})'
-
-class VehicleComplaintEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface VehicleComplaintEntity"""
-    """USAGE: Inherit in other apps - class User(VehicleComplaintEntity): pass"""
-
-    detectionId = models.ForeignKey('plates_app.VehicleComplaintDetection', on_delete=models.CASCADE, related_name='vehiclecomplaintentity_detection_set')
-    complaintText = models.TextField()
-    complaintType = models.CharField(max_length=50, blank=True, null=True)
-    complaintDate = models.DateTimeField(blank=True, null=True)
-    severity = models.CharField(max_length=20, blank=True, null=True)
-    sequenceNumber = models.IntegerField(default=1)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract VehicleComplaintEntity"
-        verbose_name_plural = "Abstract VehicleComplaintEntitys"
-
-    def __str__(self):
-        return f'VehicleComplaintEntity ({self.pk})'
-
-class ComplaintEvidenceImageEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface ComplaintEvidenceImageEntity"""
-    """USAGE: Inherit in other apps - class User(ComplaintEvidenceImageEntity): pass"""
-
-    complaintDetectionId = models.ForeignKey('plates_app.VehicleComplaintDetection', on_delete=models.CASCADE, related_name='complaintevidenceimageentity_complaintdetection_set')
-    detectedPlateImageId = models.ForeignKey('plates_app.DetectedPlateImage', on_delete=models.CASCADE, related_name='complaintevidenceimageentity_detectedplateimage_set')
-    cloudUrl = models.CharField(max_length=500)
-    cloudBlobName = models.CharField(max_length=200)
-    cloudContainerName = models.CharField(max_length=100)
-    uploadedAt = models.DateTimeField()
-    uploadStatus = models.CharField(max_length=20)
-    uploadError = models.TextField(blank=True, null=True)
-    cloudFileSize = models.IntegerField(blank=True, null=True)
-    expiresAt = models.DateTimeField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract ComplaintEvidenceImageEntity"
-        verbose_name_plural = "Abstract ComplaintEvidenceImageEntitys"
-
-    def __str__(self):
-        return f'ComplaintEvidenceImageEntity ({self.pk})'
-
 class CreateDetectedPlateDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateDetectedPlateDTO"""
     """USAGE: Inherit in other apps - class User(CreateDetectedPlateDTO): pass"""
@@ -162,59 +96,6 @@ class CreateDetectedPlateImageDTO(BaseModel):
 
     def __str__(self):
         return f'CreateDetectedPlateImageDTO ({self.pk})'
-
-class CreateComplaintEvidenceImageDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateComplaintEvidenceImageDTO"""
-    """USAGE: Inherit in other apps - class User(CreateComplaintEvidenceImageDTO): pass"""
-
-    complaintDetectionId = models.IntegerField()
-    detectedPlateImageId = models.IntegerField()
-    cloudUrl = models.CharField(max_length=255)
-    cloudBlobName = models.CharField(max_length=255)
-    cloudContainerName = models.CharField(max_length=255)
-    uploadStatus = models.CharField(max_length=255)
-    cloudFileSize = models.IntegerField(blank=True, null=True)
-    uploadError = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateComplaintEvidenceImageDTO"
-        verbose_name_plural = "Abstract CreateComplaintEvidenceImageDTOs"
-
-    def __str__(self):
-        return f'CreateComplaintEvidenceImageDTO ({self.pk})'
-
-class UpdateComplaintNotificationDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface UpdateComplaintNotificationDTO"""
-    """USAGE: Inherit in other apps - class User(UpdateComplaintNotificationDTO): pass"""
-
-    wasNotified = models.BooleanField(default=False)
-    notifiedAt = models.DateTimeField()
-    notes = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract UpdateComplaintNotificationDTO"
-        verbose_name_plural = "Abstract UpdateComplaintNotificationDTOs"
-
-    def __str__(self):
-        return f'UpdateComplaintNotificationDTO ({self.pk})'
-
-class GovernmentAPIComplaintResponse(BaseModel):
-    """Abstract DLL model from TypeScript interface GovernmentAPIComplaintResponse"""
-    """USAGE: Inherit in other apps - class User(GovernmentAPIComplaintResponse): pass"""
-
-    placa = models.CharField(max_length=255)
-    propietario = models.TextField()
-    cedula = models.CharField(max_length=255)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract GovernmentAPIComplaintResponse"
-        verbose_name_plural = "Abstract GovernmentAPIComplaintResponses"
-
-    def __str__(self):
-        return f'GovernmentAPIComplaintResponse ({self.pk})'
 
 class NotificationTemplate(BaseModelString):
     """Abstract DLL model from TypeScript interface NotificationTemplate"""

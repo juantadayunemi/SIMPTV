@@ -1,213 +1,248 @@
 /**
- * Entidades de Detección de Placas
- * Modelos para reconocimiento y análisis de placas vehiculares
+ * Entidades de Detección de Placas y Denuncias Vehiculares
+ * Modelos para reconocimiento OCR, consulta de denuncias y evidencias
+ * 
+ * ANOTACIONES PARA GENERADOR DJANGO (SQL Server):
+ * 
+ * @db:primary - Campo primary key
+ * @db:identity - IDENTITY(1,1) autoincremental en SQL Server
+ * @db:foreignKey app_name.ModelName - Foreign Key a otro modelo (formato: app_name.ModelName)
+ * @db:varchar(n) - VARCHAR(n) en SQL Server
+ * @db:int - INT en SQL Server (default para number)
+ * @db:bigint - BIGINT en SQL Server
+ * @db:float - FLOAT en SQL Server
+ * @db:decimal(p,s) - DECIMAL(precision, scale)
+ * @db:text - TEXT/NVARCHAR(MAX)
+ * @db:datetime - DATETIME2 en SQL Server
+ * @db:unique - Restricción UNIQUE en SQL Server
+ * @db:json - JSON en SQL Server
+ * @default(value) - Valor por defecto (ej: @default(0), @default(cuid()))
+ * 
+ * REGLAS AUTOMÁTICAS:
+ * - `field?: type` → blank=True, null=True en Django
+ * - `field: type` (sin ?) → blank=False, null=False
+ * - `id: number` → BigAutoField (IDENTITY) automático
+ * - `*Id: number` → IntegerField (FK se define con @db:foreignKey app_name.ModelName)
  */
 
-import { 
-  AlertTypeKey, 
-  DensityLevelKey, 
-  TrafficDirectionKey, 
-  VehicleTypeKey 
-} from "../types/trafficTypes";
-
 // ============================================
-// ENTIDAD: LICENSE PLATE (Placas Detectadas)
+// ENTIDAD: DETECTED PLATE (Todas las Placas Detectadas)
 // ============================================
 
-export interface LicensePlateEntity {
-  id: number; // ID autoincremental
-  vehicleId: string; // FK a Vehicle (CUID) - aquí está TODA la info de tracking
+export interface DetectedPlateEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  trafficAnalysisId: number; // @db:foreignKey traffic_app.TrafficAnalysis @db:int - FK a TrafficAnalysis
+  vehicleId: string; // @db:foreignKey traffic_app.Vehicle @db:varchar(50) - FK a Vehicle (tracking ID único de esa pasada)
   
-  // Información de la placa
-  plateNumber: string; // Número de placa detectado (Ej: "ABC-1234")
-  country: string; // País de la placa (Ej: "EC" para Ecuador)
-  confidence: number; // Confianza del OCR (0-1)
+  // Datos de la placa detectada
+  plateNumber: string; // @db:varchar(20) - Número de placa detectado por OCR (Ej: "ABC-1234")
+  confidence: number; // @db:decimal(5,4) - Confianza de la detección OCR (0.0-1.0)
+  detectionMethod: string; // @db:varchar(50) - Método usado: 'roboflow', 'haarcascade', 'contours', 'color'
   
-  // Frame de detección (referencia al mejor frame para OCR)
-  bestFrameId: number; // FK a VehicleFrame con mejor calidad para placa
+  // Contexto del frame
+  frameNumber: number; // @db:int - Número de frame donde se detectó la placa
+  frameQuality: number; // @db:decimal(5,4) - Calidad del frame (0.0-1.0, nitidez/iluminación)
+  detectedAt: Date; // @db:datetime - Fecha/hora de detección
   
-  // Validación externa
-  isValidated: boolean; // Si se validó contra API externa
-  validatedAt?: Date; // Fecha de validación
-  validationSource?: string; // Fuente de validación (Ej: "ANT", "Police API")
-  validationData?: string; // JSON con respuesta completa de la API externa
+  // Control de consulta a API gubernamental
+  wasCheckedForComplaints: boolean; // @default(false) - Si se consultó en la API de denuncias
+  checkedAt?: Date; // @db:datetime - Fecha/hora de consulta a la API
+  hasComplaints: boolean; // @default(false) - Si tiene denuncias registradas
   
-  // Información del vehículo (de APIs externas)
-  vehicleBrand?: string; // Marca del vehículo según registro oficial
-  vehicleModel?: string; // Modelo del vehículo según registro oficial
-  vehicleYear?: number; // Año del vehículo según registro oficial
-  vehicleColor?: string; // Color del vehículo según registro oficial
-  ownerName?: string; // Nombre del propietario (si está disponible públicamente)
-  registrationStatus?: string; // Estado del registro (vigente, vencido, etc)
-  
-  // Alertas y procesamiento
-  hasAlerts: boolean; // Si tiene alertas asociadas
-  processedAt: Date; // Timestamp cuando se procesó el OCR
-  
-  // Notas
-  notes?: string; // Notas adicionales sobre la detección
-  
-  createdAt: Date; // Fecha de creación del registro
-  updatedAt: Date; // Fecha de última actualización
+  // Timestamps
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
 }
 
 // ============================================
-// ENTIDAD: PLATE ALERT (Alertas de Placas)
+// ENTIDAD: DETECTED PLATE IMAGE (Imágenes Locales de Detección)
 // ============================================
 
-export interface PlateAlertEntity {
-  id: number; // ID autoincremental
-  licensePlateId: number; // FK a LicensePlate (de aquí se obtiene vehicleId)
+export interface DetectedPlateImageEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  detectedPlateId: number; // @db:foreignKey plates_app.DetectedPlate @db:int - FK a DetectedPlate
   
-  // Información de la alerta
-  alertType: AlertTypeKey; // Tipo de alerta
-  severity: number; // Severidad de la alerta (1-10)
-  title: string; // Título corto de la alerta (Ej: "Vehículo Robado")
-  description: string; // Descripción detallada de la alerta
+  // Ruta de la imagen (local)
+  localImagePath: string; // @db:varchar(500) - Ruta local de la imagen
+  imageType: string; // @db:varchar(20) - Tipo: 'VEHICLE_FULL', 'VEHICLE_ROI', 'PLATE_ROI', 'PLATE_PROCESSED'
   
-  // Metadatos de la alerta
-  source: string; // Fuente de la alerta (Ej: "Police Database", "ANT", "Interpol")
-  externalReferenceId?: string; // ID de referencia en sistema externo
-  reportDate?: Date; // Fecha del reporte original de la denuncia
-  reportedBy?: string; // Quién reportó (si está disponible)
-  isActive: boolean; // Si la alerta sigue activa
-  resolvedAt?: Date; // Fecha en que se resolvió la alerta
-  resolutionNotes?: string; // Notas sobre la resolución
+  // Metadatos de la imagen
+  frameNumber: number; // @db:int - Número de frame del video
+  capturedAt: Date; // @db:datetime - Fecha/hora de captura del frame
+  fileSize?: number; // @db:int - Tamaño del archivo en bytes
+  resolution?: string; // @db:varchar(20) - Resolución de la imagen (ej: "1920x1080")
   
-  // Notificación y seguimiento
-  wasNotified: boolean; // Si se notificó a usuarios/autoridades
-  notifiedAt?: Date; // Fecha de notificación
-  notifiedTo?: string; // A quién se notificó (Ej: "user@example.com, 911")
-  notificationMethod?: string; // Método de notificación (email, SMS, webhook)
-  requiresAction: boolean; // Si requiere acción inmediata
-  actionTaken?: string; // Descripción de la acción tomada
-  actionTakenBy?: string; // Quién tomó la acción
-  actionTakenAt?: Date; // Cuándo se tomó la acción
-  
-  createdAt: Date; // Fecha de creación del registro
-  updatedAt: Date; // Fecha de última actualización
+  // Timestamps
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
 }
 
 // ============================================
-// TIPOS AUXILIARES PARA FRONTEND
+// ENTIDAD: VEHICLE COMPLAINT DETECTION (Cabecera de Denuncia)
 // ============================================
 
-/**
- * NOTA IMPORTANTE SOBRE RELACIONES:
- * 
- * Para obtener información completa de una detección de placa con alerta:
- * 
- * PlateAlert -> LicensePlate -> Vehicle -> TrafficAnalysis -> Camera/Location
- *                                  |
- *                                  └-> VehicleFrame (múltiples)
- * 
- * Desde PlateAlert puedes acceder a:
- * - licensePlateId -> LicensePlate.vehicleId -> Vehicle (TODA la info de tracking)
- * - Vehicle.trafficAnalysisId -> TrafficAnalysis (info de sesión, cámara, ubicación)
- * - Vehicle.id -> VehicleFrame[] (todos los frames guardados)
- * - LicensePlate.bestFrameId -> VehicleFrame (mejor frame para placa)
- * 
- * NO duplicamos datos porque:
- * - direction, speed, lane -> ya están en Vehicle
- * - detectedAt, location, camera -> ya están en TrafficAnalysis/Vehicle
- * - frames, evidencia -> ya están en VehicleFrame
- * - GPS coordinates -> ya están en Location (via TrafficAnalysis)
- */
-
-// DTO para resultado de detección de placa
-export interface DetectPlateResultDTO {
-  vehicleId: string;
-  frameId: number;
-  plateNumber: string;
-  country: string;
-  confidence: number;
-  detectedAt: Date;
+export interface VehicleComplaintDetectionEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  detectedPlateId: number; // @db:foreignKey plates_app.DetectedPlate @db:int - FK a DetectedPlate (único)
+  
+  // Datos del propietario (desde API gubernamental)
+  ownerName: string; // @db:varchar(200) - Nombre del propietario
+  ownerIdNumber: string; // @db:varchar(32) - Cédula del propietario
+  ownerAddress: string; // @db:varchar(400) - Dirección del propietario
+  caseNumber: string; // @db:varchar(64) - Número de expediente
+  
+  // Resumen de denuncias
+  totalComplaintsCount: number; // @db:int @default(0) - Cantidad TOTAL de denuncias de esta placa
+  severity?: string; // @db:varchar(20) - Severidad (ALTA, MEDIA, BAJA) - calculado según cantidad/tipo
+  
+  // Control de notificaciones al operador
+  wasNotified: boolean; // @default(false) - Si se envió notificación al operador
+  notifiedAt?: Date; // @db:datetime - Fecha/hora de notificación
+  
+  // Metadata
+  notes?: string; // @db:text - Notas adicionales del operador
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
+  updatedAt: Date; // @db:datetime - Fecha de última actualización
 }
 
-// DTO para reporte de alerta de placa (con información relacionada)
-export interface PlateAlertReportDTO {
-  // Información de la alerta
-  alertId: number;
-  alertType: AlertTypeKey;
-  severity: number;
-  title: string;
-  description: string;
-  source: string;
-  externalReferenceId?: string;
+// ============================================
+// ENTIDAD: VEHICLE COMPLAINT (Denuncia Individual)
+// ============================================
+
+export interface VehicleComplaintEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  detectionId: number; // @db:foreignKey plates_app.VehicleComplaintDetection @db:int - FK a VehicleComplaintDetection
   
-  // Información de la placa
-  plateNumber: string;
-  plateCountry: string;
-  plateConfidence: number;
+  // Contenido de la denuncia
+  complaintText: string; // @db:text - Texto de la denuncia (ej: "Exceso de velocidad el 01/10/2025")
+  complaintType?: string; // @db:varchar(50) - Tipo de denuncia extraído (VELOCIDAD, ESTACIONAMIENTO, ROBO, etc.)
+  complaintDate?: Date; // @db:datetime - Fecha de la denuncia (si se puede extraer del texto)
   
-  // Información del vehículo (desde VehicleEntity via vehicleId)
-  vehicleId: string; // CUID del tracking
-  vehicleType: VehicleTypeKey;
-  vehicleColor?: string;
-  vehicleBrand?: string; // Detectado por IA
-  vehicleModel?: string; // Detectado por IA
-  vehicleDirection?: TrafficDirectionKey;
-  vehicleSpeed?: number;
-  vehicleLane?: number;
+  // Severidad individual de esta denuncia
+  severity?: string; // @db:varchar(20) - Severidad individual (ALTA, MEDIA, BAJA)
   
-  // Información de detección (desde VehicleEntity)
-  firstDetectedAt: Date;
-  lastDetectedAt: Date;
-  totalFrames: number;
+  // Orden en la lista de denuncias (1, 2, 3...)
+  sequenceNumber: number; // @db:int @default(1) - Orden de esta denuncia en la lista
   
-  // Información de ubicación (desde TrafficAnalysisEntity -> LocationEntity)
-  locationDescription: string; // Ej: "Ave. 5 de Octubre y Córdova"
-  locationLatitude: number;
-  locationLongitude: number;
-  locationCity?: string;
+  // Timestamps
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
+}
+
+// ============================================
+// ENTIDAD: COMPLAINT EVIDENCE IMAGE (Evidencias Subidas a Azure)
+// ============================================
+
+export interface ComplaintEvidenceImageEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  complaintDetectionId: number; // @db:foreignKey plates_app.VehicleComplaintDetection @db:int - FK a VehicleComplaintDetection
+  detectedPlateImageId: number; // @db:foreignKey plates_app.DetectedPlateImage @db:int - FK a la imagen local original
   
-  // Información de la cámara (desde TrafficAnalysisEntity -> CameraEntity)
-  cameraId: number;
-  cameraName: string;
+  // URLs de Azure Blob Storage (evidencia en la nube)
+  cloudUrl: string; // @db:varchar(500) - URL pública de Azure Blob Storage
+  cloudBlobName: string; // @db:varchar(200) - Nombre del blob en Azure (ej: "evidence_123_vehicle.jpg")
+  cloudContainerName: string; // @db:varchar(100) - Nombre del contenedor en Azure (ej: "traffic-evidence")
   
-  // Información del análisis (desde TrafficAnalysisEntity)
+  // Control de subida
+  uploadedAt: Date; // @db:datetime - Fecha/hora de subida a Azure
+  uploadStatus: string; // @db:varchar(20) - Estado: 'PENDING', 'UPLOADING', 'COMPLETED', 'FAILED'
+  uploadError?: string; // @db:text - Mensaje de error si falla la subida
+  
+  // Metadatos opcionales
+  cloudFileSize?: number; // @db:int - Tamaño en bytes del archivo en Azure
+  expiresAt?: Date; // @db:datetime - Fecha de expiración de la URL (si es temporal)
+  notes?: string; // @db:text - Notas adicionales
+  
+  // Timestamps
+  createdAt: Date; // @db:datetime - Fecha de creación del registro
+  updatedAt: Date; // @db:datetime - Última actualización
+}
+
+// ============================================
+// TIPOS AUXILIARES PARA FRONTEND (DTOs)
+// ============================================
+
+// DTO para crear registro de detección de placa
+export interface CreateDetectedPlateDTO {
   trafficAnalysisId: number;
-  analysisStartedAt: Date;
-  
-  // Frames de evidencia (desde VehicleFrameEntity)
-  bestFrameForPlate: {
-    frameId: number;
-    frameNumber: number;
-    timestamp: Date;
-    imagePath?: string;
-    confidence: number;
-    frameQuality: number;
-  };
-  
-  // Información de validación oficial (desde LicensePlateEntity)
-  officialVehicleBrand?: string; // De registro oficial
-  officialVehicleModel?: string;
-  officialVehicleYear?: number;
-  officialVehicleColor?: string;
-  ownerName?: string;
-  registrationStatus?: string;
-  
-  // Estado de la alerta
-  isActive: boolean;
-  requiresAction: boolean;
-  wasNotified: boolean;
-  notifiedAt?: Date;
-  notifiedTo?: string;
-  actionTaken?: string;
-  resolvedAt?: Date;
-  
-  createdAt: Date;
+  vehicleId: string;
+  plateNumber: string;
+  confidence: number;
+  detectionMethod: string; // 'roboflow', 'haarcascade', 'contours', 'color'
+  frameNumber: number;
+  frameQuality: number;
 }
 
-// DTO para búsqueda de placas detectadas
-export interface SearchPlatesDTO {
-  plateNumber?: string; // Búsqueda por número de placa
-  cameraId?: number; // Filtrar por cámara
-  locationId?: number; // Filtrar por ubicación
-  startDate?: Date; // Rango de fechas inicio
-  endDate?: Date; // Rango de fechas fin
-  hasAlerts?: boolean; // Solo placas con alertas
-  alertType?: AlertTypeKey; // Filtrar por tipo de alerta
-  country?: string; // Filtrar por país
+// DTO para crear imagen de placa detectada
+export interface CreateDetectedPlateImageDTO {
+  detectedPlateId: number;
+  localImagePath: string;
+  imageType: string; // 'VEHICLE_FULL', 'VEHICLE_ROI', 'PLATE_ROI', 'PLATE_PROCESSED'
+  frameNumber: number;
+  capturedAt: Date;
+  fileSize?: number;
+  resolution?: string;
+}
+
+// DTO para crear registro de detección de vehículo con denuncia
+export interface CreateVehicleComplaintDetectionDTO {
+  detectedPlateId: number;
+  ownerName: string;
+  ownerIdNumber: string;
+  ownerAddress: string;
+  caseNumber: string;
+  totalComplaintsCount: number;
+  severity?: string;
+}
+
+// DTO para crear una denuncia individual
+export interface CreateVehicleComplaintDTO {
+  detectionId: number;
+  complaintText: string;
+  complaintType?: string;
+  complaintDate?: Date;
+  severity?: string;
+  sequenceNumber: number;
+}
+
+// DTO para crear imagen de evidencia en Azure
+export interface CreateComplaintEvidenceImageDTO {
+  complaintDetectionId: number;
+  detectedPlateImageId: number; // Referencia a la imagen local original
+  cloudUrl: string;
+  cloudBlobName: string;
+  cloudContainerName: string;
+  uploadStatus: string; // 'COMPLETED', 'FAILED', etc.
+  cloudFileSize?: number;
+  uploadError?: string;
+}
+
+// DTO para actualizar notificación de denuncia
+export interface UpdateComplaintNotificationDTO {
+  id: number;
+  wasNotified: boolean;
+  notifiedAt: Date;
+  notes?: string;
+}
+
+// DTO para actualizar subida a Azure
+export interface UpdateCloudUploadDTO {
+  id: number;
+  uploadedToCloud: boolean;
+  cloudUrl: string;
+  cloudUploadedAt: Date;
+  cloudBlobName: string;
+  cloudContainerName: string;
+}
+
+// DTO para respuesta de la API gubernamental (mapeo directo)
+export interface GovernmentAPIComplaintResponse {
+  placa: string;
+  propietario: {
+    nombre: string;
+    cedula: string;
+  };
+  ubicacion: {
+    direccion: string;
+  };
+  denuncias: string[]; // Array de strings con las denuncias
+  expediente: string;
 }
 

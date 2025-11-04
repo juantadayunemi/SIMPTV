@@ -33,6 +33,27 @@ class FCMDeviceEntity(BaseModel):
     def __str__(self):
         return f'FCMDeviceEntity ({self.pk})'
 
+class CreateComplaintEvidenceImageDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface CreateComplaintEvidenceImageDTO"""
+    """USAGE: Inherit in other apps - class User(CreateComplaintEvidenceImageDTO): pass"""
+
+    complaintDetectionId = models.IntegerField()
+    detectedPlateImageId = models.IntegerField()
+    cloudUrl = models.CharField(max_length=255)
+    cloudBlobName = models.CharField(max_length=255)
+    cloudContainerName = models.CharField(max_length=255)
+    uploadStatus = models.CharField(max_length=255)
+    cloudFileSize = models.IntegerField(blank=True, null=True)
+    uploadError = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract CreateComplaintEvidenceImageDTO"
+        verbose_name_plural = "Abstract CreateComplaintEvidenceImageDTOs"
+
+    def __str__(self):
+        return f'CreateComplaintEvidenceImageDTO ({self.pk})'
+
 class UpdateCloudUploadDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UpdateCloudUploadDTO"""
     """USAGE: Inherit in other apps - class User(UpdateCloudUploadDTO): pass"""
@@ -50,6 +71,22 @@ class UpdateCloudUploadDTO(BaseModel):
 
     def __str__(self):
         return f'UpdateCloudUploadDTO ({self.pk})'
+
+class GovernmentAPIComplaintResponse(BaseModel):
+    """Abstract DLL model from TypeScript interface GovernmentAPIComplaintResponse"""
+    """USAGE: Inherit in other apps - class User(GovernmentAPIComplaintResponse): pass"""
+
+    placa = models.CharField(max_length=255)
+    propietario = models.TextField()
+    cedula = models.CharField(max_length=255)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract GovernmentAPIComplaintResponse"
+        verbose_name_plural = "Abstract GovernmentAPIComplaintResponses"
+
+    def __str__(self):
+        return f'GovernmentAPIComplaintResponse ({self.pk})'
 
 class WeatherDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface WeatherDataEntity"""

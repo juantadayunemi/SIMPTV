@@ -13,6 +13,157 @@ from ..constants import (
 )
 
 
+class LicensePlateEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface LicensePlateEntity"""
+    """USAGE: Inherit in other apps - class User(LicensePlateEntity): pass"""
+
+    vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
+    plateNumber = models.CharField(max_length=255)
+    country = models.CharField(max_length=255)
+    confidence = models.IntegerField()
+    bestFrameId = models.IntegerField()
+    isValidated = models.BooleanField(default=False)
+    validatedAt = models.DateTimeField(blank=True, null=True)
+    validationSource = models.UUIDField(default=uuid.uuid4, editable=False)
+    validationData = models.UUIDField(default=uuid.uuid4, editable=False)
+    vehicleBrand = models.CharField(max_length=255, blank=True, null=True)
+    vehicleModel = models.CharField(max_length=255, blank=True, null=True)
+    vehicleYear = models.IntegerField(blank=True, null=True)
+    vehicleColor = models.CharField(max_length=255, blank=True, null=True)
+    ownerName = models.CharField(max_length=255, blank=True, null=True)
+    registrationStatus = models.CharField(max_length=255, blank=True, null=True)
+    hasAlerts = models.BooleanField(default=False)
+    processedAt = models.DateTimeField()
+    notes = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract LicensePlateEntity"
+        verbose_name_plural = "Abstract LicensePlateEntitys"
+
+    def __str__(self):
+        return f'LicensePlateEntity ({self.pk})'
+
+class PlateAlertEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface PlateAlertEntity"""
+    """USAGE: Inherit in other apps - class User(PlateAlertEntity): pass"""
+
+    licensePlateId = models.IntegerField()
+    alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
+    severity = models.IntegerField()
+    title = models.CharField(max_length=255)
+    description = models.CharField(max_length=255)
+    source = models.CharField(max_length=255)
+    externalReferenceId = models.UUIDField(default=uuid.uuid4, editable=False)
+    reportDate = models.DateTimeField(blank=True, null=True)
+    reportedBy = models.CharField(max_length=255, blank=True, null=True)
+    resolvedAt = models.DateTimeField(blank=True, null=True)
+    resolutionNotes = models.CharField(max_length=255, blank=True, null=True)
+    wasNotified = models.BooleanField(default=False)
+    notifiedAt = models.DateTimeField(blank=True, null=True)
+    notifiedTo = models.CharField(max_length=255, blank=True, null=True)
+    notificationMethod = models.CharField(max_length=255, blank=True, null=True)
+    requiresAction = models.BooleanField(default=False)
+    actionTaken = models.CharField(max_length=255, blank=True, null=True)
+    actionTakenBy = models.CharField(max_length=255, blank=True, null=True)
+    actionTakenAt = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract PlateAlertEntity"
+        verbose_name_plural = "Abstract PlateAlertEntitys"
+
+    def __str__(self):
+        return f'{self.title} ({self.pk})'
+
+class DetectPlateResultDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface DetectPlateResultDTO"""
+    """USAGE: Inherit in other apps - class User(DetectPlateResultDTO): pass"""
+
+    vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
+    frameId = models.IntegerField()
+    plateNumber = models.CharField(max_length=255)
+    country = models.CharField(max_length=255)
+    confidence = models.IntegerField()
+    detectedAt = models.DateTimeField()
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract DetectPlateResultDTO"
+        verbose_name_plural = "Abstract DetectPlateResultDTOs"
+
+    def __str__(self):
+        return f'DetectPlateResultDTO ({self.pk})'
+
+class PlateAlertReportDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface PlateAlertReportDTO"""
+    """USAGE: Inherit in other apps - class User(PlateAlertReportDTO): pass"""
+
+    alertId = models.IntegerField()
+    alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
+    severity = models.IntegerField()
+    title = models.CharField(max_length=255)
+    description = models.CharField(max_length=255)
+    source = models.CharField(max_length=255)
+    externalReferenceId = models.UUIDField(default=uuid.uuid4, editable=False)
+    plateNumber = models.CharField(max_length=255)
+    plateCountry = models.CharField(max_length=255)
+    plateConfidence = models.IntegerField()
+    vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
+    vehicleType = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
+    vehicleColor = models.CharField(max_length=255, blank=True, null=True)
+    vehicleBrand = models.CharField(max_length=255, blank=True, null=True)
+    vehicleModel = models.CharField(max_length=255, blank=True, null=True)
+    vehicleDirection = models.CharField(max_length=20, choices=TRAFFIC_DIRECTION_CHOICES)
+    vehicleSpeed = models.IntegerField(blank=True, null=True)
+    vehicleLane = models.IntegerField(blank=True, null=True)
+    firstDetectedAt = models.DateTimeField()
+    lastDetectedAt = models.DateTimeField()
+    totalFrames = models.IntegerField()
+    locationDescription = models.CharField(max_length=255)
+    locationLatitude = models.IntegerField()
+    locationLongitude = models.IntegerField()
+    locationCity = models.CharField(max_length=255, blank=True, null=True)
+    cameraId = models.IntegerField()
+    cameraName = models.CharField(max_length=255)
+    trafficAnalysisId = models.IntegerField()
+    analysisStartedAt = models.DateTimeField()
+    bestFrameForPlate = models.TextField()
+    frameNumber = models.IntegerField()
+    timestamp = models.DateTimeField()
+    imagePath = models.CharField(max_length=255, blank=True, null=True)
+    confidence = models.IntegerField()
+    frameQuality = models.IntegerField()
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract PlateAlertReportDTO"
+        verbose_name_plural = "Abstract PlateAlertReportDTOs"
+
+    def __str__(self):
+        return f'{self.title} ({self.pk})'
+
+class SearchPlatesDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface SearchPlatesDTO"""
+    """USAGE: Inherit in other apps - class User(SearchPlatesDTO): pass"""
+
+    plateNumber = models.CharField(max_length=255, blank=True, null=True)
+    cameraId = models.IntegerField(blank=True, null=True)
+    locationId = models.IntegerField(blank=True, null=True)
+    startDate = models.DateTimeField(blank=True, null=True)
+    endDate = models.DateTimeField(blank=True, null=True)
+    hasAlerts = models.BooleanField(default=False, blank=True, null=True)
+    alertType = models.CharField(max_length=30, choices=ALERT_TYPE_CHOICES)
+    country = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract SearchPlatesDTO"
+        verbose_name_plural = "Abstract SearchPlatesDTOs"
+
+    def __str__(self):
+        return f'SearchPlatesDTO ({self.pk})'
+
 class DetectedPlateEntity(BaseModel):
     """Abstract DLL model from TypeScript interface DetectedPlateEntity"""
     """USAGE: Inherit in other apps - class User(DetectedPlateEntity): pass"""
@@ -41,7 +192,7 @@ class DetectedPlateImageEntity(BaseModel):
     """Abstract DLL model from TypeScript interface DetectedPlateImageEntity"""
     """USAGE: Inherit in other apps - class User(DetectedPlateImageEntity): pass"""
 
-    detectedPlateId = models.ForeignKey('plates_app.DetectedPlate', on_delete=models.CASCADE, related_name='detectedplateimageentity_detectedplate_set')
+    detectedPlateId = models.ForeignKey('traffic_app.DetectedPlate', on_delete=models.CASCADE, related_name='detectedplateimageentity_detectedplate_set')
     localImagePath = models.CharField(max_length=500)
     imageType = models.CharField(max_length=20)
     frameNumber = models.IntegerField()
@@ -56,72 +207,6 @@ class DetectedPlateImageEntity(BaseModel):
 
     def __str__(self):
         return f'DetectedPlateImageEntity ({self.pk})'
-
-class VehicleComplaintDetectionEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface VehicleComplaintDetectionEntity"""
-    """USAGE: Inherit in other apps - class User(VehicleComplaintDetectionEntity): pass"""
-
-    detectedPlateId = models.ForeignKey('plates_app.DetectedPlate', on_delete=models.CASCADE, related_name='vehiclecomplaintdetectionentity_detectedplate_set')
-    ownerName = models.CharField(max_length=200)
-    ownerIdNumber = models.CharField(max_length=32)
-    ownerAddress = models.CharField(max_length=400)
-    caseNumber = models.CharField(max_length=64)
-    totalComplaintsCount = models.IntegerField(default=0)
-    severity = models.CharField(max_length=20, blank=True, null=True)
-    wasNotified = models.BooleanField(default=False)
-    notifiedAt = models.DateTimeField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract VehicleComplaintDetectionEntity"
-        verbose_name_plural = "Abstract VehicleComplaintDetectionEntitys"
-
-    def __str__(self):
-        return f'VehicleComplaintDetectionEntity ({self.pk})'
-
-class VehicleComplaintEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface VehicleComplaintEntity"""
-    """USAGE: Inherit in other apps - class User(VehicleComplaintEntity): pass"""
-
-    detectionId = models.ForeignKey('plates_app.VehicleComplaintDetection', on_delete=models.CASCADE, related_name='vehiclecomplaintentity_detection_set')
-    complaintText = models.TextField()
-    complaintType = models.CharField(max_length=50, blank=True, null=True)
-    complaintDate = models.DateTimeField(blank=True, null=True)
-    severity = models.CharField(max_length=20, blank=True, null=True)
-    sequenceNumber = models.IntegerField(default=1)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract VehicleComplaintEntity"
-        verbose_name_plural = "Abstract VehicleComplaintEntitys"
-
-    def __str__(self):
-        return f'VehicleComplaintEntity ({self.pk})'
-
-class ComplaintEvidenceImageEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface ComplaintEvidenceImageEntity"""
-    """USAGE: Inherit in other apps - class User(ComplaintEvidenceImageEntity): pass"""
-
-    complaintDetectionId = models.ForeignKey('plates_app.VehicleComplaintDetection', on_delete=models.CASCADE, related_name='complaintevidenceimageentity_complaintdetection_set')
-    detectedPlateImageId = models.ForeignKey('plates_app.DetectedPlateImage', on_delete=models.CASCADE, related_name='complaintevidenceimageentity_detectedplateimage_set')
-    cloudUrl = models.CharField(max_length=500)
-    cloudBlobName = models.CharField(max_length=200)
-    cloudContainerName = models.CharField(max_length=100)
-    uploadedAt = models.DateTimeField()
-    uploadStatus = models.CharField(max_length=20)
-    uploadError = models.TextField(blank=True, null=True)
-    cloudFileSize = models.IntegerField(blank=True, null=True)
-    expiresAt = models.DateTimeField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract ComplaintEvidenceImageEntity"
-        verbose_name_plural = "Abstract ComplaintEvidenceImageEntitys"
-
-    def __str__(self):
-        return f'ComplaintEvidenceImageEntity ({self.pk})'
 
 class CreateDetectedPlateDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateDetectedPlateDTO"""
@@ -162,59 +247,6 @@ class CreateDetectedPlateImageDTO(BaseModel):
 
     def __str__(self):
         return f'CreateDetectedPlateImageDTO ({self.pk})'
-
-class CreateComplaintEvidenceImageDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateComplaintEvidenceImageDTO"""
-    """USAGE: Inherit in other apps - class User(CreateComplaintEvidenceImageDTO): pass"""
-
-    complaintDetectionId = models.IntegerField()
-    detectedPlateImageId = models.IntegerField()
-    cloudUrl = models.CharField(max_length=255)
-    cloudBlobName = models.CharField(max_length=255)
-    cloudContainerName = models.CharField(max_length=255)
-    uploadStatus = models.CharField(max_length=255)
-    cloudFileSize = models.IntegerField(blank=True, null=True)
-    uploadError = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateComplaintEvidenceImageDTO"
-        verbose_name_plural = "Abstract CreateComplaintEvidenceImageDTOs"
-
-    def __str__(self):
-        return f'CreateComplaintEvidenceImageDTO ({self.pk})'
-
-class UpdateComplaintNotificationDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface UpdateComplaintNotificationDTO"""
-    """USAGE: Inherit in other apps - class User(UpdateComplaintNotificationDTO): pass"""
-
-    wasNotified = models.BooleanField(default=False)
-    notifiedAt = models.DateTimeField()
-    notes = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract UpdateComplaintNotificationDTO"
-        verbose_name_plural = "Abstract UpdateComplaintNotificationDTOs"
-
-    def __str__(self):
-        return f'UpdateComplaintNotificationDTO ({self.pk})'
-
-class GovernmentAPIComplaintResponse(BaseModel):
-    """Abstract DLL model from TypeScript interface GovernmentAPIComplaintResponse"""
-    """USAGE: Inherit in other apps - class User(GovernmentAPIComplaintResponse): pass"""
-
-    placa = models.CharField(max_length=255)
-    propietario = models.TextField()
-    cedula = models.CharField(max_length=255)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract GovernmentAPIComplaintResponse"
-        verbose_name_plural = "Abstract GovernmentAPIComplaintResponses"
-
-    def __str__(self):
-        return f'GovernmentAPIComplaintResponse ({self.pk})'
 
 class NotificationTemplate(BaseModelString):
     """Abstract DLL model from TypeScript interface NotificationTemplate"""

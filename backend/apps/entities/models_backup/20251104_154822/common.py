@@ -17,9 +17,14 @@ from ..constants import (
 
 class FCMDeviceEntity(BaseModel):
     """Abstract DLL model from TypeScript interface FCMDeviceEntity"""
+
     """USAGE: Inherit in other apps - class User(FCMDeviceEntity): pass"""
 
-    user_id = models.ForeignKey('auth_app.User', on_delete=models.CASCADE, related_name='fcmdeviceentity_user__set')
+    user_id = models.ForeignKey(
+        "auth_app.User",
+        on_delete=models.CASCADE,
+        related_name="fcmdeviceentity_user__set",
+    )
     token = models.CharField(max_length=255, unique=True)
     deviceName = models.CharField(max_length=100, blank=True, null=True)
     deviceType = models.CharField(max_length=50, blank=True, null=True)
@@ -31,10 +36,12 @@ class FCMDeviceEntity(BaseModel):
         verbose_name_plural = "Abstract FCMDeviceEntitys"
 
     def __str__(self):
-        return f'FCMDeviceEntity ({self.pk})'
+        return f"FCMDeviceEntity ({self.pk})"
+
 
 class UpdateCloudUploadDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UpdateCloudUploadDTO"""
+
     """USAGE: Inherit in other apps - class User(UpdateCloudUploadDTO): pass"""
 
     uploadedToCloud = models.BooleanField(default=False)
@@ -49,21 +56,55 @@ class UpdateCloudUploadDTO(BaseModel):
         verbose_name_plural = "Abstract UpdateCloudUploadDTOs"
 
     def __str__(self):
-        return f'UpdateCloudUploadDTO ({self.pk})'
+        return f"UpdateCloudUploadDTO ({self.pk})"
+
+
+class GovernmentAPIComplaintResponse(BaseModel):
+    """Abstract DLL model from TypeScript interface GovernmentAPIComplaintResponse"""
+
+    """USAGE: Inherit in other apps - class User(GovernmentAPIComplaintResponse): pass"""
+
+    placa = models.CharField(max_length=255)
+    propietario = models.TextField()
+    cedula = models.CharField(max_length=255)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract GovernmentAPIComplaintResponse"
+        verbose_name_plural = "Abstract GovernmentAPIComplaintResponses"
+
+    def __str__(self):
+        return f"GovernmentAPIComplaintResponse ({self.pk})"
+
 
 class WeatherDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface WeatherDataEntity"""
+
     """USAGE: Inherit in other apps - class User(WeatherDataEntity): pass"""
 
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='weatherdataentity_location_set')
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="weatherdataentity_location_set",
+    )
     date = models.DateTimeField()
     hour = models.IntegerField()
-    temperature = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
-    humidity = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
-    precipitation = models.DecimalField(max_digits=6, decimal_places=2, default=decimal.Decimal("0"))
-    windSpeed = models.DecimalField(max_digits=5, decimal_places=2, default=decimal.Decimal("0"))
+    temperature = models.DecimalField(
+        max_digits=5, decimal_places=2, default=decimal.Decimal("0")
+    )
+    humidity = models.DecimalField(
+        max_digits=5, decimal_places=2, default=decimal.Decimal("0")
+    )
+    precipitation = models.DecimalField(
+        max_digits=6, decimal_places=2, default=decimal.Decimal("0")
+    )
+    windSpeed = models.DecimalField(
+        max_digits=5, decimal_places=2, default=decimal.Decimal("0")
+    )
     weatherCondition = models.CharField(max_length=50)
-    visibility = models.DecimalField(max_digits=6, decimal_places=2, default=decimal.Decimal("10"))
+    visibility = models.DecimalField(
+        max_digits=6, decimal_places=2, default=decimal.Decimal("10")
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -71,13 +112,19 @@ class WeatherDataEntity(BaseModelString):
         verbose_name_plural = "Abstract WeatherDataEntitys"
 
     def __str__(self):
-        return f'WeatherDataEntity ({self.pk})'
+        return f"WeatherDataEntity ({self.pk})"
+
 
 class EventDataEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface EventDataEntity"""
+
     """USAGE: Inherit in other apps - class User(EventDataEntity): pass"""
 
-    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='eventdataentity_location_set')
+    locationId = models.ForeignKey(
+        "traffic_app.Location",
+        on_delete=models.CASCADE,
+        related_name="eventdataentity_location_set",
+    )
     eventName = models.CharField(max_length=200)
     eventType = models.CharField(max_length=50)
     startDate = models.DateTimeField()
@@ -91,10 +138,12 @@ class EventDataEntity(BaseModelString):
         verbose_name_plural = "Abstract EventDataEntitys"
 
     def __str__(self):
-        return f'EventDataEntity ({self.pk})'
+        return f"EventDataEntity ({self.pk})"
+
 
 class Permission(BaseModelString):
     """Abstract DLL model from TypeScript interface Permission"""
+
     """USAGE: Inherit in other apps - class User(Permission): pass"""
 
     name = models.CharField(max_length=255)
@@ -107,10 +156,12 @@ class Permission(BaseModelString):
         verbose_name_plural = "Abstract Permissions"
 
     def __str__(self):
-        return f'{self.name} ({self.pk})'
+        return f"{self.name} ({self.pk})"
+
 
 class LoginCredentials(BaseModel):
     """Abstract DLL model from TypeScript interface LoginCredentials"""
+
     """USAGE: Inherit in other apps - class User(LoginCredentials): pass"""
 
     email = models.CharField(max_length=255)
@@ -122,10 +173,12 @@ class LoginCredentials(BaseModel):
         verbose_name_plural = "Abstract LoginCredentialss"
 
     def __str__(self):
-        return f'LoginCredentials ({self.pk})'
+        return f"LoginCredentials ({self.pk})"
+
 
 class RegisterData(BaseModel):
     """Abstract DLL model from TypeScript interface RegisterData"""
+
     """USAGE: Inherit in other apps - class User(RegisterData): pass"""
 
     lastName = models.CharField(max_length=255)
@@ -140,10 +193,12 @@ class RegisterData(BaseModel):
         verbose_name_plural = "Abstract RegisterDatas"
 
     def __str__(self):
-        return f'RegisterData ({self.pk})'
+        return f"RegisterData ({self.pk})"
+
 
 class TokenPayload(BaseModel):
     """Abstract DLL model from TypeScript interface TokenPayload"""
+
     """USAGE: Inherit in other apps - class User(TokenPayload): pass"""
 
     sub = models.CharField(max_length=255)
@@ -158,15 +213,19 @@ class TokenPayload(BaseModel):
         verbose_name_plural = "Abstract TokenPayloads"
 
     def __str__(self):
-        return f'TokenPayload ({self.pk})'
+        return f"TokenPayload ({self.pk})"
+
 
 class CharacterDetection(BaseModel):
     """Abstract DLL model from TypeScript interface CharacterDetection"""
+
     """USAGE: Inherit in other apps - class User(CharacterDetection): pass"""
 
     character = models.CharField(max_length=255)
     confidence = models.IntegerField()
-    position = models.JSONField(default=dict, help_text='Reference to BoundingBox interface')
+    position = models.JSONField(
+        default=dict, help_text="Reference to BoundingBox interface"
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -174,10 +233,12 @@ class CharacterDetection(BaseModel):
         verbose_name_plural = "Abstract CharacterDetections"
 
     def __str__(self):
-        return f'CharacterDetection ({self.pk})'
+        return f"CharacterDetection ({self.pk})"
+
 
 class HourlyDetection(BaseModel):
     """Abstract DLL model from TypeScript interface HourlyDetection"""
+
     """USAGE: Inherit in other apps - class User(HourlyDetection): pass"""
 
     hour = models.IntegerField()
@@ -189,10 +250,12 @@ class HourlyDetection(BaseModel):
         verbose_name_plural = "Abstract HourlyDetections"
 
     def __str__(self):
-        return f'HourlyDetection ({self.pk})'
+        return f"HourlyDetection ({self.pk})"
+
 
 class LoginQuery(BaseModel):
     """Abstract DLL model from TypeScript interface LoginQuery"""
+
     """USAGE: Inherit in other apps - class User(LoginQuery): pass"""
 
     email = models.CharField(max_length=255)
@@ -204,10 +267,12 @@ class LoginQuery(BaseModel):
         verbose_name_plural = "Abstract LoginQuerys"
 
     def __str__(self):
-        return f'LoginQuery ({self.pk})'
+        return f"LoginQuery ({self.pk})"
+
 
 class BoundingBox(BaseModel):
     """Abstract DLL model from TypeScript interface BoundingBox"""
+
     """USAGE: Inherit in other apps - class User(BoundingBox): pass"""
 
     x = models.IntegerField()
@@ -221,10 +286,12 @@ class BoundingBox(BaseModel):
         verbose_name_plural = "Abstract BoundingBoxs"
 
     def __str__(self):
-        return f'BoundingBox ({self.pk})'
+        return f"BoundingBox ({self.pk})"
+
 
 class TimeSlot(BaseModel):
     """Abstract DLL model from TypeScript interface TimeSlot"""
+
     """USAGE: Inherit in other apps - class User(TimeSlot): pass"""
 
     startTime = models.CharField(max_length=255)
@@ -237,10 +304,12 @@ class TimeSlot(BaseModel):
         verbose_name_plural = "Abstract TimeSlots"
 
     def __str__(self):
-        return f'TimeSlot ({self.pk})'
+        return f"TimeSlot ({self.pk})"
+
 
 class PredictiveAnalysis(BaseModelString):
     """Abstract DLL model from TypeScript interface PredictiveAnalysis"""
+
     """USAGE: Inherit in other apps - class User(PredictiveAnalysis): pass"""
 
     location = models.CharField(max_length=255)
@@ -253,10 +322,12 @@ class PredictiveAnalysis(BaseModelString):
         verbose_name_plural = "Abstract PredictiveAnalysiss"
 
     def __str__(self):
-        return f'PredictiveAnalysis ({self.pk})'
+        return f"PredictiveAnalysis ({self.pk})"
+
 
 class PaginationInfoDTO(BaseModel):
     """Abstract DLL model from TypeScript interface PaginationInfoDTO"""
+
     """USAGE: Inherit in other apps - class User(PaginationInfoDTO): pass"""
 
     page = models.IntegerField()
@@ -274,10 +345,12 @@ class PaginationInfoDTO(BaseModel):
         verbose_name_plural = "Abstract PaginationInfoDTOs"
 
     def __str__(self):
-        return f'PaginationInfoDTO ({self.pk})'
+        return f"PaginationInfoDTO ({self.pk})"
+
 
 class ApiErrorDTO(BaseModel):
     """Abstract DLL model from TypeScript interface ApiErrorDTO"""
+
     """USAGE: Inherit in other apps - class User(ApiErrorDTO): pass"""
 
     code = models.CharField(max_length=255)
@@ -294,10 +367,12 @@ class ApiErrorDTO(BaseModel):
         verbose_name_plural = "Abstract ApiErrorDTOs"
 
     def __str__(self):
-        return f'ApiErrorDTO ({self.pk})'
+        return f"ApiErrorDTO ({self.pk})"
+
 
 class ValidationErrorDTO(BaseModel):
     """Abstract DLL model from TypeScript interface ValidationErrorDTO"""
+
     """USAGE: Inherit in other apps - class User(ValidationErrorDTO): pass"""
 
     field = models.CharField(max_length=255)
@@ -311,14 +386,21 @@ class ValidationErrorDTO(BaseModel):
         verbose_name_plural = "Abstract ValidationErrorDTOs"
 
     def __str__(self):
-        return f'ValidationErrorDTO ({self.pk})'
+        return f"ValidationErrorDTO ({self.pk})"
+
 
 class BusinessErrorDTO(BaseModel):
     """Abstract DLL model from TypeScript interface BusinessErrorDTO"""
+
     """USAGE: Inherit in other apps - class User(BusinessErrorDTO): pass"""
 
     businessRule = models.CharField(max_length=255)
-    context = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
+    context = models.JSONField(
+        default=dict,
+        help_text="Reference to Record<string, any> interface",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -326,10 +408,12 @@ class BusinessErrorDTO(BaseModel):
         verbose_name_plural = "Abstract BusinessErrorDTOs"
 
     def __str__(self):
-        return f'BusinessErrorDTO ({self.pk})'
+        return f"BusinessErrorDTO ({self.pk})"
+
 
 class BaseQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface BaseQueryDTO"""
+
     """USAGE: Inherit in other apps - class User(BaseQueryDTO): pass"""
 
     page = models.IntegerField(blank=True, null=True)
@@ -344,10 +428,12 @@ class BaseQueryDTO(BaseModel):
         verbose_name_plural = "Abstract BaseQueryDTOs"
 
     def __str__(self):
-        return f'BaseQueryDTO ({self.pk})'
+        return f"BaseQueryDTO ({self.pk})"
+
 
 class DateRangeQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface DateRangeQueryDTO"""
+
     """USAGE: Inherit in other apps - class User(DateRangeQueryDTO): pass"""
 
     startDate = models.DateTimeField(blank=True, null=True)
@@ -360,10 +446,12 @@ class DateRangeQueryDTO(BaseModel):
         verbose_name_plural = "Abstract DateRangeQueryDTOs"
 
     def __str__(self):
-        return f'DateRangeQueryDTO ({self.pk})'
+        return f"DateRangeQueryDTO ({self.pk})"
+
 
 class RealtimeAnalysisUpdateDTO(BaseModel):
     """Abstract DLL model from TypeScript interface RealtimeAnalysisUpdateDTO"""
+
     """USAGE: Inherit in other apps - class User(RealtimeAnalysisUpdateDTO): pass"""
 
     analysisId = models.IntegerField()
@@ -381,10 +469,12 @@ class RealtimeAnalysisUpdateDTO(BaseModel):
         verbose_name_plural = "Abstract RealtimeAnalysisUpdateDTOs"
 
     def __str__(self):
-        return f'RealtimeAnalysisUpdateDTO ({self.pk})'
+        return f"RealtimeAnalysisUpdateDTO ({self.pk})"
+
 
 class LoginRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface LoginRequestDTO"""
+
     """USAGE: Inherit in other apps - class User(LoginRequestDTO): pass"""
 
     email = models.CharField(max_length=255)
@@ -397,15 +487,19 @@ class LoginRequestDTO(BaseModel):
         verbose_name_plural = "Abstract LoginRequestDTOs"
 
     def __str__(self):
-        return f'LoginRequestDTO ({self.pk})'
+        return f"LoginRequestDTO ({self.pk})"
+
 
 class LoginResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface LoginResponseDTO"""
+
     """USAGE: Inherit in other apps - class User(LoginResponseDTO): pass"""
 
     accessToken = models.CharField(max_length=255)
     refreshToken = models.CharField(max_length=255)
-    user = models.JSONField(default=dict, help_text='Reference to UserInfoDTO interface')
+    user = models.JSONField(
+        default=dict, help_text="Reference to UserInfoDTO interface"
+    )
     expiresAt = models.DateTimeField()
     tokenType = models.TextField()
 
@@ -415,17 +509,24 @@ class LoginResponseDTO(BaseModel):
         verbose_name_plural = "Abstract LoginResponseDTOs"
 
     def __str__(self):
-        return f'LoginResponseDTO ({self.pk})'
+        return f"LoginResponseDTO ({self.pk})"
+
 
 class UpdateProfileRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UpdateProfileRequestDTO"""
+
     """USAGE: Inherit in other apps - class User(UpdateProfileRequestDTO): pass"""
 
     fullName = models.CharField(max_length=255, blank=True, null=True)
     currentPassword = models.CharField(max_length=255, blank=True, null=True)
     newPassword = models.CharField(max_length=255, blank=True, null=True)
     confirmPassword = models.CharField(max_length=255, blank=True, null=True)
-    preferences = models.JSONField(default=dict, help_text='Reference to Partial<UserPreferencesDTO> interface', blank=True, null=True)
+    preferences = models.JSONField(
+        default=dict,
+        help_text="Reference to Partial<UserPreferencesDTO> interface",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -433,10 +534,12 @@ class UpdateProfileRequestDTO(BaseModel):
         verbose_name_plural = "Abstract UpdateProfileRequestDTOs"
 
     def __str__(self):
-        return f'UpdateProfileRequestDTO ({self.pk})'
+        return f"UpdateProfileRequestDTO ({self.pk})"
+
 
 class DashboardStatsDTO(BaseModel):
     """Abstract DLL model from TypeScript interface DashboardStatsDTO"""
+
     """USAGE: Inherit in other apps - class User(DashboardStatsDTO): pass"""
 
     overview = models.TextField()
@@ -451,17 +554,24 @@ class DashboardStatsDTO(BaseModel):
         verbose_name_plural = "Abstract DashboardStatsDTOs"
 
     def __str__(self):
-        return f'DashboardStatsDTO ({self.pk})'
+        return f"DashboardStatsDTO ({self.pk})"
+
 
 class FileUploadRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface FileUploadRequestDTO"""
+
     """USAGE: Inherit in other apps - class User(FileUploadRequestDTO): pass"""
 
-    file = models.JSONField(default=dict, help_text='Reference to File interface')
+    file = models.JSONField(default=dict, help_text="Reference to File interface")
     filename = models.CharField(max_length=255)
     mimetype = models.CharField(max_length=255)
     size = models.IntegerField()
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
+    metadata = models.JSONField(
+        default=dict,
+        help_text="Reference to Record<string, any> interface",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -469,10 +579,12 @@ class FileUploadRequestDTO(BaseModel):
         verbose_name_plural = "Abstract FileUploadRequestDTOs"
 
     def __str__(self):
-        return f'FileUploadRequestDTO ({self.pk})'
+        return f"FileUploadRequestDTO ({self.pk})"
+
 
 class FileUploadResponseDTO(BaseModelString):
     """Abstract DLL model from TypeScript interface FileUploadResponseDTO"""
+
     """USAGE: Inherit in other apps - class User(FileUploadResponseDTO): pass"""
 
     filename = models.CharField(max_length=255)
@@ -481,7 +593,12 @@ class FileUploadResponseDTO(BaseModelString):
     size = models.IntegerField()
     url = models.CharField(max_length=255)
     publicUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
+    metadata = models.JSONField(
+        default=dict,
+        help_text="Reference to Record<string, any> interface",
+        blank=True,
+        null=True,
+    )
     uploadedAt = models.DateTimeField()
 
     class Meta:
@@ -490,10 +607,12 @@ class FileUploadResponseDTO(BaseModelString):
         verbose_name_plural = "Abstract FileUploadResponseDTOs"
 
     def __str__(self):
-        return f'FileUploadResponseDTO ({self.pk})'
+        return f"FileUploadResponseDTO ({self.pk})"
+
 
 class HealthCheckDTO(BaseModel):
     """Abstract DLL model from TypeScript interface HealthCheckDTO"""
+
     """USAGE: Inherit in other apps - class User(HealthCheckDTO): pass"""
 
     status = models.TextField()
@@ -511,10 +630,12 @@ class HealthCheckDTO(BaseModel):
         verbose_name_plural = "Abstract HealthCheckDTOs"
 
     def __str__(self):
-        return f'HealthCheckDTO ({self.pk})'
+        return f"HealthCheckDTO ({self.pk})"
+
 
 class PlateDetectionResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface PlateDetectionResponseDTO"""
+
     """USAGE: Inherit in other apps - class User(PlateDetectionResponseDTO): pass"""
 
     plateNumber = models.CharField(max_length=255)
@@ -535,10 +656,12 @@ class PlateDetectionResponseDTO(BaseModel):
         verbose_name_plural = "Abstract PlateDetectionResponseDTOs"
 
     def __str__(self):
-        return f'PlateDetectionResponseDTO ({self.pk})'
+        return f"PlateDetectionResponseDTO ({self.pk})"
+
 
 class LoginRequestDto(BaseModel):
     """Abstract DLL model from TypeScript interface LoginRequestDto"""
+
     """USAGE: Inherit in other apps - class User(LoginRequestDto): pass"""
 
     email = models.CharField(max_length=255)
@@ -551,10 +674,12 @@ class LoginRequestDto(BaseModel):
         verbose_name_plural = "Abstract LoginRequestDtos"
 
     def __str__(self):
-        return f'LoginRequestDto ({self.pk})'
+        return f"LoginRequestDto ({self.pk})"
+
 
 class RefreshTokenRequestDto(BaseModel):
     """Abstract DLL model from TypeScript interface RefreshTokenRequestDto"""
+
     """USAGE: Inherit in other apps - class User(RefreshTokenRequestDto): pass"""
 
     refreshToken = models.CharField(max_length=255)
@@ -565,10 +690,12 @@ class RefreshTokenRequestDto(BaseModel):
         verbose_name_plural = "Abstract RefreshTokenRequestDtos"
 
     def __str__(self):
-        return f'RefreshTokenRequestDto ({self.pk})'
+        return f"RefreshTokenRequestDto ({self.pk})"
+
 
 class ChangePasswordRequestDto(BaseModel):
     """Abstract DLL model from TypeScript interface ChangePasswordRequestDto"""
+
     """USAGE: Inherit in other apps - class User(ChangePasswordRequestDto): pass"""
 
     currentPassword = models.CharField(max_length=255)
@@ -581,10 +708,12 @@ class ChangePasswordRequestDto(BaseModel):
         verbose_name_plural = "Abstract ChangePasswordRequestDtos"
 
     def __str__(self):
-        return f'ChangePasswordRequestDto ({self.pk})'
+        return f"ChangePasswordRequestDto ({self.pk})"
+
 
 class APIError(BaseModel):
     """Abstract DLL model from TypeScript interface APIError"""
+
     """USAGE: Inherit in other apps - class User(APIError): pass"""
 
     code = models.CharField(max_length=255)
@@ -598,10 +727,12 @@ class APIError(BaseModel):
         verbose_name_plural = "Abstract APIErrors"
 
     def __str__(self):
-        return f'APIError ({self.pk})'
+        return f"APIError ({self.pk})"
+
 
 class BaseQuery(BaseModel):
     """Abstract DLL model from TypeScript interface BaseQuery"""
+
     """USAGE: Inherit in other apps - class User(BaseQuery): pass"""
 
     page = models.IntegerField(blank=True, null=True)
@@ -616,10 +747,12 @@ class BaseQuery(BaseModel):
         verbose_name_plural = "Abstract BaseQuerys"
 
     def __str__(self):
-        return f'BaseQuery ({self.pk})'
+        return f"BaseQuery ({self.pk})"
+
 
 class ErrorDTO(BaseModel):
     """Abstract DLL model from TypeScript interface ErrorDTO"""
+
     """USAGE: Inherit in other apps - class User(ErrorDTO): pass"""
 
     code = models.CharField(max_length=255)
@@ -634,10 +767,12 @@ class ErrorDTO(BaseModel):
         verbose_name_plural = "Abstract ErrorDTOs"
 
     def __str__(self):
-        return f'ErrorDTO ({self.pk})'
+        return f"ErrorDTO ({self.pk})"
+
 
 class TrafficAnalysisResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficAnalysisResponseDTO"""
+
     """USAGE: Inherit in other apps - class User(TrafficAnalysisResponseDTO): pass"""
 
     cameraName = models.CharField(max_length=255)
@@ -651,4 +786,4 @@ class TrafficAnalysisResponseDTO(BaseModel):
         verbose_name_plural = "Abstract TrafficAnalysisResponseDTOs"
 
     def __str__(self):
-        return f'TrafficAnalysisResponseDTO ({self.pk})'
+        return f"TrafficAnalysisResponseDTO ({self.pk})"

@@ -13,45 +13,6 @@ from ..constants import (
 )
 
 
-class CreateVehicleComplaintDetectionDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDetectionDTO"""
-    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDetectionDTO): pass"""
-
-    detectedPlateId = models.IntegerField()
-    ownerName = models.CharField(max_length=255)
-    ownerIdNumber = models.UUIDField(default=uuid.uuid4, editable=False)
-    ownerAddress = models.CharField(max_length=255)
-    caseNumber = models.CharField(max_length=255)
-    totalComplaintsCount = models.IntegerField()
-    severity = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateVehicleComplaintDetectionDTO"
-        verbose_name_plural = "Abstract CreateVehicleComplaintDetectionDTOs"
-
-    def __str__(self):
-        return f'CreateVehicleComplaintDetectionDTO ({self.pk})'
-
-class CreateVehicleComplaintDTO(BaseModel):
-    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDTO"""
-    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDTO): pass"""
-
-    detectionId = models.IntegerField()
-    complaintText = models.CharField(max_length=255)
-    complaintType = models.CharField(max_length=255, blank=True, null=True)
-    complaintDate = models.DateTimeField(blank=True, null=True)
-    severity = models.CharField(max_length=255, blank=True, null=True)
-    sequenceNumber = models.IntegerField()
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract CreateVehicleComplaintDTO"
-        verbose_name_plural = "Abstract CreateVehicleComplaintDTOs"
-
-    def __str__(self):
-        return f'CreateVehicleComplaintDTO ({self.pk})'
-
 class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
@@ -239,6 +200,48 @@ class VehicleFrameEntity(BaseModel):
     def __str__(self):
         return f'VehicleFrameEntity ({self.pk})'
 
+class VehicleComplaintDetectionEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface VehicleComplaintDetectionEntity"""
+    """USAGE: Inherit in other apps - class User(VehicleComplaintDetectionEntity): pass"""
+
+    detectedPlateId = models.ForeignKey('traffic_app.DetectedPlate', on_delete=models.CASCADE, related_name='vehiclecomplaintdetectionentity_detectedplate_set')
+    ownerName = models.CharField(max_length=200)
+    ownerIdNumber = models.CharField(max_length=32)
+    ownerAddress = models.CharField(max_length=400)
+    caseNumber = models.CharField(max_length=64)
+    totalComplaintsCount = models.IntegerField(default=0)
+    severity = models.CharField(max_length=20, blank=True, null=True)
+    wasNotified = models.BooleanField(default=False)
+    notifiedAt = models.DateTimeField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract VehicleComplaintDetectionEntity"
+        verbose_name_plural = "Abstract VehicleComplaintDetectionEntitys"
+
+    def __str__(self):
+        return f'VehicleComplaintDetectionEntity ({self.pk})'
+
+class VehicleComplaintEntity(BaseModel):
+    """Abstract DLL model from TypeScript interface VehicleComplaintEntity"""
+    """USAGE: Inherit in other apps - class User(VehicleComplaintEntity): pass"""
+
+    detectionId = models.ForeignKey('traffic_app.VehicleComplaintDetection', on_delete=models.CASCADE, related_name='vehiclecomplaintentity_detection_set')
+    complaintText = models.TextField()
+    complaintType = models.CharField(max_length=50, blank=True, null=True)
+    complaintDate = models.DateTimeField(blank=True, null=True)
+    severity = models.CharField(max_length=20, blank=True, null=True)
+    sequenceNumber = models.IntegerField(default=1)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract VehicleComplaintEntity"
+        verbose_name_plural = "Abstract VehicleComplaintEntitys"
+
+    def __str__(self):
+        return f'VehicleComplaintEntity ({self.pk})'
+
 class CreateTrafficAnalysisDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateTrafficAnalysisDTO"""
     """USAGE: Inherit in other apps - class User(CreateTrafficAnalysisDTO): pass"""
@@ -321,6 +324,45 @@ class CreateVehicleFrameDTO(BaseModel):
 
     def __str__(self):
         return f'CreateVehicleFrameDTO ({self.pk})'
+
+class CreateVehicleComplaintDetectionDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDetectionDTO"""
+    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDetectionDTO): pass"""
+
+    detectedPlateId = models.IntegerField()
+    ownerName = models.CharField(max_length=255)
+    ownerIdNumber = models.UUIDField(default=uuid.uuid4, editable=False)
+    ownerAddress = models.CharField(max_length=255)
+    caseNumber = models.CharField(max_length=255)
+    totalComplaintsCount = models.IntegerField()
+    severity = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract CreateVehicleComplaintDetectionDTO"
+        verbose_name_plural = "Abstract CreateVehicleComplaintDetectionDTOs"
+
+    def __str__(self):
+        return f'CreateVehicleComplaintDetectionDTO ({self.pk})'
+
+class CreateVehicleComplaintDTO(BaseModel):
+    """Abstract DLL model from TypeScript interface CreateVehicleComplaintDTO"""
+    """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDTO): pass"""
+
+    detectionId = models.IntegerField()
+    complaintText = models.CharField(max_length=255)
+    complaintType = models.CharField(max_length=255, blank=True, null=True)
+    complaintDate = models.DateTimeField(blank=True, null=True)
+    severity = models.CharField(max_length=255, blank=True, null=True)
+    sequenceNumber = models.IntegerField()
+
+    class Meta:
+        abstract = True  # DLL model - inherit in other apps
+        verbose_name = "Abstract CreateVehicleComplaintDTO"
+        verbose_name_plural = "Abstract CreateVehicleComplaintDTOs"
+
+    def __str__(self):
+        return f'CreateVehicleComplaintDTO ({self.pk})'
 
 class LocationCount(BaseModel):
     """Abstract DLL model from TypeScript interface LocationCount"""
