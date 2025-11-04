@@ -533,3 +533,4 @@ except Exception as e:
 # ============================================================================
 # Feature flag para activar/desactivar detección de placas
 ENABLE_PLATE_DETECTION = config('ENABLE_PLATE_DETECTION', default=False, cast=bool)
+PLATE_DETECTION_METHOD = config('PLATE_DETECTION_METHOD', default='haarcascade')

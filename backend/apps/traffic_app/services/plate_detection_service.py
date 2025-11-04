@@ -10,6 +10,7 @@ import cv2
 import os
 import json
 import logging
+import numpy as np
 from datetime import datetime
 from pathlib import Path
 from django.conf import settings
@@ -111,25 +112,64 @@ class PlateDetectionService:
     
     def detect_plate_region(self, frame):
         """
-        Detectar región de placa usando Haarcascade
+        🎯 TRIPLE MÉTODO: Detectar placas combinando 3 técnicas
+        
+        1. Haarcascade (rápido, detecta patrones conocidos)
+        2. Contornos + Aspect Ratio (detecta rectángulos tipo placa)
+        3. Detección por Color HSV (detecta colores típicos: amarillo/blanco/verde)
         
         Args:
             frame: Frame de video (numpy array BGR)
             
         Returns:
-            list: Lista de tuplas (x, y, w, h) de placas detectadas
+            list: Lista de tuplas (x, y, w, h) de placas detectadas (sin duplicados)
         """
         if not self._ensure_models_loaded():
             return []
         
+        all_plates = []
+        detection_count = {'haarcascade': 0, 'contours': 0, 'color': 0}
+        
+        # ========== MÉTODO 1: Haarcascade ==========
         try:
-            # Convertir a escala de grises
+            haar_plates = self._detect_with_haarcascade(frame)
+            all_plates.extend([(x, y, w, h, 'haarcascade') for x, y, w, h in haar_plates])
+            detection_count['haarcascade'] = len(haar_plates)
+        except Exception as e:
+            logger.warning(f"⚠️ Haarcascade failed: {e}")
+        
+        # ========== MÉTODO 2: Contornos + Aspect Ratio ==========
+        try:
+            contour_plates = self._detect_with_contours(frame)
+            all_plates.extend([(x, y, w, h, 'contours') for x, y, w, h in contour_plates])
+            detection_count['contours'] = len(contour_plates)
+        except Exception as e:
+            logger.warning(f"⚠️ Contours failed: {e}")
+        
+        # ========== MÉTODO 3: Color HSV ==========
+        try:
+            color_plates = self._detect_with_color(frame)
+            all_plates.extend([(x, y, w, h, 'color') for x, y, w, h in color_plates])
+            detection_count['color'] = len(color_plates)
+        except Exception as e:
+            logger.warning(f"⚠️ Color detection failed: {e}")
+        
+        # ========== ELIMINAR DUPLICADOS ==========
+        unique_plates = self._remove_duplicate_plates(all_plates)
+        
+        # Logs informativos
+        if len(unique_plates) > 0:
+            methods = [f"{k}:{v}" for k, v in detection_count.items() if v > 0]
+            logger.info(f"🎯 {len(unique_plates)} plate(s) detected ({' + '.join(methods)})")
+        
+        return unique_plates
+    
+    def _detect_with_haarcascade(self, frame):
+        """Detectar placas con Haarcascade (método original)"""
+        try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            
-            # Ecualizar histograma para mejor detección
             gray = cv2.equalizeHist(gray)
             
-            # Detectar placas
             plates = self._plate_cascade.detectMultiScale(
                 gray,
                 scaleFactor=1.1,
@@ -141,12 +181,228 @@ class PlateDetectionService:
             return plates
             
         except Exception as e:
-            logger.error(f"❌ Error detecting plate region: {e}")
+            logger.error(f"❌ Haarcascade error: {e}")
             return []
+    
+    def _detect_with_contours(self, frame):
+        """
+        🔲 Detectar placas por CONTORNOS + ASPECT RATIO (UNIVERSAL)
+        Busca rectángulos con proporciones típicas de placas internacionales
+        """
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Pre-procesamiento
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            
+            # CLAHE para mejorar contraste
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(blur)
+            
+            # Detección de bordes con Canny
+            edges = cv2.Canny(enhanced, 50, 200)
+            
+            # Dilatar para conectar bordes
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            dilated = cv2.dilate(edges, kernel, iterations=1)
+            
+            # Encontrar contornos
+            contours, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            
+            plates = []
+            frame_h, frame_w = frame.shape[:2]
+            frame_area = frame_h * frame_w
+            
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                
+                # Filtros de tamaño FLEXIBLES (universal)
+                if w < 30 or h < 10 or w > frame_w * 0.8 or h > frame_h * 0.6:
+                    continue
+                
+                area = w * h
+                if area < 300 or area > frame_area * 0.25:
+                    continue
+                
+                # Aspect ratio FLEXIBLE (1.3 a 7.5 para cubrir USA cuadradas y Europa largas)
+                aspect_ratio = w / h if h > 0 else 0
+                if not (1.3 <= aspect_ratio <= 7.5):
+                    continue
+                
+                # Validar forma rectangular
+                contour_area = cv2.contourArea(contour)
+                extent = contour_area / area if area > 0 else 0
+                if extent < 0.5:  # Debe ser al menos 50% rectangular
+                    continue
+                
+                plates.append((x, y, w, h))
+            
+            return plates
+            
+        except Exception as e:
+            logger.error(f"❌ Contours error: {e}")
+            return []
+    
+    def _detect_with_color(self, frame):
+        """
+        🎨 Detectar placas por COLOR (UNIVERSAL)
+        
+        Colores comunes en placas mundiales:
+        - Amarillo: Ecuador, Países Bajos
+        - Blanco: USA, Europa, Brasil, Ecuador comercial
+        - Azul: Europa (banda azul con estrellas)
+        - Verde: México diplomático, Brasil Mercosur
+        - Negro/Gris: USA algunos estados
+        """
+        try:
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            
+            # === MÁSCARAS PARA MÚLTIPLES COLORES ===
+            
+            # 1. Amarillo
+            lower_yellow = np.array([15, 60, 80])
+            upper_yellow = np.array([35, 255, 255])
+            mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+            
+            # 2. Blanco (más común)
+            lower_white = np.array([0, 0, 160])
+            upper_white = np.array([180, 40, 255])
+            mask_white = cv2.inRange(hsv, lower_white, upper_white)
+            
+            # 3. Azul (Europa)
+            lower_blue = np.array([90, 50, 50])
+            upper_blue = np.array([130, 255, 255])
+            mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
+            
+            # 4. Verde
+            lower_green = np.array([35, 40, 40])
+            upper_green = np.array([85, 255, 255])
+            mask_green = cv2.inRange(hsv, lower_green, upper_green)
+            
+            # 5. Negro/Gris oscuro (USA)
+            lower_dark = np.array([0, 0, 0])
+            upper_dark = np.array([180, 50, 80])
+            mask_dark = cv2.inRange(hsv, lower_dark, upper_dark)
+            
+            # Combinar todas las máscaras
+            mask_combined = cv2.bitwise_or(mask_yellow, mask_white)
+            mask_combined = cv2.bitwise_or(mask_combined, mask_blue)
+            mask_combined = cv2.bitwise_or(mask_combined, mask_green)
+            mask_combined = cv2.bitwise_or(mask_combined, mask_dark)
+            
+            # Limpiar ruido
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+            mask_combined = cv2.morphologyEx(mask_combined, cv2.MORPH_CLOSE, kernel)
+            mask_combined = cv2.morphologyEx(mask_combined, cv2.MORPH_OPEN, kernel)
+            
+            # Encontrar contornos
+            contours, _ = cv2.findContours(mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            plates = []
+            frame_h, frame_w = frame.shape[:2]
+            frame_area = frame_h * frame_w
+            
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                
+                # Validaciones FLEXIBLES (universal)
+                if w < 30 or h < 10:
+                    continue
+                
+                area = w * h
+                if area < 300 or area > frame_area * 0.3:
+                    continue
+                
+                # Aspect ratio FLEXIBLE (1.3 a 7.5)
+                aspect_ratio = w / h if h > 0 else 0
+                if not (1.3 <= aspect_ratio <= 7.5):
+                    continue
+                
+                # Densidad de color
+                roi_mask = mask_combined[y:y+h, x:x+w]
+                color_density = np.count_nonzero(roi_mask) / area
+                
+                if color_density < 0.25:  # Al menos 25%
+                    continue
+                
+                plates.append((x, y, w, h))
+            
+            return plates
+            
+        except Exception as e:
+            logger.error(f"❌ Color detection error: {e}")
+            return []
+    
+    def _remove_duplicate_plates(self, plates, iou_threshold=0.5):
+        """
+        Eliminar placas duplicadas usando IoU (Intersection over Union)
+        
+        Args:
+            plates: Lista de tuplas (x, y, w, h, method)
+            iou_threshold: Umbral IoU para considerar duplicados
+            
+        Returns:
+            list: Placas únicas como tuplas (x, y, w, h)
+        """
+        if len(plates) <= 1:
+            return [(x, y, w, h) for x, y, w, h, _ in plates]
+        
+        # Ordenar por área (más grande primero, generalmente más preciso)
+        plates = sorted(plates, key=lambda p: p[2] * p[3], reverse=True)
+        
+        keep = []
+        for i, plate1 in enumerate(plates):
+            x1, y1, w1, h1, method1 = plate1
+            
+            # Verificar si se superpone con alguna placa ya seleccionada
+            overlap = False
+            for plate2 in keep:
+                x2, y2, w2, h2 = plate2
+                
+                # Calcular IoU
+                iou = self._calculate_iou(
+                    (x1, y1, x1+w1, y1+h1),
+                    (x2, y2, x2+w2, y2+h2)
+                )
+                
+                if iou > iou_threshold:
+                    overlap = True
+                    break
+            
+            if not overlap:
+                keep.append((x1, y1, w1, h1))
+        
+        return keep
+    
+    def _calculate_iou(self, box1, box2):
+        """Calcular Intersection over Union entre dos bounding boxes"""
+        x1_min, y1_min, x1_max, y1_max = box1
+        x2_min, y2_min, x2_max, y2_max = box2
+        
+        # Intersección
+        inter_x_min = max(x1_min, x2_min)
+        inter_y_min = max(y1_min, y2_min)
+        inter_x_max = min(x1_max, x2_max)
+        inter_y_max = min(y1_max, y2_max)
+        
+        inter_area = max(0, inter_x_max - inter_x_min) * max(0, inter_y_max - inter_y_min)
+        
+        # Unión
+        box1_area = (x1_max - x1_min) * (y1_max - y1_min)
+        box2_area = (x2_max - x2_min) * (y2_max - y2_min)
+        union_area = box1_area + box2_area - inter_area
+        
+        return inter_area / union_area if union_area > 0 else 0
     
     def read_plate_text(self, plate_image):
         """
-        Leer texto de la placa con EasyOCR
+        ✨ MEJORADO: Leer texto usando MÚLTIPLES PREPROCESSAMIENTOS
+        
+        Estrategia:
+        1. Generar 11 versiones procesadas (solo en RAM)
+        2. EasyOCR lee cada versión
+        3. Elegir resultado con mayor confianza
+        4. Validar formato de placa
         
         Args:
             plate_image: Imagen de la placa (numpy array BGR)
@@ -158,180 +414,405 @@ class PlateDetectionService:
             return "NO_OCR", 0.0
         
         try:
-            # Preprocesamiento
-            plate_gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+            # === GENERAR MÚLTIPLES VERSIONES PROCESADAS (solo en RAM) ===
+            processed_images = self._preprocess_plate_for_ocr(plate_image)
             
-            # Binarización adaptativa
-            plate_thresh = cv2.adaptiveThreshold(
-                plate_gray, 255, 
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 11, 2
-            )
+            logger.debug(f"🔍 Generadas {len(processed_images)} versiones procesadas")
             
-            # OCR
-            results = self._reader.readtext(
-                plate_thresh,
-                detail=1,
-                allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
-                paragraph=False,
-                min_size=10,
-                text_threshold=0.7
-            )
+            # === EJECUTAR OCR EN CADA VERSIÓN ===
+            all_results = []
             
-            if results:
-                text = results[0][1].replace(' ', '').upper()
-                confidence = results[0][2]
-                return text, confidence
-            
-            return "UNREADABLE", 0.0
+            for idx, (img, method_name) in enumerate(processed_images):
+                try:
+                    results = self._reader.readtext(
+                        img,
+                        allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
+                        paragraph=False,
+                        detail=1,
+                        batch_size=1
+                    )
+                    
+                    if results:
+                        for (bbox, text, confidence) in results:
+                            cleaned_text = self._clean_plate_text(text)
+                            
+                            if cleaned_text:
+                                all_results.append({
+                                    'text': cleaned_text,
+                                    'confidence': confidence,
+                                    'method': method_name
+                                })
+                                logger.debug(f"  {method_name}: '{cleaned_text}' (conf: {confidence:.2f})")
                 
+                except Exception as e:
+                    logger.debug(f"  ⚠️ {method_name} falló: {e}")
+                    continue
+            
+            # === ELEGIR MEJOR RESULTADO ===
+            if not all_results:
+                logger.warning("❌ No se pudo leer texto en ninguna versión")
+                return "UNREADABLE", 0.0
+            
+            # Filtrar solo los que pasen validación de formato
+            valid_results = [
+                r for r in all_results 
+                if self._validate_plate_text(r['text'])
+            ]
+            
+            if not valid_results:
+                logger.warning("⚠️ Texto detectado pero formato no válido")
+                best = max(all_results, key=lambda x: x['confidence'])
+                return f"INVALID_{best['text']}", best['confidence']
+            
+            # Elegir el válido con mayor confianza
+            best = max(valid_results, key=lambda x: x['confidence'])
+            
+            logger.info(f"✅ Mejor resultado: '{best['text']}' (conf: {best['confidence']:.2f}, método: {best['method']})")
+            
+            return best['text'], best['confidence']
+            
         except Exception as e:
-            logger.error(f"❌ Error reading plate text: {e}")
-            return "ERROR", 0.0
+            logger.error(f"❌ Error en OCR: {e}", exc_info=True)
+            return "UNREADABLE", 0.0
+    
+    def _preprocess_plate_for_ocr(self, plate_image):
+        """
+        ✨ NUEVO: Generar múltiples versiones procesadas (solo en RAM, no se guardan)
+        
+        Returns:
+            list: Lista de tuplas (imagen_procesada, nombre_método)
+        """
+        processed = []
+        
+        try:
+            # === 1. ORIGINAL ===
+            processed.append((plate_image.copy(), "original"))
+            
+            # === 2. ESCALA DE GRISES ===
+            gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+            processed.append((gray, "grayscale"))
+            
+            # === 3. THRESHOLD BINARIO (Otsu) ===
+            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            processed.append((binary, "binary_otsu"))
+            
+            # === 4. THRESHOLD ADAPTATIVO ===
+            adaptive = cv2.adaptiveThreshold(
+                gray, 255, 
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY, 
+                11, 2
+            )
+            processed.append((adaptive, "adaptive_threshold"))
+            
+            # === 5. INVERSIÓN DE COLORES ===
+            inverted = cv2.bitwise_not(binary)
+            processed.append((inverted, "inverted"))
+            
+            # === 6. ECUALIZACIÓN (CLAHE) ===
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            equalized = clahe.apply(gray)
+            processed.append((equalized, "clahe"))
+            
+            # === 7. THRESHOLD + MORFOLOGÍA ===
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            morph = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+            processed.append((morph, "morphology"))
+            
+            # === 8. DETECCIÓN DE BORDES + DILATION ===
+            edges = cv2.Canny(gray, 50, 150)
+            kernel = np.ones((2, 2), np.uint8)
+            dilated = cv2.dilate(edges, kernel, iterations=1)
+            processed.append((dilated, "edges_dilated"))
+            
+            # === 9. REDUCCIÓN DE RUIDO ===
+            denoised = cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)
+            _, denoised_binary = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            processed.append((denoised_binary, "denoised"))
+            
+            # === 10. SHARPEN (afilar) ===
+            kernel_sharpen = np.array([[-1,-1,-1], [-1, 9,-1], [-1,-1,-1]])
+            sharpened = cv2.filter2D(gray, -1, kernel_sharpen)
+            processed.append((sharpened, "sharpened"))
+            
+            # === 11. RESIZE 2x (OCR funciona mejor con texto más grande) ===
+            h, w = gray.shape
+            resized = cv2.resize(gray, (w*2, h*2), interpolation=cv2.INTER_CUBIC)
+            _, resized_binary = cv2.threshold(resized, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            processed.append((resized_binary, "resized_2x"))
+            
+        except Exception as e:
+            logger.error(f"❌ Error en preprocesamiento: {e}")
+            if len(processed) == 0:
+                processed.append((plate_image.copy(), "original"))
+        
+        return processed
+    
+    def _clean_plate_text(self, text):
+        """✨ Limpiar texto OCR"""
+        if not text:
+            return ""
+        
+        text = text.upper().strip().replace(" ", "")
+        
+        # Quitar caracteres no alfanuméricos excepto guión
+        cleaned = ''.join(c for c in text if c.isalnum() or c == '-')
+        
+        return cleaned
+    
+    def _validate_plate_text(self, text):
+        """
+        ✨ Validar formato de placa (UNIVERSAL - cualquier país)
+        
+        Formatos válidos: USA, Europa, Latinoamérica, Asia, etc.
+        Criterio flexible: 4-9 chars, al menos 1 letra Y 1 número
+        """
+        if not text:
+            return False
+        
+        # Casos inválidos
+        invalid_keywords = [
+            "UNREADABLE", "NOT_DETECTED", "LOW_CONTRAST",
+            "INVALID_FORMAT", "OCR_VALIDATION_FAILED", "INVALID_",
+            "STOP", "TAXI", "BUS", "POLICE", "AMBULANCE",
+            "VW", "FORD", "TOYOTA", "BMW", "HONDA", "NISSAN",
+            "CHEVROLET", "MERCEDES", "AUDI", "HYUNDAI"
+        ]
+        
+        text_upper = text.upper().strip()
+        
+        if any(keyword in text_upper for keyword in invalid_keywords):
+            return False
+        
+        # Limpiar
+        clean_text = ''.join(c for c in text_upper if c.isalnum())
+        
+        # Longitud (4-9 caracteres típico placas)
+        if len(clean_text) < 4 or len(clean_text) > 9:
+            return False
+        
+        letters = sum(c.isalpha() for c in clean_text)
+        digits = sum(c.isdigit() for c in clean_text)
+        
+        # Mínimo 1 letra Y 1 número
+        if letters < 1 or digits < 1:
+            return False
+        
+        # No todo números ni todo letras
+        if digits == len(clean_text) or letters == len(clean_text):
+            return False
+        
+        # Balance razonable
+        if letters < 2 and len(clean_text) > 6:
+            return False
+        
+        if digits < 2 and len(clean_text) > 5:
+            return False
+        
+        return True
     
     def process_vehicle_detection(self, frame, vehicle_id, vehicle_type, 
                                   video_name, analysis_id):
         """
-        🔒 MÉTODO SEGURO: Procesar detección de vehículo y placa
+        ✨ MEJORADO: Validación OCR ANTES de guardar
         
-        Args:
-            frame: Frame de video donde se detectó el vehículo
-            vehicle_id: ID único del vehículo
-            vehicle_type: Tipo de vehículo (car, truck, etc.)
-            video_name: Nombre del video siendo analizado
-            analysis_id: ID del análisis en curso
-            
-        Returns:
-            dict | None: Datos de detección o None si falla/está deshabilitado
+        Proceso:
+        1. Guardar ROI del vehículo
+        2. Detectar candidatos de placas (triple método)
+        3. Validar CADA candidato con OCR
+        4. Guardar SOLO si OCR encuentra texto válido
+        5. Guardar JSON con resultados
         """
-        # Verificar feature flag
         if not self.enabled:
             return None
         
         try:
-            # 1. Crear directorios específicos para este video
-            roi_dir = os.path.join(settings.MEDIA_ROOT, 'ROI YOLO', video_name)
-            plate_dir = os.path.join(settings.MEDIA_ROOT, 'Placas', video_name)
+            analysis_id_str = str(analysis_id)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             
-            Path(roi_dir).mkdir(parents=True, exist_ok=True)
-            Path(plate_dir).mkdir(parents=True, exist_ok=True)
+            # Crear directorios
+            roi_yolo_dir = os.path.join(
+                settings.MEDIA_ROOT,
+                'ROI YOLO',
+                f'{video_name}_analysis_{analysis_id_str}'
+            )
             
-            # 2. Anti-duplicate: Verificar si ya procesamos este vehículo
-            vehicle_filename = f"{vehicle_id}_{vehicle_type}_vehiculo.jpg"
-            vehicle_image_path = os.path.join(roi_dir, vehicle_filename)
+            placas_dir = os.path.join(
+                settings.MEDIA_ROOT,
+                'Placas',
+                f'{video_name}_analysis_{analysis_id_str}'
+            )
             
-            if os.path.exists(vehicle_image_path):
-                logger.debug(f"⏭️ Vehicle {vehicle_id} already processed, skipping")
-                return None
+            Path(roi_yolo_dir).mkdir(parents=True, exist_ok=True)
+            Path(placas_dir).mkdir(parents=True, exist_ok=True)
             
-            # 3. Guardar imagen del vehículo completo
+            # Guardar ROI del vehículo
+            vehicle_filename = f"{vehicle_id}_{vehicle_type}_{timestamp}_vehiculo.jpg"
+            vehicle_image_path = os.path.join(roi_yolo_dir, vehicle_filename)
             cv2.imwrite(vehicle_image_path, frame)
-            logger.debug(f"💾 Saved vehicle image: {vehicle_filename}")
+            logger.info(f"💾 ROI guardado: {vehicle_filename}")
             
-            # 4. Detectar región de placa en el frame
-            plates = self.detect_plate_region(frame)
+            # Detectar candidatos de placas
+            plate_candidates = self.detect_plate_region(frame)
             
-            if len(plates) == 0:
-                logger.debug(f"⚠️ No plate detected for vehicle {vehicle_id}")
+            if not plate_candidates or len(plate_candidates) == 0:
+                logger.warning(f"⚠️ No se detectaron candidatos en vehículo {vehicle_id}")
                 
-                # Retornar datos sin placa detectada
+                self._save_detection_to_json(
+                    video_name=video_name,
+                    vehicle_id=vehicle_id,
+                    vehicle_type=vehicle_type,
+                    plate_number="NOT_DETECTED",
+                    confidence=0.0,
+                    detection_method="none",
+                    image_path=vehicle_image_path
+                )
+                
                 return {
-                    'vehicle_id': str(vehicle_id),
-                    'vehicle_type': vehicle_type,
+                    'vehicle_id': vehicle_id,
                     'plate_number': 'NOT_DETECTED',
                     'confidence': 0.0,
-                    'timestamp': datetime.now().isoformat(),
-                    'video_name': video_name,
-                    'analysis_id': analysis_id,
-                    'images': {
-                        'vehicle': vehicle_image_path,
-                        'plate': None
-                    }
+                    'image_path': vehicle_image_path
                 }
             
-            # 5. Tomar la placa más grande (más confiable)
-            x, y, w, h = max(plates, key=lambda p: p[2] * p[3])
-            plate_roi = frame[y:y+h, x:x+w]
+            logger.info(f"🔍 Encontrados {len(plate_candidates)} candidatos, validando con OCR...")
             
-            # 6. Leer texto de la placa con OCR
-            plate_text, confidence = self.read_plate_text(plate_roi)
+            # ✨ VALIDAR CADA CANDIDATO CON OCR
+            valid_plates = []
             
-            logger.info(f"📋 Plate detected: '{plate_text}' (confidence: {confidence:.2f})")
+            for idx, (x, y, w, h) in enumerate(plate_candidates):
+                candidate_roi = frame[y:y+h, x:x+w]
+                
+                # Validar contraste
+                gray = cv2.cvtColor(candidate_roi, cv2.COLOR_BGR2GRAY)
+                std_dev = np.std(gray)
+                
+                if std_dev < 15:
+                    logger.debug(f"  ✗ Candidato {idx+1}: Descartado por bajo contraste (std={std_dev:.2f})")
+                    continue
+                
+                # ✨ OCR PRELIMINAR
+                try:
+                    text, conf = self.read_plate_text(candidate_roi)
+                    
+                    if self._validate_plate_text(text):
+                        logger.info(f"  ✅ Candidato {idx+1}: Válido - '{text}' (conf: {conf:.2f})")
+                        valid_plates.append({
+                            'bbox': (x, y, w, h),
+                            'text': text,
+                            'confidence': conf,
+                            'roi': candidate_roi
+                        })
+                    else:
+                        logger.debug(f"  ✗ Candidato {idx+1}: Texto no válido - '{text}'")
+                        
+                except Exception as e:
+                    logger.debug(f"  ✗ Candidato {idx+1}: Error OCR - {e}")
+                    continue
             
-            # 7. Guardar imagen de la placa
-            plate_filename = f"{vehicle_id}_{vehicle_type}_{plate_text}_placa.jpg"
-            plate_image_path = os.path.join(plate_dir, plate_filename)
+            # Verificar si encontramos placas válidas
+            if len(valid_plates) == 0:
+                logger.warning(f"⚠️ Ningún candidato pasó validación OCR para vehículo {vehicle_id}")
+                
+                self._save_detection_to_json(
+                    video_name=video_name,
+                    vehicle_id=vehicle_id,
+                    vehicle_type=vehicle_type,
+                    plate_number="OCR_VALIDATION_FAILED",
+                    confidence=0.0,
+                    detection_method="rejected",
+                    image_path=vehicle_image_path
+                )
+                
+                return {
+                    'vehicle_id': vehicle_id,
+                    'plate_number': 'OCR_VALIDATION_FAILED',
+                    'confidence': 0.0,
+                    'image_path': vehicle_image_path
+                }
+            
+            # Elegir la placa con mayor confianza
+            best_plate = max(valid_plates, key=lambda p: p['confidence'])
+            
+            x, y, w, h = best_plate['bbox']
+            plate_text = best_plate['text']
+            confidence = best_plate['confidence']
+            plate_roi = best_plate['roi']
+            
+            logger.info(f"🎯 Mejor placa: '{plate_text}' (conf: {confidence:.2f}, bbox: ({x},{y},{w}x{h}))")
+            
+            # Guardar imagen de placa
+            plate_filename = f"{vehicle_id}_{vehicle_type}_{timestamp}_placa.jpg"
+            plate_image_path = os.path.join(placas_dir, plate_filename)
             cv2.imwrite(plate_image_path, plate_roi)
+            logger.info(f"📸 Placa guardada: {plate_filename}")
             
-            # 8. Renombrar imagen del vehículo para incluir la placa
-            new_vehicle_filename = f"{vehicle_id}_{vehicle_type}_{plate_text}_vehiculo.jpg"
-            new_vehicle_path = os.path.join(roi_dir, new_vehicle_filename)
-            os.rename(vehicle_image_path, new_vehicle_path)
+            # Guardar en JSON
+            self._save_detection_to_json(
+                video_name=video_name,
+                vehicle_id=vehicle_id,
+                vehicle_type=vehicle_type,
+                plate_number=plate_text,
+                confidence=confidence,
+                detection_method="triple",
+                image_path=plate_image_path
+            )
             
-            # 9. Preparar datos estructurados
-            detection_data = {
-                'vehicle_id': str(vehicle_id),
+            return {
+                'vehicle_id': vehicle_id,
                 'vehicle_type': vehicle_type,
                 'plate_number': plate_text,
-                'confidence': float(confidence),
-                'timestamp': datetime.now().isoformat(),
-                'video_name': video_name,
-                'analysis_id': analysis_id,
-                'images': {
-                    'vehicle': new_vehicle_path,
-                    'plate': plate_image_path
-                },
-                'plate_region': {
-                    'x': int(x),
-                    'y': int(y),
-                    'width': int(w),
-                    'height': int(h)
-                }
+                'confidence': confidence,
+                'detection_method': "triple",
+                'plate_image_path': plate_image_path,
+                'vehicle_image_path': vehicle_image_path
             }
             
-            # 10. Guardar en archivo JSON
-            self._save_to_json(detection_data)
-            
-            logger.info(f"✅ Plate detection complete for vehicle {vehicle_id}: {plate_text}")
-            
-            return detection_data
-            
         except Exception as e:
-            # ⚠️ CRÍTICO: Capturar TODOS los errores para no interrumpir análisis principal
-            logger.error(f"❌ Error in plate detection (SAFE - not interrupting analysis): {e}", exc_info=True)
+            logger.error(f"❌ Error procesando vehículo {vehicle_id}: {e}", exc_info=True)
             return None
     
-    def _save_to_json(self, detection_data):
+    def _save_detection_to_json(self, video_name, vehicle_id, vehicle_type, 
+                                plate_number, confidence, detection_method, image_path):
         """
-        Guardar detección en archivo JSON acumulativo
-        
-        Args:
-            detection_data: Diccionario con datos de la detección
+        Guardar detección en archivo JSON (un archivo por video)
         """
         try:
-            json_path = os.path.join(settings.MEDIA_ROOT, 'datos', 'detections.json')
+            datos_folder = os.path.join(settings.MEDIA_ROOT, 'datos')
+            Path(datos_folder).mkdir(parents=True, exist_ok=True)
             
-            # Leer datos existentes
-            detections = []
+            json_filename = f'detections_{video_name}.json'
+            json_path = os.path.join(datos_folder, json_filename)
+            
+            # Leer JSON existente o crear nuevo
             if os.path.exists(json_path):
-                try:
-                    with open(json_path, 'r', encoding='utf-8') as f:
-                        detections = json.load(f)
-                except json.JSONDecodeError:
-                    logger.warning("⚠️ detections.json corrupted, creating new file")
-                    detections = []
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {
+                    'video_name': video_name,
+                    'detections': []
+                }
             
             # Agregar nueva detección
-            detections.append(detection_data)
+            data['detections'].append({
+                'vehicle_id': vehicle_id,
+                'vehicle_type': vehicle_type,
+                'plate_number': plate_number,
+                'confidence': confidence,
+                'detection_method': detection_method,
+                'image_path': image_path,
+                'timestamp': datetime.now().isoformat()
+            })
             
-            # Guardar actualizado
+            # Guardar JSON
             with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(detections, f, indent=2, ensure_ascii=False)
+                json.dump(data, f, indent=2, ensure_ascii=False)
             
-            logger.debug(f"📝 Detection saved to JSON: {json_path}")
+            logger.debug(f"� JSON actualizado: {json_filename}")
             
         except Exception as e:
-            logger.error(f"❌ Error saving to JSON: {e}")
+            logger.error(f"❌ Error saving JSON: {e}")
 
 
 # ============================================
