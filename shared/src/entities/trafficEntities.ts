@@ -128,6 +128,10 @@ export interface TrafficAnalysisEntity {
   bicycleCount: number; // @db:int @default(0) - Cantidad de bicicletas
   otherCount: number; // @db:int @default(0) - Cantidad de otros vehículos
   
+  // Plate detection stats
+  platesDetected: number; // @db:int @default(0) - Total de placas detectadas
+  platesCaptured: number; // @db:int @default(0) - Total de placas capturadas con texto válido  
+
   createdAt: Date; // @db:datetime - Fecha de creación del registro
   updatedAt: Date; // @db:datetime - Fecha de última actualización
 }

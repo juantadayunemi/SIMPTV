@@ -562,8 +562,11 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                   {videoUrl ? (
                     <>
                       <video
+                                
                         ref={videoRef}
                         src={videoUrl}
+
+                        
                         className={`w-full h-full object-cover ${showProcessedFrames ? 'block' : 'hidden'}`}
                         muted
                         playsInline

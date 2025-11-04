@@ -416,7 +416,7 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
         # "schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute="*/1"), 
+        "schedule": crontab(minute="*/1"),
     },
     # Limpieza de dispositivos FCM inactivos (cada semana, domingos a las 3 AM)
     "cleanup-inactive-fcm-devices": {
@@ -498,6 +498,18 @@ STREAM_TIMEOUT = 10  # seconds
 # Frontend URL for email links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5174")
 LOGO_URL = os.getenv("LOGO_URL", "https://via.placeholder.com/80")
+
+# ==============================================================================
+# PLATE DETECTION CONFIGURATION
+# ==============================================================================
+# Habilitar/deshabilitar detección de placas durante análisis de video
+ENABLE_PLATE_DETECTION = config("ENABLE_PLATE_DETECTION", default=False, cast=bool)
+
+# Roboflow API Configuration (opcional - mejora precisión con IA)
+ROBOFLOW_API_KEY = config("ROBOFLOW_API_KEY", default=None)
+ROBOFLOW_PLATE_MODEL = config(
+    "ROBOFLOW_PLATE_MODEL", default="license-plate-recognition-rxg4e/4"
+)
 
 # ============================================================================
 # CUSTOM USER MODEL CONFIGURATION

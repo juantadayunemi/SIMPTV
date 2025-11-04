@@ -114,3 +114,95 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
         await self.send(
             text_data=json.dumps({"type": "analysis_error", "data": event["data"]})
         )
+
+    # ============================================================================
+    # 🆕 PLATE DETECTION HANDLERS (Phase 3 - Parallel Implementation)
+    # ============================================================================
+
+    async def plate_detection_progress(self, event):
+        """
+        🆕 NUEVO HANDLER: Actualización de progreso de detección de placas
+        
+        Enviado periódicamente durante el procesamiento de detección de placas
+        
+        Payload esperado en event['data']:
+        {
+            "frame": 450,
+            "total_frames": 1500,
+            "progress_percent": 30.0,
+            "platesDetected": 15,
+            "platesCaptured": 12,
+            "fps": 28.5,
+            "elapsed_time": 16.2
+        }
+        """
+        await self.send(
+            text_data=json.dumps(
+                {"type": "plate_detection_progress", "data": event["data"]}
+            )
+        )
+
+    async def plate_detected(self, event):
+        """
+        🆕 NUEVO HANDLER: Nueva placa detectada
+        
+        Enviado cada vez que se detecta y guarda una placa
+        
+        Payload esperado en event['data']:
+        {
+            "plate_id": 123,
+            "image_url": "/media/plates/raw/...",
+            "bounding_box": [x, y, w, h],
+            "confidence": 0.85,
+            "vehicle_class": 2,
+            "vehicle_class_name": "car",
+            "frame_number": 450,
+            "timestamp": "2025-11-03T10:30:45.123Z"
+        }
+        """
+        await self.send(
+            text_data=json.dumps({"type": "plate_detected", "data": event["data"]})
+        )
+
+    async def plate_detection_complete(self, event):
+        """
+        🆕 NUEVO HANDLER: Detección de placas completada
+        
+        Enviado cuando termina el procesamiento de detección de placas
+        
+        Payload esperado en event['data']:
+        {
+            "analysis_id": 123,
+            "total_frames": 1500,
+            "platesDetected": 45,
+            "platesCaptured": 38,
+            "processing_time": 53.2,
+            "avg_fps": 28.2,
+            "status": "COMPLETED"
+        }
+        """
+        await self.send(
+            text_data=json.dumps(
+                {"type": "plate_detection_complete", "data": event["data"]}
+            )
+        )
+
+    async def plate_detection_error(self, event):
+        """
+        🆕 NUEVO HANDLER: Error durante detección de placas
+        
+        Enviado cuando ocurre un error durante el procesamiento
+        
+        Payload esperado en event['data']:
+        {
+            "analysis_id": 123,
+            "error": "Error message",
+            "frame_number": 450,
+            "traceback": "..."
+        }
+        """
+        await self.send(
+            text_data=json.dumps(
+                {"type": "plate_detection_error", "data": event["data"]}
+            )
+        )

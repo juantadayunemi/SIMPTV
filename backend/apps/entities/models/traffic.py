@@ -134,6 +134,8 @@ class TrafficAnalysisEntity(BaseModel):
     busCount = models.IntegerField(default=0)
     bicycleCount = models.IntegerField(default=0)
     otherCount = models.IntegerField(default=0)
+    platesDetected = models.IntegerField(default=0)
+    platesCaptured = models.IntegerField(default=0)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
