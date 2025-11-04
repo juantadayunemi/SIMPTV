@@ -29,6 +29,7 @@ def analyze_video_async(self, analysis_id, video_path):
     import cv2
     from ultralytics import YOLO
     from apps.traffic_app.models import TrafficAnalysis, Vehicle, VehicleFrame
+    from apps.plates_app.services import save_detected_plate_to_db
 
     # Capa de canales para WebSocket - mensajería con el frontend
     channel_layer = get_channel_layer()
@@ -541,6 +542,7 @@ def analyze_video_async(self, analysis_id, video_path):
         # ========== PROCESAMIENTO DE PLACAS CON MEJORES FRAMES ==========
         platesDetected = 0
         platesCaptured = 0
+        plate_detections_pending = {}  # 🔥 Acumular detecciones para guardar después
 
         if frame_analyzer is not None:
             try:
@@ -586,6 +588,12 @@ def analyze_video_async(self, analysis_id, video_path):
                                 "UNREADABLE",
                             ]:
                                 platesCaptured += 1
+
+                                # 🔥 GUARDAR DETECCIÓN PARA PROCESAR DESPUÉS DE CREAR VEHICLE
+                                plate_detections_pending[vehicle_id] = plate_data
+                                logger.debug(
+                                    f"💾 Placa {plate_data['plate_number']} guardada temporalmente para vehicle {vehicle_id}"
+                                )
 
                                 # 🔥 CONSULTAR API DE DENUNCIAS EN SEGUNDO PLANO
                                 check_vehicle_complaint_async.delay(  # type: ignore[attr-defined]
@@ -735,10 +743,45 @@ def analyze_video_async(self, analysis_id, video_path):
 
                 # Guardar todos los frames de una vez
                 VehicleFrame.objects.bulk_create(frames_to_create)
+
+                # 🔥 GUARDAR PLACA DETECTADA EN BASE DE DATOS (si existe)
+                if track_id in plate_detections_pending:
+                    try:
+                        plate_data = plate_detections_pending[track_id]
+                        detected_plate = save_detected_plate_to_db(
+                            plate_data=plate_data, analysis=analysis, vehicle=vehicle
+                        )
+
+                        if detected_plate:
+                            logger.info(
+                                f"✅ Placa guardada en DB: {detected_plate.plateNumber} (ID: {detected_plate.id})"
+                            )
+                        else:
+                            logger.warning(
+                                f"⚠️ No se pudo guardar placa para vehicle {vehicle_id}"
+                            )
+
+                    except Exception as e:
+                        logger.error(
+                            f"❌ Error guardando placa en DB para vehicle {vehicle_id}: {e}"
+                        )
+
                 saved_vehicles += 1
 
             except Exception as e:
                 logger.error(f"✖️ Error guardando vehículo {track_id}: {e}")
+
+        # Resumen de placas guardadas en DB
+        plates_saved_to_db = len(
+            [
+                v
+                for v in plate_detections_pending.keys()
+                if v in [t for t, _ in tracked_vehicles.items()]
+            ]
+        )
+        logger.info(
+            f"📊 Resumen placas: {platesDetected} detectadas, {platesCaptured} capturadas, {plates_saved_to_db} guardadas en DB"
+        )
 
         # Finalizar análisis
         analysis.processedFrames = frame_count

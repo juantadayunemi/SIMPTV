@@ -131,7 +131,7 @@ class CreateTrafficAnalysisSerializer(serializers.Serializer):
 # NUEVOS SERIALIZERS: DETECCIÓN DE PLACAS
 # ══════════════════════════════════════════════════════════════════════════════
 
-from .models import DetectedPlate
+from apps.plates_app.models import DetectedPlate
 
 
 class DetectedPlateSerializer(serializers.ModelSerializer):
@@ -139,81 +139,80 @@ class DetectedPlateSerializer(serializers.ModelSerializer):
     Serializer para placas detectadas
     Incluye URL de la imagen y dimensiones calculadas
     """
-    
+
     image_url = serializers.SerializerMethodField()
     dimensions = serializers.SerializerMethodField()
     vehicle_class_name = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = DetectedPlate
         fields = [
-            'id',
-            'frame_number',
-            'timestamp',
-            'vehicle_bbox',
-            'plate_bbox',
-            'plate_bbox_absolute',
-            'vehicle_confidence',
-            'vehicle_class',
-            'vehicle_class_name',
-            'crossed_detection_line',
-            'detection_line_y',
-            'image_url',
-            'dimensions',
-            'metadata',
-            'cloud_url',
-            'cloud_uploaded',
-            'cloud_uploaded_at'
+            "id",
+            "frame_number",
+            "timestamp",
+            "vehicle_bbox",
+            "plate_bbox",
+            "plate_bbox_absolute",
+            "vehicle_confidence",
+            "vehicle_class",
+            "vehicle_class_name",
+            "crossed_detection_line",
+            "detection_line_y",
+            "image_url",
+            "dimensions",
+            "metadata",
+            "cloud_url",
+            "cloud_uploaded",
+            "cloud_uploaded_at",
         ]
-        read_only_fields = ['id', 'timestamp']
-    
+        read_only_fields = ["id", "timestamp"]
+
     def get_image_url(self, obj):
         """Retorna URL completa de la imagen de la placa"""
-        request = self.context.get('request')
+        request = self.context.get("request")
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
         return None
-    
+
     def get_dimensions(self, obj):
         """Retorna dimensiones de la placa"""
         return obj.get_dimensions()
-    
+
     def get_vehicle_class_name(self, obj):
         """Retorna nombre legible de la clase del vehículo"""
-        class_names = {
-            2: 'car',
-            3: 'motorcycle',
-            5: 'bus',
-            7: 'truck'
-        }
-        return class_names.get(obj.vehicle_class, 'unknown')
+        class_names = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
+        return class_names.get(obj.vehicle_class, "unknown")
 
 
 class TrafficAnalysisWithPlatesSerializer(serializers.ModelSerializer):
     """
     Serializer extendido de TrafficAnalysis con información de placas detectadas
     """
-    
+
     camera = CameraSerializer(source="cameraId", read_only=True)
     location = LocationSerializer(source="locationId", read_only=True)
     vehicles = VehicleSerializer(many=True, read_only=True, source="vehicle_set")
     detected_plates = DetectedPlateSerializer(many=True, read_only=True)
     plate_stats = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = TrafficAnalysis
         fields = "__all__"
         read_only_fields = ("id", "createdAt", "updatedAt")
-    
+
     def get_plate_stats(self, obj):
         """Retorna estadísticas de placas detectadas"""
         return {
-            'total_detected': obj.platesDetected,
-            'total_captured': obj.platesCaptured,
-            'crossed_line': obj.detected_plates.filter(
-                crossed_detection_line=True
-            ).count() if hasattr(obj, 'detected_plates') else 0,
-            'with_images': obj.detected_plates.exclude(
-                image=''
-            ).count() if hasattr(obj, 'detected_plates') else 0
+            "total_detected": obj.platesDetected,
+            "total_captured": obj.platesCaptured,
+            "crossed_line": (
+                obj.detected_plates.filter(crossed_detection_line=True).count()
+                if hasattr(obj, "detected_plates")
+                else 0
+            ),
+            "with_images": (
+                obj.detected_plates.exclude(image="").count()
+                if hasattr(obj, "detected_plates")
+                else 0
+            ),
         }
