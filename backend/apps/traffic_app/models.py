@@ -130,6 +130,10 @@ class TrafficAnalysis(TrafficAnalysisEntity):
         verbose_name="Location",
     )
     # userId debería ser ForeignKey a User cuando tengamos auth_app configurado
+    
+    # Campos adicionales requeridos por SQL Server (no están en TrafficAnalysisEntity)
+    platesDetected = models.IntegerField(default=0, db_column="platesDetected")
+    platesCaptured = models.IntegerField(default=0, db_column="platesCaptured")
 
     class Meta:
         db_table = "traffic_analyses"

@@ -527,3 +527,9 @@ try:
 except Exception as e:
     print(f"⚠️ Firebase Admin SDK no pudo inicializarse: {e}")
     print("   Las notificaciones push no estarán disponibles")
+
+# ============================================================================
+# DETECCIÓN DE PLACAS VEHICULARES (FASE 1)
+# ============================================================================
+# Feature flag para activar/desactivar detección de placas
+ENABLE_PLATE_DETECTION = config('ENABLE_PLATE_DETECTION', default=False, cast=bool)

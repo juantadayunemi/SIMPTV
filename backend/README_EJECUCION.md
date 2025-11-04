@@ -3,19 +3,43 @@
 ## 📋 Requisitos Previos
 
 - **Windows 10/11**
-- Python  3.13.5
+- **Python 3.11.9** (RECOMENDADO - compatible con todas las dependencias)
+  - Descargar: https://www.python.org/downloads/release/python-3119/
 - Redis instalado en `redis/`
 - Entorno virtual creado en `venv/`
 
 ## 🏃‍♂️ Pasos para Ejecutar el Sistema en Windows
 
-### Paso 1: Entrar al directorio backend y activar entorno virtual
-```cmd
-cd backend
-venv\Scripts\activate
-```
+### Paso 1: Configurar entorno virtual con Python 3.11
 
-### Paso 2: Iniciar Redis Server (en terminal separado)
+**IMPORTANTE**: Si tienes Python 3.13, primero instala Python 3.11.9
+
+```powershell
+# Opción A: Si ya tienes Python 3.11 instalado, ejecuta el script automatizado
+.\setup_python311.ps1
+
+# Opción B: Manual
+cd backend
+py -3.11 -m venv venv
+venv\Scripts\activate
+--------------------Instalar Torch----------------
+pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu118
+-------Requerimientos------------------
+pip install -r requirements.txt
+```
+-------------------Migraciones---------------
+cd s:\Construccion\TrafiSmart\backend; python manage.py makemigrations
+-----------------------------------------------
+Ejecutar CELERY
+
+ cd s:\Construccion\TrafiSmart\backend; .\venv\Scripts\python.exe -m celery -A config worker --loglevel=info --pool=solo
+ ------------------------------------------------------------
+**Nota**: El script `setup_python311.ps1` hace todo automáticamente:
+- Detecta Python 3.11
+- Crea el entorno virtual
+- Instala PyTorch con CUDA
+- Instala todas las dependencias
+### Paso 2: Iniciar Redis Server (en terminal separado ubuntu)
 ```cmd
 cd redis
 .\redis-server.exe redis.windows.conf

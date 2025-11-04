@@ -249,6 +249,18 @@ def analyze_video_async(self, analysis_id, video_path):
         frame_count = 0
         last_progress = 0
         tracked_vehicles = {}
+        
+        # ========== INICIALIZAR ANALIZADOR DE CALIDAD ==========
+        frame_analyzer = None  # Se inicializará solo si ENABLE_PLATE_DETECTION=True
+        try:
+            from django.conf import settings as django_settings
+            if getattr(django_settings, 'ENABLE_PLATE_DETECTION', False):
+                from apps.traffic_app.services.frame_quality_analyzer import get_frame_quality_analyzer
+                frame_analyzer = get_frame_quality_analyzer()
+                logger.info("✨ Frame Quality Analyzer initialized")
+        except Exception as e:
+            logger.debug(f"Frame analyzer not loaded: {e}")
+        # ========== FIN INICIALIZACIÓN ==========
 
         # Procesar frames del video
         while True:
@@ -358,6 +370,12 @@ def analyze_video_async(self, analysis_id, video_path):
                         "speed_category": "unknown" # Categoría de velocidad
                     }
                     
+                    # ========== ACUMULAR FRAMES PARA CALIDAD (FASE 1 - SAFE) ==========
+                    # NO procesamos placa inmediatamente, solo acumulamos frames
+                    # El procesamiento será DESPUÉS del loop con el mejor frame
+                    pass
+                    # ========== FIN ACUMULACIÓN ==========
+                    
                     # Notificar nuevo vehículo detectado
                     if detections_to_send and frame_count % 3 == 0:
                         send_ws("frame_processed", {
@@ -384,6 +402,16 @@ def analyze_video_async(self, analysis_id, video_path):
                     "confidence": conf,
                     "bbox": [x1, y1, x2 - x1, y2 - y1]
                 })
+                
+                # ========== ACUMULAR FRAME PARA ANÁLISIS DE CALIDAD ==========
+                if frame_analyzer is not None:
+                    try:
+                        # Pasar frame completo y bbox al analizador
+                        bbox = (int(x1), int(y1), int(x2), int(y2))
+                        frame_analyzer.add_frame(track_id, frame, bbox, frame_count)
+                    except Exception as e:
+                        logger.debug(f"Error adding frame to analyzer: {e}")
+                # ========== FIN ACUMULACIÓN ==========
                 
                 # CALCULAR VELOCIDAD (cada 10 frames para no sobrecargar)
                 if tracked_vehicles[track_id]["count"] >= 10 and not tracked_vehicles[track_id]["speed_calculated"]:
@@ -464,6 +492,65 @@ def analyze_video_async(self, analysis_id, video_path):
                 
         # Liberar recursos del video
         cap.release()
+        
+        # ========== PROCESAMIENTO DE PLACAS CON MEJORES FRAMES ==========
+        plates_detected = 0
+        plates_captured = 0
+        
+        if frame_analyzer is not None:
+            try:
+                from apps.traffic_app.services.plate_detection_service import get_plate_detection_service
+                plate_service = get_plate_detection_service()
+                video_name = os.path.splitext(os.path.basename(video_path))[0]
+                
+                logger.info(f"🔍 Processing plates for {len(tracked_vehicles)} tracked vehicles...")
+                
+                for vehicle_id, vehicle_data in tracked_vehicles.items():
+                    try:
+                        # Obtener el mejor frame para este vehículo
+                        best_frame_data = frame_analyzer.get_best_frame(vehicle_id)
+                        
+                        if best_frame_data is None:
+                            logger.debug(f"No best frame for vehicle {vehicle_id}")
+                            continue
+                        
+                        logger.info(f"✨ Best frame for vehicle {vehicle_id}: quality={best_frame_data['quality_score']:.2f}")
+                        
+                        # Procesar detección de placa con el mejor frame
+                        plate_data = plate_service.process_vehicle_detection(
+                            frame=best_frame_data['roi'],
+                            vehicle_id=vehicle_id,
+                            vehicle_type=vehicle_data['type'],
+                            video_name=video_name,
+                            analysis_id=analysis_id
+                        )
+                        
+                        if plate_data:
+                            plates_detected += 1
+                            if plate_data.get('plate_number') not in ['NOT_DETECTED', 'NO_OCR', 'ERROR']:
+                                plates_captured += 1
+                                
+                                # Enviar notificación WebSocket
+                                send_ws("plate_detected", {
+                                    "vehicle_id": str(vehicle_id),
+                                    "vehicle_type": vehicle_data['type'],
+                                    "plate_number": plate_data['plate_number'],
+                                    "confidence": plate_data['confidence'],
+                                    "timestamp": plate_data['timestamp'],
+                                    "frame_number": best_frame_data['frame_number'],
+                                    "quality_score": best_frame_data['quality_score']
+                                })
+                                logger.info(f"🔔 Plate detected: {plate_data['plate_number']} (quality: {best_frame_data['quality_score']:.2f})")
+                    
+                    except Exception as e:
+                        logger.error(f"❌ Error processing plate for vehicle {vehicle_id}: {e}")
+                        continue
+                
+                logger.info(f"✅ Plate processing complete: {plates_detected} detected, {plates_captured} captured")
+                
+            except Exception as e:
+                logger.error(f"❌ Plate processing failed (SAFE - analysis continues): {e}")
+        # ========== FIN PROCESAMIENTO DE PLACAS ==========
 
         # Guardar vehículos en base de datos
         logger.info(f"💾 Guardando {len(tracked_vehicles)} vehículos en la base de datos...")
@@ -556,6 +643,8 @@ def analyze_video_async(self, analysis_id, video_path):
         analysis.processedFrames = frame_count
         analysis.totalFrames = total_frames
         analysis.totalVehicles = saved_vehicles
+        analysis.platesDetected = plates_detected
+        analysis.platesCaptured = plates_captured
         analysis.status = "COMPLETED"
         analysis.endedAt = timezone.now()
         analysis.save()
