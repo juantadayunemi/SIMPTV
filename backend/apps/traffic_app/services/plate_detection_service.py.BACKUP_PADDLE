@@ -42,18 +42,10 @@ class PlateDetectionService:
         # Feature flag
         self.enabled = getattr(settings, 'ENABLE_PLATE_DETECTION', False)
         
-        # 🎯 Roboflow API configuration
-        self._roboflow_api_key = getattr(settings, 'ROBOFLOW_API_KEY', None)
-        self._roboflow_model_id = getattr(settings, 'ROBOFLOW_PLATE_MODEL', 'license-plate-recognition-rxg4e/4')
-        
         if not self.enabled:
             logger.info("🔇 Plate detection DISABLED (ENABLE_PLATE_DETECTION=False)")
         else:
             logger.info("🔊 Plate detection ENABLED (ENABLE_PLATE_DETECTION=True)")
-            if self._roboflow_api_key:
-                logger.info(f"✅ Roboflow API configurado: {self._roboflow_model_id}")
-            else:
-                logger.warning("⚠️ ROBOFLOW_API_KEY no configurado, usando solo métodos tradicionales")
         
         # Crear directorios
         self._create_directories()
@@ -136,26 +128,9 @@ class PlateDetectionService:
             return []
         
         all_plates = []
-        detection_count = {'roboflow': 0, 'haarcascade': 0, 'contours': 0, 'color': 0}
+        detection_count = {'haarcascade': 0, 'contours': 0, 'color': 0}
         
-        # ========== 🎯 PRIORIDAD 1: Roboflow (MEJOR PRECISIÓN 85-95%) ==========
-        if self._roboflow_api_key:
-            try:
-                roboflow_plates = self._detect_with_roboflow(frame)
-                all_plates.extend([(x, y, w, h, 'roboflow') for x, y, w, h in roboflow_plates])
-                detection_count['roboflow'] = len(roboflow_plates)
-                
-                # Si Roboflow detecta placas, confiar en él y no usar otros métodos (más rápido)
-                if len(roboflow_plates) > 0:
-                    logger.info(f"🎯 {len(roboflow_plates)} plate(s) detected (Roboflow)")
-                    return self._remove_duplicate_plates(all_plates)
-                    
-            except Exception as e:
-                logger.warning(f"⚠️ Roboflow failed, using fallback methods: {e}")
-        
-        # ========== MÉTODOS FALLBACK (si Roboflow falla o no detecta) ==========
-        
-        # FALLBACK 1: Haarcascade
+        # ========== MÉTODO 1: Haarcascade ==========
         try:
             haar_plates = self._detect_with_haarcascade(frame)
             all_plates.extend([(x, y, w, h, 'haarcascade') for x, y, w, h in haar_plates])
@@ -163,7 +138,7 @@ class PlateDetectionService:
         except Exception as e:
             logger.warning(f"⚠️ Haarcascade failed: {e}")
         
-        # FALLBACK 2: Contornos + Aspect Ratio
+        # ========== MÉTODO 2: Contornos + Aspect Ratio ==========
         try:
             contour_plates = self._detect_with_contours(frame)
             all_plates.extend([(x, y, w, h, 'contours') for x, y, w, h in contour_plates])
@@ -171,7 +146,7 @@ class PlateDetectionService:
         except Exception as e:
             logger.warning(f"⚠️ Contours failed: {e}")
         
-        # FALLBACK 3: Color HSV
+        # ========== MÉTODO 3: Color HSV ==========
         try:
             color_plates = self._detect_with_color(frame)
             all_plates.extend([(x, y, w, h, 'color') for x, y, w, h in color_plates])
@@ -207,72 +182,6 @@ class PlateDetectionService:
             
         except Exception as e:
             logger.error(f"❌ Haarcascade error: {e}")
-            return []
-    
-    def _detect_with_roboflow(self, frame):
-        """
-        🎯 Detectar placas con Roboflow API (IA especializada)
-        
-        Ventajas:
-        - Precisión 85-95% (mejor que Haarcascade)
-        - Detecta placas en cualquier ángulo
-        - Robusto a reflejos/sombras/iluminación
-        - Sin instalar dependencias adicionales
-        
-        Returns:
-            list: Lista de tuplas (x, y, w, h) con las placas detectadas
-        """
-        if not self._roboflow_api_key:
-            return []
-        
-        try:
-            import requests
-            import base64
-            
-            # Codificar imagen a base64
-            _, buffer = cv2.imencode('.jpg', frame)
-            img_str = base64.b64encode(buffer).decode('utf-8')
-            
-            # API Request
-            url = f"https://detect.roboflow.com/{self._roboflow_model_id}"
-            
-            response = requests.post(
-                url,
-                params={'api_key': self._roboflow_api_key},
-                json={'image': img_str},
-                timeout=10
-            )
-            
-            if response.status_code != 200:
-                logger.warning(f"⚠️ Roboflow API error: {response.status_code}")
-                return []
-            
-            predictions = response.json().get('predictions', [])
-            
-            plates = []
-            for pred in predictions:
-                # Roboflow devuelve centro + width/height
-                x_center = pred['x']
-                y_center = pred['y']
-                width = pred['width']
-                height = pred['height']
-                confidence = pred['confidence']
-                
-                # Convertir a x, y, w, h (esquina superior izquierda)
-                x = int(x_center - width / 2)
-                y = int(y_center - height / 2)
-                w = int(width)
-                h = int(height)
-                
-                # Filtrar baja confianza
-                if confidence > 0.3:  # Ajustable según necesidad
-                    plates.append((x, y, w, h))
-                    logger.debug(f"  → Roboflow: ({x},{y},{w}x{h}) conf={confidence:.2f}")
-            
-            return plates
-            
-        except Exception as e:
-            logger.error(f"❌ Roboflow API error: {e}")
             return []
     
     def _detect_with_contours(self, frame):

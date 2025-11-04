@@ -534,3 +534,7 @@ except Exception as e:
 # Feature flag para activar/desactivar detección de placas
 ENABLE_PLATE_DETECTION = config('ENABLE_PLATE_DETECTION', default=False, cast=bool)
 PLATE_DETECTION_METHOD = config('PLATE_DETECTION_METHOD', default='haarcascade')
+
+# Roboflow API para detección de placas con IA (mejor que Haarcascade)
+ROBOFLOW_API_KEY = config('ROBOFLOW_API_KEY', default=None)
+ROBOFLOW_PLATE_MODEL = config('ROBOFLOW_PLATE_MODEL', default='license-plate-recognition-rxg4e/4')
