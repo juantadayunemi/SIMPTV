@@ -1,6 +1,6 @@
 import { DateRangeType, DateRange } from '../types/historyTraffic';
 
-export function getDateRangeFromType(type: DateRangeType): DateRange | null {
+export function getDateRangeFromType(type: DateRangeType | null): DateRange | null {
   const today = new Date();
   const dateTo = getLocalDateString(today);
 

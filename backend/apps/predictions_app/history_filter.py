@@ -6,7 +6,6 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 
 
-
 class HistoryTrafficFilter(django_filters.FilterSet):
     congestion = django_filters.BooleanFilter(method="filter_congestion")
     velocity = django_filters.BooleanFilter(method="filter_velocity")
@@ -22,15 +21,21 @@ class HistoryTrafficFilter(django_filters.FilterSet):
 
     def _filter_by_params(self, queryset):
         location = self.request.query_params.get("locationId")
+        camera = self.request.query_params.get("cameraId")
         date_from = self.request.query_params.get("dateFrom")
         date_to = self.request.query_params.get("dateTo")
-        
+
         date_from = datetime.strptime(date_from, "%Y-%m-%d")
-        date_to = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1) - timedelta(microseconds=1)
+        date_to = (
+            datetime.strptime(date_to, "%Y-%m-%d")
+            + timedelta(days=1)
+            - timedelta(microseconds=1)
+        )
 
         if location and date_from and date_to:
             qs = queryset.filter(
                 trafficAnalysisId__locationId=location,
+                trafficAnalysisId__cameraId=camera,
                 firstDetectedAt__range=[date_from, date_to],
             ).select_related("trafficAnalysisId")
             print("Filtered queryset:", qs)

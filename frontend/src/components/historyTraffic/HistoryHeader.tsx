@@ -1,18 +1,39 @@
+import { DateRangeType, TrafficType } from "../../types/historyTraffic";
+import { CustomSelect } from "../customerSelect/CustomSelect";
+import { Camera, Location } from "@/types/forecast";
 import { Download } from "lucide-react";
-import { TrafficType } from "../../types/historyTraffic";
-import { LoadingContainer } from "../ui/LoadingContainer";
 
+export interface HistoryHeaderProps {
+  locations: Location[];
+  selectedLocation: string;
+  handleLocationChange: (selectedLocation: string) => void;
+  cameras: Camera[];
+  selectedCamera: string;
+  handleCameraChange: (selectedCamera: string) => void;
+  trafficType: TrafficType | null;
+  dateRangeType: DateRangeType | null;
+  setTrafficType: (type: TrafficType | null) => void;
+  handleDateRangeChange: (type: DateRangeType | null) => void;
+  onHandleExport: () => void;
+  isExporting: boolean;
+  shouldShowResults: boolean;
+}
 export default function HistoryHeader({
   locations,
-  trafficType,
   selectedLocation,
-  setSelectedLocation,
+  handleLocationChange,
+  cameras,
+  selectedCamera,
+  handleCameraChange,
+  trafficType,
   dateRangeType,
   setTrafficType,
   handleDateRangeChange,
-  onExportClick,
+  onHandleExport,
   isExporting,
-}: any) {
+  shouldShowResults
+
+}: HistoryHeaderProps) {
   return (
     <div className="w-full mx-auto pl-0 pr-0 pt-6 pb-0 ">
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -26,52 +47,77 @@ export default function HistoryHeader({
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 hide-controls">
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            {locations.map((element) => (
-              <option key={element?.id} value={element?.id}>
-                {element?.description}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1 w-full sm:w-auto">
+            <CustomSelect
+              value={selectedLocation}
+              onChange={handleLocationChange}
+              options={locations.map((loc) => ({
+                value: loc.id,
+                label: loc.description,
+              }))}
+              placeholder="Seleccionar ubicación"
+            />
+          </div>
 
-          <select
-            value={dateRangeType}
-            onChange={(e) => handleDateRangeChange(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value="today">Hoy</option>
-            <option value="7days">Últimos 7 días</option>
-            <option value="30days">Últimos 30 días</option>
-            <option value="custom">Personalizar</option>
-          </select>
+          {selectedLocation && (
+            <div className="flex-1 w-full sm:w-auto">
+              <CustomSelect
+                value={selectedCamera}
+                onChange={handleCameraChange}
+                options={cameras.map((cam) => ({
+                  value: cam.id,
+                  label: cam.name,
+                }))}
+                placeholder="Seleccionar cámara"
+              />
+            </div>
+          )}
 
-          <select
-            value={trafficType}
-            onChange={(e) => setTrafficType(e.target.value as TrafficType)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value="congestion">Congestión</option>
-            <option value="velocity">Velocidad</option>
-            <option value="volume">Volumen</option>
-          </select>
+          {selectedCamera && (
+            <div className="flex-1 w-full sm:w-auto">
+              <CustomSelect
+                value={dateRangeType}
+                onChange={handleDateRangeChange}
+                options={[
+                  { value: "today", label: "Hoy" },
+                  { value: "7days", label: "Últimos 7 días" },
+                  { value: "30days", label: "Últimos 30 días" },
+                  { value: "custom", label: "Personalizar" },
+                ]}
+                placeholder="Seleccionar rango de fechas"
+              />
+            </div>
+          )}
 
-          <button
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => onExportClick()}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <div className="w-4 h-4 animate-spin border-b-2 border-white rounded-full"></div>
-            ) : (
-              <Download className="w-4 h-4" /> 
-            )}
-            {isExporting ? "Exportando" : "Exportar"}
-          </button>
+          {dateRangeType && (
+            <div className="flex-1 w-full sm:w-auto">
+              <CustomSelect
+                value={trafficType}
+                onChange={setTrafficType}
+                options={[
+                  { value: "congestion", label: "Congestión" },
+                  { value: "velocity", label: "Velocidad" },
+                  { value: "volume", label: "Volumen" },
+                ]}
+                placeholder="Seleccionar tipo de tráfico"
+              />
+            </div>
+          )}
+          {shouldShowResults && (
+            <button
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => onHandleExport()}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <div className="w-4 h-4 animate-spin border-b-2 border-white rounded-full"></div>
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isExporting ? "Exportando" : "Exportar"}
+            </button>
+          )}
         </div>
       </div>
     </div>

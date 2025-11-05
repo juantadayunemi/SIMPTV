@@ -27,7 +27,10 @@ export default function TimePicker({ time, onTimeChange }: TimePickerProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -54,13 +57,16 @@ export default function TimePicker({ time, onTimeChange }: TimePickerProps) {
           onClick={() => setIsOpen(!isOpen)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[120px] text-left"
         >
-          {time}
+          {time ? time : "Sin hora"}
         </button>
       </div>
 
       {isOpen && (
         <div className="absolute top-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-10 flex">
-          <div className="border-r border-gray-200">
+          {/* Columna de horas */}
+          <div className="border-r border-gray-200 w-24">
+            {" "}
+            {/* 👈 ancho fijo */}
             <div
               className="max-h-60 overflow-y-auto scrollbar-hide"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
@@ -81,8 +87,11 @@ export default function TimePicker({ time, onTimeChange }: TimePickerProps) {
             </div>
           </div>
 
-          <div>
-            <div>
+          {/* Columna de minutos */}
+          <div className="w-24">
+            {" "}
+            {/* 👈 mismo ancho fijo */}
+            <div className="max-h-60 overflow-y-auto scrollbar-hide">
               {minutes.map((minute) => (
                 <button
                   key={minute}

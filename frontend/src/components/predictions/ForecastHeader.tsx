@@ -1,30 +1,37 @@
-import { Calendar } from "lucide-react";
 import { useEffect } from "react";
-import TimePicker  from '../../components/predictions/TimerPicker';
+import TimePicker from "../../components/predictions/TimerPicker";
+import { CustomSelect } from "../customerSelect/CustomSelect";
+import SelectDate from "../customerSelect/SelectDate";
+import { Location,Camera } from "@/types/forecast";
 
 interface ForecastHeaderProps {
-  locations: [];
-  location: number;
-  date: string;
-  time: string;
-  onLocationChange: (location: number) => void;
-  onDateChange: (date: string) => void;
-  onTimeChange: (time: string) => void;
+  locations: Location[];
+  selectedLocation: string;
+  cameras: Camera[];
+  selectedCamera: string;
+  selectedDate: string;
+  selectedTime: string;
+  handleLocationChange: (selectedLocation: string) => void;
+  handleCameraChange: (selectedCamera: string) => void;
+  handleDateChange: (selectedDate: string) => void;
+  onTimeChange: (selectedTime: string) => void;
   onForecastCalculation: () => void;
 }
 
 export default function ForecastHeader({
   locations,
-  location,
-  date,
-  time,
-  onLocationChange,
-  onDateChange,
+  selectedLocation,
+  cameras,
+  selectedCamera,
+  selectedDate,
+  selectedTime,
+  handleLocationChange,
+  handleCameraChange,
+  handleDateChange,
   onTimeChange,
   onForecastCalculation,
 }: ForecastHeaderProps) {
   useEffect(() => {}, []);
-  
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
@@ -36,33 +43,43 @@ export default function ForecastHeader({
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-          <select
-            value={location}
-            onChange={(e) => onLocationChange(e.target.value)}
-            className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {locations.map((element) => (
-              <option key={element?.id} value={element?.id}>
-                {element?.description}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Calendar size={20} className="text-gray-400 flex-shrink-0" />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="flex-1 w-full sm:w-auto">
+          <CustomSelect
+            value={selectedLocation}
+            onChange={handleLocationChange}
+            options={locations.map((loc) => ({
+              value: loc.id,
+              label: loc.description,
+            }))}
+            placeholder="Seleccionar ubicación"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <TimePicker time={time} onTimeChange={onTimeChange}/>
-        </div>
+        {selectedLocation && (
+          <div className="flex-1 w-full sm:w-auto">
+            <CustomSelect
+              value={selectedCamera}
+              onChange={handleCameraChange}
+              options={cameras.map((cam) => ({
+                value: cam.id,
+                label: cam.name,
+              }))}
+              placeholder="Seleccionar cámara"
+            />
+          </div>
+        )}
+
+        {selectedCamera && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <SelectDate date={selectedDate} onDateChange={handleDateChange} />
+          </div>
+        )}
+
+        {selectedDate && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <TimePicker time={selectedTime} onTimeChange={onTimeChange} />
+          </div>
+        )}
 
         <button
           onClick={() => onForecastCalculation()}

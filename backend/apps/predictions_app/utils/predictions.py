@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import numpy as np
 from apps.predictions_app.utils.calculations import (
     add_to_date,
     calculate_previous_growth_decrease,
@@ -7,7 +8,10 @@ from apps.predictions_app.utils.calculations import (
 import datetime
 from prophet import Prophet
 
-def get_forecast(df, periods: int, holidays: pd.DataFrame, freq: str = "10T") -> pd.DataFrame:
+
+def get_forecast(
+    df, periods: int, holidays: pd.DataFrame, freq: str = "10T"
+) -> pd.DataFrame:
     """
     Genera un DataFrame de predicciones utilizando el modelo Prophet.
     Args:
@@ -28,6 +32,7 @@ def get_forecast(df, periods: int, holidays: pd.DataFrame, freq: str = "10T") ->
     future = model.make_future_dataframe(periods=periods, freq=freq)
 
     return model.predict(future)
+
 
 def get_forecast_by_date(forecast, target_datetime: datetime) -> pd.DataFrame:
     """
@@ -109,24 +114,29 @@ def get_previous_forecast(forecast, previous_date, yhat, trend) -> json:
     return resp
 
 
-def traffic_level_classification(column, value) -> str:
-    """
-    Clasifica el nivel de tráfico en 'low', 'medium' o 'high' basado en los cuantiles 33 y 66.
-    Args:
-        column (pd.Series): Serie de pandas con los conteos de vehículos.
-        value (int): Valor de conteo de vehículos a clasificar.
-    Returns:
-        str: Nivel de tráfico ('low', 'medium', 'high').
-    """
+def traffic_level_classification(df_hist, yhat_count, yhat_speed) -> str:
+    df_hist["avgSpeed"] = df_hist["avgSpeed"].astype(float)
+    df_hist["totalVehicleCount"] = df_hist["totalVehicleCount"].astype(float)
 
-    low = column.quantile(0.33)
-    high = column.quantile(0.66)
-    print(f"Quantiles: low={low}, high={high}, value={value}")
+    # Percentiles de velocidad (entre 0 y 100)
+    percentiles_speed = np.percentile(df_hist["avgSpeed"], range(0, 101))
 
-    if value <= low:
-        return "Bajo"
+    # Percentiles de conteo vehicular (entre 0 y 100)
+    percentiles_count = np.percentile(df_hist["totalVehicleCount"], range(0, 101))
 
-    if value < high:
-        return "Medio"
+    P_speed = np.searchsorted(percentiles_speed, yhat_speed) / 100  # valor entre 0 y 1
+    P_count = np.searchsorted(percentiles_count, yhat_count) / 100  # valor entre 0 y 1
 
-    return "Alto"
+    # Indice de congestion (0–2)
+    # Más velocidad: menor congestión (1 - P_speed)
+    # Más cantidad: mayor congestión (+ P_count)
+    IC = (1 - P_speed) + P_count
+
+    if IC < 0.9:
+        level = "Fluido"
+    elif 0.9 <= IC < 1.6:
+        level = "Denso"
+    else:
+        level = "Embotellamiento"
+
+    return level, IC

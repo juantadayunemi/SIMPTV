@@ -2,14 +2,15 @@ import { CongestionData, VelocityData, VolumeData, TrafficType } from '../types/
 import api from './api';
 
 export const getHistoryTraffic = async (
-  trafficType: TrafficType,
-  locationId: number,
+  trafficType: TrafficType | null,
+  locationId: string,
+  cameraId: string,
   dateFrom: string,
   dateTo: string
 ): Promise<CongestionData | VelocityData | VolumeData>=>{
-  console.log('Type Traffic:', trafficType);
+  console.log("Servicio>>>","TrafficType:", trafficType, "LocationId:", locationId, "CameraId:", cameraId, "DateFrom:", dateFrom, "DateTo:", dateTo);
   const resp = await api.get(
-    `/api/predictions/history-traffic/?${trafficType}=true&locationId=${locationId}&dateFrom=${dateFrom}&dateTo=${dateTo}`
+    `/api/predictions/history-traffic/?${trafficType}=true&locationId=${locationId}&cameraId=${cameraId}&dateFrom=${dateFrom}&dateTo=${dateTo}`
 );
   return resp.data
 }
