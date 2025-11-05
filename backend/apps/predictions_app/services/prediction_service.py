@@ -39,7 +39,6 @@ from apps.predictions_app.utils.holidays import (
     get_name_holiday,
 )
 from apps.predictions_app.utils.calculations import (
-    add_to_date,
     convert_datetime,
     get_percentage,
     previous_periods,
@@ -215,7 +214,6 @@ def get_bottleneck_traffic(params):
     Calcula el Índice de Congestión (IC) y nivel de tráfico
     usando percentiles históricos.
     """
-    print("SI EJECUTA MUY BIEN")
     traffic_pred = get_traffic_prediction(params)
     speed_pred = get_speed_prediction(params)
 
@@ -247,8 +245,6 @@ def get_bottleneck_traffic(params):
                 "level": level,
             }
         )
-
-    print("RESULTADOS CORRECTOS")
 
     return results
 
