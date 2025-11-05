@@ -258,9 +258,11 @@ def get_level_prediction(params):
     yhat_speed = float(params.get("yhat_speed"))
     location_id = int(params.get("locationId"))
     camera_id = int(params.get("cameraId"))
+
     historical = get_filter_params(location_id, camera_id)
     if not historical:
         raise ValueError("No existen datos históricos para esta cámara o ubicación.")
+
     df_hist = create_dataframe(historical, ("avgSpeed", "totalVehicleCount"))
     level, IC = traffic_level_classification(df_hist, yhat_count, yhat_speed)
     return {
