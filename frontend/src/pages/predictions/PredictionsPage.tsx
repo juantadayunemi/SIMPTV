@@ -24,6 +24,7 @@ import { LoadingContainer } from "@/components/ui/LoadingContainer";
 import MessageHome from "@/components/botlleneck/MessageHome";
 import Modal from "@/components/ui/Modal";
 import { useNavigate } from "react-router-dom";
+import { getLocalDateString } from "@/utils/dateUtils";
 
 export default function PredictionPage() {
   const toast = useToast();
@@ -219,6 +220,12 @@ export default function PredictionPage() {
     setForecastData([]);
   };
   const handleDateChange = (value: string) => {
+    const today = new Date()
+    const todayString = getLocalDateString(today);
+    if (value < todayString) {
+      toast.warning("La fecha seleccionada no puede ser anterior a hoy.");
+      return;
+    }
     setSelectedDate(value);
     setSelectedTime("");
   };

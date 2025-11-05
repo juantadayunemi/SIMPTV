@@ -185,6 +185,12 @@ export default function BottleneckPage() {
   };
 
   const handleDateChange = (value: string) => {
+    const today = new Date()
+    const todayString = getLocalDateString(today);
+    if (value < todayString) {
+      toast.warning("La fecha seleccionada no puede ser anterior a hoy.");
+      return;
+    }
     setSelectedDate(value);
     setSelectedTime("");
 
