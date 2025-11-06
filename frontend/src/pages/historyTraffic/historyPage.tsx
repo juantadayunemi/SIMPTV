@@ -19,6 +19,8 @@ import { useToast } from "../../components/ui/ToastContainer";
 import { HistorySummary } from "@/components/historyTraffic/HistorySummary";
 import { LoadingContainer } from "@/components/ui/LoadingContainer";
 import MessageHome from "@/components/botlleneck/MessageHome";
+import { generateTrafficPDF, formatDateRangeForPDF } from "../../utils/exportPDFUtils";
+
 
 export default function HistoryTraffic() {
   const toast = useToast();
@@ -38,6 +40,7 @@ export default function HistoryTraffic() {
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadLocationsData();
@@ -153,7 +156,7 @@ useEffect(() => {
     setIsModalOpen(false);
   };
 
-  const exportData = useHandleExport(pageRef);
+  /*const exportData = useHandleExport(pageRef);
   const onHandleExport = async () => {
     if (!congestionData && !velocityData && !volumeData) {
       toast.error("No hay datos disponibles para exportar.");
@@ -169,6 +172,70 @@ useEffect(() => {
     } catch (error) {
       toast.error(
         "Error durante la exportación: " +
+          (error instanceof Error ? error.message : "Desconocido")
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };*/
+   const onHandleExport = async () => {
+    if (!congestionData && !velocityData && !volumeData) {
+      toast.error("No hay datos disponibles para exportar.");
+      return;
+    }
+
+    if (isExporting) {
+      toast.info("La exportación ya está en curso. Por favor, espere.");
+      return;
+    }
+
+    if (!trafficType) {
+      toast.error("No se ha seleccionado un tipo de tráfico.");
+      return;
+    }
+
+    setIsExporting(true);
+    toast.info("Generando PDF...");
+
+    try {
+      // Obtener nombres para el PDF
+      const locationName = locations.find(
+        (loc) => loc.id === Number(selectedLocation)
+      )?.description || "Ubicación desconocida";
+
+      const cameraName = cameras.find(
+        (cam) => cam.id === Number(selectedCamera)
+      )?.name || "Cámara desconocida";
+
+      // Obtener rango de fechas
+      let dateRange: DateRange | null = null;
+      if (dateRangeType === "custom" && customDateRange) {
+        dateRange = customDateRange;
+      } else {
+        dateRange = getDateRangeFromType(dateRangeType);
+      }
+
+      const formattedDateRange = dateRange
+        ? formatDateRangeForPDF(dateRange.dateFrom, dateRange.dateTo)
+        : "Rango no especificado";
+
+      // Generar el PDF
+      await generateTrafficPDF({
+        trafficType,
+        congestionData,
+        velocityData,
+        volumeData,
+        locationName,
+        cameraName,
+        dateRange: formattedDateRange,
+        chartRef,
+      });
+
+      toast.success("PDF generado exitosamente");
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      toast.error(
+        "Error al generar el PDF: " +
           (error instanceof Error ? error.message : "Desconocido")
       );
     } finally {

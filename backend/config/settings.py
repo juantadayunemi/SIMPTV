@@ -416,7 +416,7 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
         # "schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute="*/1"), 
+        "schedule": crontab(minute="*/10"), 
     },
 }
 
