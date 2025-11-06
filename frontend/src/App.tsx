@@ -32,6 +32,7 @@ import { FCMInitializer } from './components/notifications/FCMInitializer'; // I
 // Styles
 import './App.css';
 import { ToastProvider } from './components/ui/ToastContainer';
+import BottleneckPage from './pages/bottleneck/BottleneckPage';
 
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -149,6 +150,7 @@ const App: React.FC = () => {
 
             <Route path="plates" element={<PlateDetectionPage />} />
             <Route path="predictions" element={<PredictionsPage />} />
+            <Route path="bottleneck" element={<BottleneckPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />

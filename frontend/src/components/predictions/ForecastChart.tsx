@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ForecastData } from "../types/forecast";
 import { useToast } from "../ui/ToastContainer";
+import DocumentMagnifyingGlassIcon from "@heroicons/react/24/outline/DocumentMagnifyingGlassIcon";
 
 interface ForecastChartProps {
   data: ForecastData | null;
@@ -34,8 +35,9 @@ export default function ForecastChart({
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Pronóstico de 24 Horas - {selectedDate}
         </h3>
-        <div className="h-64 flex items-center justify-center text-gray-400">
-          No hay datos disponibles
+        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <DocumentMagnifyingGlassIcon className="h-12 w-12 text-gray-300 mb-2" />
+          <span>No hay datos disponibles</span>
         </div>
       </div>
     );

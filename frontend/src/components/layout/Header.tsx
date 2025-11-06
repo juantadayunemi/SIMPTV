@@ -92,6 +92,11 @@ export const Header: React.FC = () => {
           title: 'Historial de Tráfico',
           subtitle: 'Análisis del tráfico histórico y patrones de comportamiento'
         };
+      case '/bottleneck':
+        return {
+          title: 'Análisis de Embotellamientos',
+          subtitle: 'Detección y análisis de embotellamientos'
+        };
       case '/profile':
         return {
           title: 'Mi Perfil',

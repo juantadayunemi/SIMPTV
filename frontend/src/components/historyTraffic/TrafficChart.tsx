@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { DayData } from '../../types/historyTraffic';
 import { useToast } from '../ui/ToastContainer';
+import DocumentMagnifyingGlassIcon from '@heroicons/react/24/outline/DocumentMagnifyingGlassIcon';
 
 interface TrafficChartProps {
   data: DayData[];
@@ -83,8 +84,9 @@ export default function TrafficChart({ data, color, title, subtitle }: TrafficCh
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <p className="text-sm text-gray-500">{subtitle}</p>
         </div>
-        <div className="flex items-center justify-center h-64 text-gray-400">
-          No hay datos disponibles
+        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <DocumentMagnifyingGlassIcon className="h-12 w-12 text-gray-300 mb-2" />
+          <span className="select-none">No hay datos disponibles</span>
         </div>
       </div>
     );
@@ -210,7 +212,7 @@ export default function TrafficChart({ data, color, title, subtitle }: TrafficCh
             }}
           >
             <div className="font-semibold">{formatDate(points[hoveredPoint.index].date)}</div>
-            <div className="text-gray-300">Total: {points[hoveredPoint.index].value}</div>
+            <div className="text-gray-300">Total: {Math.round(points[hoveredPoint.index].value)} km/h</div>
           </div>
         )}
       </div>

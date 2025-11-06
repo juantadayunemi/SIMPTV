@@ -163,3 +163,6 @@ public/firebase-messaging-sw.js
 public/firebase-messaging-sw.js.map
 public/sw.js
 public/sw.js.map
+
+# Ignorar archivos de configuración local
+backend/celerybeat-schedule*

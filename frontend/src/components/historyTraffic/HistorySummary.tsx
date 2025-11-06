@@ -13,7 +13,7 @@ export function HistorySummary({
         <>
           <StatCard
             title="Velocidad Promedio"
-            value={`${congestionData?.avg_velocity?.toFixed(0)} km/h`}
+            value={`${Math.round(congestionData?.avg_velocity)} km/h`}
             subtitle="En el periodo seleccionado"
             icon={Gauge}
             iconColor="bg-green-100 text-green-600"
@@ -28,9 +28,7 @@ export function HistorySummary({
           <StatCard
             title="Hora Pico"
             value={`${congestionData?.rush_hour?.hour}:00`}
-            subtitle={`${congestionData?.rush_hour?.count_vehicles?.toFixed(
-              0
-            )} vehículos`}
+            subtitle={`${Math.round(congestionData?.rush_hour?.count_vehicles)} vehículos`}
             icon={Calendar}
             iconColor="bg-red-100 text-red-600"
           />
@@ -50,21 +48,21 @@ export function HistorySummary({
         <>
           <StatCard
             title="Velocidad Promedio"
-            value={`${velocityData?.avg_velocity?.toFixed(2)} km/h`}
+            value={`${Math.round(velocityData?.avg_velocity)} km/h`}
             subtitle="En el periodo seleccionado"
             icon={Gauge}
             iconColor="bg-blue-100 text-blue-600"
           />
           <StatCard
             title="Velocidad Máxima"
-            value={`${velocityData?.max_velocity?.toFixed(2)} km/h`}
+            value={`${Math.round(velocityData?.max_velocity)} km/h`}
             subtitle="Velocidad registrada"
             icon={TrendingUp}
             iconColor="bg-green-100 text-green-600"
           />
           <StatCard
             title="Velocidad Mínima"
-            value={`${velocityData?.min_velocity?.toFixed(2)} km/h`}
+            value={`${Math.round(velocityData?.min_velocity)} km/h`}
             subtitle="Velocidad registrada"
             icon={TrendingUp}
             iconColor="bg-orange-100 text-orange-600"
@@ -85,14 +83,14 @@ export function HistorySummary({
         <>
           <StatCard
             title="Cantidad Total de Vehículos"
-            value={volumeData?.total_volume?.toFixed(0)}
+            value={Math.round(volumeData?.total_volume)}
             subtitle="En el periodo seleccionado"
             icon={Users}
             iconColor="bg-blue-100 text-blue-600"
           />
           <StatCard
             title="Promedio de Vehículos por Hora"
-            value={volumeData?.avg_vehicles_per_hour?.toFixed(0)}
+            value={Math.round(volumeData?.avg_vehicles_per_hour)}
             subtitle="Vehículos/hora"
             icon={TrendingUp}
             iconColor="bg-green-100 text-green-600"

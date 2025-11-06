@@ -4,15 +4,21 @@ export interface ForecastData {
   seasonality: number;
   holidays: number;
   holidays_name: string;
-  levelTraffic: string;
   confidenceLevel: number;
   variation_forecast_metrics: ChangePercent;
-  forecast: forecast[]
+  forecast: forecast[];
+  is_reliable: boolean;
 }
 
 export interface ForecastDataSpeed {
     yhat_speed: number;
-    forecast_speed: forecast[]
+    forecast_speed: forecast[];
+    is_reliable: boolean;
+}
+
+export interface LevelTrafficData {
+    level: string;
+    IC: number;
 }
 
 export interface ImpactMetrics {
@@ -38,6 +44,14 @@ export interface Location {
   isActive: boolean;
 }
 
+export interface Camera {
+  id: number;
+  locationId: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
 export interface ComparisonPeriod {
   label: string;
   value: "daily" | "monthly" | "yearly";
