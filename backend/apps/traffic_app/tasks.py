@@ -29,7 +29,11 @@ def analyze_video_async(self, analysis_id, video_path):
     import cv2
     from ultralytics import YOLO
     from apps.traffic_app.models import TrafficAnalysis, Vehicle, VehicleFrame
-    from apps.plates_app.services import save_detected_plate_to_db
+    from apps.plates_app.models import DetectedPlate
+    from apps.plates_app.services import (
+        save_detected_plate_to_db,
+        save_complaint_detection_to_db,
+    )
 
     # Capa de canales para WebSocket - mensajería con el frontend
     channel_layer = get_channel_layer()
@@ -387,16 +391,8 @@ def analyze_video_async(self, analysis_id, video_path):
                     pass
                     # ========== FIN ACUMULACIÓN ==========
 
-                    # Notificar nuevo vehículo detectado
-                    if detections_to_send and frame_count % 3 == 0:
-                        send_ws(
-                            "frame_processed",
-                            {
-                                "frame_number": frame_count,
-                                "timestamp": round(timestamp_seconds, 2),
-                                "detections": detections_to_send,
-                            },
-                        )
+                    # 🚫 EVENTO ELIMINADO: frame_processed (genera spam innecesario)
+                    # Solo enviamos: progress_update, notification_badge, processing_complete
                 else:
                     # Actualizar información del vehículo existente
                     tracked_vehicles[track_id]["last_frame"] = frame_count
@@ -465,15 +461,54 @@ def analyze_video_async(self, analysis_id, video_path):
                         )
 
             # ====================================================================
-            # PASO 4: ENVIAR DETECCIONES AL FRONTEND
+            # PASO 4: PREPARAR Y ENVIAR DETECCIONES AL FRONTEND
             # ====================================================================
-            if detections_to_send and frame_count % 3 == 0:
+            # Construir lista de detecciones del frame actual (formato compatible)
+            # Si no hay detecciones, enviamos vacío (pero evitamos NameError)
+            frame_detections = []
+            try:
+                # `detections_to_send` viene de assign_track_ids() más arriba
+                for det in detections_to_send:
+                    frame_detections.append(
+                        {
+                            "track_id": (
+                                int(det.get("track_id"))
+                                if det.get("track_id") is not None
+                                else None
+                            ),
+                            "vehicle_type": det.get("vehicle_type", "unknown"),
+                            "bbox": det.get("bbox", []),
+                            "confidence": float(det.get("confidence", 0.0)),
+                            "speed_kmh": float(
+                                det.get(
+                                    "speed_kmh",
+                                    tracked_vehicles.get(det.get("track_id"), {}).get(
+                                        "speed_kmh", 0.0
+                                    ),
+                                )
+                            ),
+                            "speed_category": tracked_vehicles.get(
+                                det.get("track_id"), {}
+                            ).get("speed_category", "unknown"),
+                        }
+                    )
+            except Exception as e:
+                logger.debug(f"Error building frame_detections: {e}")
+
+            # Enviar detecciones cada 3 frames para balance entre UX y tráfico
+            if frame_count % 3 == 0 and frame_detections is not None:
+                # Evitar enviar payload muy grande si no hay detecciones
+                payload_detections = (
+                    frame_detections if len(frame_detections) > 0 else []
+                )
+
                 send_ws(
                     "frame_processed",
                     {
                         "frame_number": frame_count,
-                        "timestamp": round(timestamp_seconds, 2),
-                        "detections": detections_to_send,
+                        "timestamp": timestamp_seconds,
+                        "detections": payload_detections,
+                        "total_vehicles": len(tracked_vehicles),
                     },
                 )
 
@@ -589,40 +624,53 @@ def analyze_video_async(self, analysis_id, video_path):
                             ]:
                                 platesCaptured += 1
 
-                                # 🔥 GUARDAR DETECCIÓN PARA PROCESAR DESPUÉS DE CREAR VEHICLE
-                                plate_detections_pending[vehicle_id] = plate_data
-                                logger.debug(
-                                    f"💾 Placa {plate_data['plate_number']} guardada temporalmente para vehicle {vehicle_id}"
-                                )
+                                # 🔥 NUEVA LÓGICA: GUARDAR EN DB INMEDIATAMENTE (SIN VEHICLE)
+                                try:
+                                    detected_plate = save_detected_plate_to_db(
+                                        plate_data=plate_data,
+                                        analysis=analysis,
+                                        vehicle=None,  # ← NULL temporal, se actualiza después
+                                    )
 
-                                # 🔥 CONSULTAR API DE DENUNCIAS EN SEGUNDO PLANO
-                                check_vehicle_complaint_async.delay(  # type: ignore[attr-defined]
-                                    plate_number=plate_data["plate_number"],
-                                    vehicle_id=str(vehicle_id),
-                                    vehicle_type=vehicle_data["type"],
-                                    analysis_id=analysis_id,
-                                )
-                                logger.info(
-                                    f"🚀 [CELERY] Tarea de consulta de denuncias lanzada para placa: {plate_data['plate_number']}"
-                                )
+                                    if detected_plate:
+                                        logger.info(
+                                            f"✅ DetectedPlate guardada INMEDIATAMENTE: ID={detected_plate.id}, Placa={plate_data['plate_number']} (vehicle=NULL temporal)"
+                                        )
 
-                                # Enviar notificación WebSocket
-                                send_ws(
-                                    "plate_detected",
-                                    {
-                                        "vehicle_id": str(vehicle_id),
-                                        "vehicle_type": vehicle_data["type"],
-                                        "plate_number": plate_data["plate_number"],
-                                        "confidence": plate_data["confidence"],
-                                        "timestamp": plate_data["timestamp"],
-                                        "frame_number": best_frame_data["frame_number"],
-                                        "quality_score": best_frame_data[
-                                            "quality_score"
-                                        ],
-                                    },
-                                )
+                                        # 🔥 FIX: Usar vehicle_id (track_id) como key, NO el UUID generado después
+                                        plate_detections_pending[vehicle_id] = {
+                                            "plate_data": plate_data,
+                                            "detected_plate_id": detected_plate.id,
+                                            "track_id": vehicle_id,  # ← Guardar track_id para log
+                                        }
+
+                                        # 🔥 CONSULTAR API DE DENUNCIAS INMEDIATAMENTE (FIRE-AND-FORGET)
+                                        check_vehicle_complaint_async.delay(  # type: ignore[attr-defined]
+                                            plate_number=plate_data["plate_number"],
+                                            vehicle_id=str(vehicle_id),
+                                            vehicle_type=vehicle_data["type"],
+                                            analysis_id=analysis_id,
+                                            detected_plate_id=detected_plate.id,  # ← YA TENEMOS EL ID!
+                                        )
+                                        logger.info(
+                                            f"🚀 [CELERY DELAY] Tarea de consulta CON DB lanzada INMEDIATAMENTE para placa: {plate_data['plate_number']} (DetectedPlate ID={detected_plate.id})"
+                                        )
+                                    else:
+                                        logger.warning(
+                                            f"⚠️ No se pudo guardar placa {plate_data['plate_number']} inmediatamente"
+                                        )
+                                except Exception as save_error:
+                                    logger.error(
+                                        f"❌ Error guardando placa inmediatamente: {save_error}"
+                                    )
+
+                                # 🚫 EVENTO ELIMINADO: plate_detected
+                                # Este evento enviaba TODAS las placas detectadas al frontend
+                                # Ahora solo enviamos notification_badge cuando HAY DENUNCIA
+                                # (desde check_vehicle_complaint_async)
+
                                 logger.info(
-                                    f"🔔 Plate detected: {plate_data['plate_number']} (quality: {best_frame_data['quality_score']:.2f})"
+                                    f"✅ Placa guardada: {plate_data['plate_number']} (quality: {best_frame_data['quality_score']:.2f})"
                                 )
 
                     except Exception as e:
@@ -644,6 +692,9 @@ def analyze_video_async(self, analysis_id, video_path):
         # Guardar vehículos en base de datos
         logger.info(
             f"💾 Guardando {len(tracked_vehicles)} vehículos en la base de datos..."
+        )
+        logger.info(
+            f"📋 [DEBUG] Placas pendientes de actualizar FK: {sorted(list(plate_detections_pending.keys()))}"
         )
         send_ws(
             "log_message",
@@ -744,27 +795,34 @@ def analyze_video_async(self, analysis_id, video_path):
                 # Guardar todos los frames de una vez
                 VehicleFrame.objects.bulk_create(frames_to_create)
 
-                # 🔥 GUARDAR PLACA DETECTADA EN BASE DE DATOS (si existe)
+                # 🔥 ACTUALIZAR FK DE PLACA SI YA FUE GUARDADA
                 if track_id in plate_detections_pending:
                     try:
-                        plate_data = plate_detections_pending[track_id]
-                        detected_plate = save_detected_plate_to_db(
-                            plate_data=plate_data, analysis=analysis, vehicle=vehicle
-                        )
+                        pending_data = plate_detections_pending[track_id]
+                        detected_plate_id = pending_data.get("detected_plate_id")
 
-                        if detected_plate:
+                        if detected_plate_id:
+                            # Actualizar DetectedPlate con Vehicle FK
+                            updated_count = DetectedPlate.objects.filter(
+                                id=detected_plate_id
+                            ).update(vehicleId=vehicle)
                             logger.info(
-                                f"✅ Placa guardada en DB: {detected_plate.plateNumber} (ID: {detected_plate.id})"
+                                f"✅ DetectedPlate ID={detected_plate_id} actualizada con Vehicle FK: {vehicle.id} (track_id={track_id}, updated={updated_count})"
                             )
                         else:
                             logger.warning(
-                                f"⚠️ No se pudo guardar placa para vehicle {vehicle_id}"
+                                f"⚠️ No se encontró detected_plate_id para track_id={track_id}"
                             )
 
                     except Exception as e:
                         logger.error(
-                            f"❌ Error guardando placa en DB para vehicle {vehicle_id}: {e}"
+                            f"❌ Error actualizando FK de placa para track_id={track_id}, vehicle_id={vehicle.id}: {e}"
                         )
+                else:
+                    # 🔍 DEBUG: Ver si el vehículo tenía placa pero no está en pending
+                    logger.debug(
+                        f"🔍 Vehicle track_id={track_id} NO está en plate_detections_pending (puede no tener placa detectada)"
+                    )
 
                 saved_vehicles += 1
 
@@ -914,20 +972,27 @@ def cleanup_old_analyses(days: int = 30):
 
 @shared_task(bind=True, max_retries=3)
 def check_vehicle_complaint_async(
-    self, plate_number, vehicle_id, vehicle_type, analysis_id
+    self, plate_number, vehicle_id, vehicle_type, analysis_id, detected_plate_id=None
 ):
     """
-    🚨 Consulta API de denuncias en segundo plano (SOLO LOGS)
+    🚨 Consulta API de denuncias en segundo plano
 
-    NO modifica base de datos, solo registra logs de lo que devuelve la API.
-    Se ejecuta con Celery en paralelo sin bloquear el análisis de video.
+    Flujo:
+    1. Consultar API gubernamental
+    2. Si hay denuncias:
+       - Enviar notificación por WebSocket al frontend
+       - Guardar en base de datos (VehicleComplaintDetection + VehicleComplaint)
 
     Args:
         plate_number (str): Placa detectada (ej: "ABC-1234")
         vehicle_id (str): ID del vehículo rastreado
         vehicle_type (str): Tipo de vehículo
         analysis_id (int): ID del análisis
+        detected_plate_id (int, optional): ID de DetectedPlate para relacionar denuncias
     """
+    from apps.plates_app.models import DetectedPlate
+    from apps.plates_app.services import save_complaint_detection_to_db
+
     try:
         logger.info(
             f"🔍 [COMPLAINT CHECK] Iniciando consulta para placa: {plate_number}"
@@ -984,6 +1049,346 @@ def check_vehicle_complaint_async(
             f"🔗 Context: Vehicle {vehicle_id} ({vehicle_type}) - Analysis {analysis_id}"
         )
         logger.info(f"=" * 80)
+
+        # 🔥 SI HAY DENUNCIAS, PROCESAR EN SEGUNDO PLANO
+        denuncias = data.get("denuncias", [])
+        if denuncias and len(denuncias) > 0:
+            logger.info(
+                f"🚨 [COMPLAINT ALERT] Placa {plate_number} tiene {len(denuncias)} denuncias!"
+            )
+
+            # 1️⃣ ENVIAR NOTIFICACIÓN POR WEBSOCKET AL FRONTEND
+            try:
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    notification_data = {
+                        "type": "complaint_alert",
+                        "plate_number": plate_number,
+                        "vehicle_id": vehicle_id,
+                        "vehicle_type": vehicle_type,
+                        "analysis_id": analysis_id,
+                        "owner_name": data.get("propietario", {}).get(
+                            "nombre", "DESCONOCIDO"
+                        ),
+                        "owner_id": data.get("propietario", {}).get("cedula", "N/A"),
+                        "case_number": data.get("expediente", "N/A"),
+                        "complaints_count": len(denuncias),
+                        "complaints": denuncias[:5],  # Enviar máximo 5 para no saturar
+                        "timestamp": timezone.now().isoformat(),
+                    }
+
+                    async_to_sync(channel_layer.group_send)(
+                        f"analysis_{analysis_id}",
+                        {"type": "complaint.alert", "data": notification_data},
+                    )
+
+                    # 🔔 ENVIAR EVENTO SIMPLE PARA HACER PARPADEAR LA CAMPANA
+                    async_to_sync(channel_layer.group_send)(
+                        f"analysis_{analysis_id}",
+                        {
+                            "type": "notification.badge",
+                            "data": {
+                                "plate_number": plate_number,
+                                "complaints_count": len(denuncias),
+                                "timestamp": timezone.now().isoformat(),
+                            },
+                        },
+                    )
+
+                    logger.info(
+                        f"📤 [WEBSOCKET] Notificación de denuncia enviada al frontend"
+                    )
+                    logger.info(
+                        f"🔔 [WEBSOCKET] Evento notification_badge enviado para parpadear campana"
+                    )
+                else:
+                    logger.warning(
+                        f"⚠️ [WEBSOCKET] Channel layer no disponible, notificación no enviada"
+                    )
+            except Exception as ws_error:
+                logger.error(f"❌ [WEBSOCKET] Error enviando notificación: {ws_error}")
+
+            # 2️⃣ GUARDAR EN BASE DE DATOS Y ENVIAR NOTIFICACIÓN FCM
+            if detected_plate_id:
+                try:
+                    detected_plate = DetectedPlate.objects.get(id=detected_plate_id)
+                    complaint_detection = save_complaint_detection_to_db(
+                        detected_plate, data
+                    )
+
+                    if complaint_detection:
+                        logger.info(
+                            f"💾 [DATABASE] Denuncia guardada en DB: ID={complaint_detection.id}"
+                        )
+
+                        # 3️⃣ ENVIAR NOTIFICACIÓN FCM A ADMINISTRADORES
+                        try:
+                            logger.info(
+                                f"🔔 [FCM STEP 1] Iniciando proceso de notificación FCM..."
+                            )
+
+                            from apps.auth_app.models import UserRole
+                            from apps.notifications_app.models import (
+                                FCMDevice,
+                                NotificationLog,
+                            )
+                            from utils.fcm_service import FCMService
+                            from django.contrib.auth import get_user_model
+
+                            User = get_user_model()
+                            logger.info(f"🔔 [FCM STEP 2] Imports completados")
+
+                            # Obtener usuarios administradores
+                            admin_roles = UserRole.objects.filter(role="ADMIN")
+                            logger.info(
+                                f"🔔 [FCM STEP 3] UserRoles encontrados: {admin_roles.count()}"
+                            )
+
+                            admin_user_ids = admin_roles.values_list(
+                                "user_id", flat=True
+                            ).distinct()
+                            logger.info(
+                                f"🔔 [FCM STEP 4] User IDs ADMIN: {list(admin_user_ids)}"
+                            )
+
+                            admin_users = User.objects.filter(id__in=admin_user_ids)
+                            logger.info(
+                                f"🔔 [FCM STEP 5] Usuarios ADMIN encontrados: {admin_users.count()}"
+                            )
+
+                            for admin in admin_users:
+                                logger.info(
+                                    f"   👤 Admin: {admin.email} (ID: {admin.id})"
+                                )
+
+                            if admin_users.exists():
+                                logger.info(
+                                    f"🔔 [FCM STEP 6] Recopilando tokens de dispositivos..."
+                                )
+
+                                # Recopilar tokens de dispositivos activos
+                                all_tokens = []
+                                for admin in admin_users:
+                                    admin_devices = FCMDevice.objects.filter(
+                                        user=admin, is_active=True
+                                    )
+                                    logger.info(
+                                        f"   📱 Dispositivos de {admin.email}: {admin_devices.count()} activos"
+                                    )
+
+                                    for device in admin_devices:
+                                        logger.info(
+                                            f"      • {device.device_name} ({device.device_type}) - Token: {device.token[:30]}..."
+                                        )
+
+                                    all_tokens.extend(
+                                        list(
+                                            admin_devices.values_list(
+                                                "token", flat=True
+                                            )
+                                        )
+                                    )
+
+                                logger.info(
+                                    f"🔔 [FCM STEP 7] Total tokens recopilados: {len(all_tokens)}"
+                                )
+
+                                if all_tokens:
+                                    logger.info(
+                                        f"🔔 [FCM STEP 8] Preparando datos de notificación..."
+                                    )
+
+                                    # Obtener ubicación de la cámara
+                                    camera_location = "Ubicación desconocida"
+                                    try:
+                                        from apps.traffic_app.models import (
+                                            TrafficAnalysis,
+                                        )
+
+                                        analysis = TrafficAnalysis.objects.get(
+                                            id=analysis_id
+                                        )
+                                        if analysis.camera:
+                                            camera_location = (
+                                                analysis.camera.location
+                                                or analysis.camera.name
+                                            )
+                                    except Exception as e:
+                                        logger.warning(
+                                            f"⚠️ [FCM] No se pudo obtener ubicación de cámara: {e}"
+                                        )
+
+                                    logger.info(f"🔔 [FCM STEP 9] Datos preparados:")
+                                    logger.info(f"   • Placa: {plate_number}")
+                                    logger.info(
+                                        f"   • Propietario: {complaint_detection.ownerName}"
+                                    )
+                                    logger.info(
+                                        f"   • Denuncias: {complaint_detection.totalComplaintsCount}"
+                                    )
+                                    logger.info(
+                                        f"   • Severidad: {complaint_detection.severity}"
+                                    )
+                                    logger.info(f"   • Ubicación: {camera_location}")
+                                    logger.info(
+                                        f"   • Expediente: {complaint_detection.caseNumber}"
+                                    )
+
+                                    # 🆕 VERIFICAR AGRUPAMIENTO INTELIGENTE
+                                    logger.info(
+                                        f"🔔 [FCM STEP 9.5] 📊 Verificando agrupamiento..."
+                                    )
+
+                                    from utils.notification_grouping import (
+                                        NotificationGroupingService,
+                                    )
+
+                                    should_send, grouping_info = (
+                                        NotificationGroupingService.should_send_notification(
+                                            plate_number=plate_number,
+                                            camera_location=camera_location,
+                                            complaints_count=complaint_detection.totalComplaintsCount,
+                                        )
+                                    )
+
+                                    if not should_send:
+                                        logger.info(
+                                            f"🔇 [FCM] Notificación silenciada por agrupamiento inteligente"
+                                        )
+                                        # No enviar FCM, pero marcar como notificado en DB
+                                        complaint_detection.wasNotified = True
+                                        complaint_detection.notifiedAt = timezone.now()
+                                        complaint_detection.save(
+                                            update_fields=["wasNotified", "notifiedAt"]
+                                        )
+                                        logger.info(
+                                            f"💾 [DATABASE] Detección marcada como notificada (silenciada por agrupamiento)"
+                                        )
+                                        # Salir del bloque de FCM
+                                        return
+
+                                    if grouping_info:
+                                        logger.info(
+                                            f"📢 [FCM] Enviando notificación AGRUPADA: {grouping_info['detection_count']} detecciones en {grouping_info['time_window_minutes']}min"
+                                        )
+
+                                    # Enviar notificación FCM
+                                    logger.info(
+                                        f"🔔 [FCM STEP 10] ⚡ ENVIANDO NOTIFICACIÓN FCM..."
+                                    )
+
+                                    fcm_result = FCMService.send_vehicle_complaint_alert(
+                                        admin_tokens=all_tokens,
+                                        plate_number=plate_number,
+                                        owner_name=complaint_detection.ownerName,
+                                        complaints_count=complaint_detection.totalComplaintsCount,
+                                        severity=complaint_detection.severity
+                                        or "UNKNOWN",
+                                        camera_location=camera_location,
+                                        detection_time=timezone.now().isoformat(),
+                                        case_number=complaint_detection.caseNumber,
+                                        grouping_info=grouping_info,  # 🆕 Pasar info de agrupamiento
+                                    )
+
+                                    logger.info(f"🔔 [FCM STEP 11] ✅ RESULTADO:")
+                                    logger.info(
+                                        f"📱 [FCM] Notificación enviada a {len(all_tokens)} dispositivos: "
+                                        f"✅ {fcm_result['success']} éxito, ❌ {fcm_result['failure']} fallos"
+                                    )
+                                    logger.info(
+                                        f"   • Details: {fcm_result.get('details', [])}"
+                                    )
+
+                                    # Registrar notificación en logs para cada admin
+                                    # Crear título y cuerpo dinámicos según agrupamiento
+                                    if grouping_info and grouping_info.get(
+                                        "is_grouped"
+                                    ):
+                                        log_title = f"📍 🚨 Placa {plate_number} Detectada Múltiples Veces"
+                                        log_body = f"Placa {plate_number} detectada {grouping_info['detection_count']} veces en últimos {grouping_info['time_window_minutes']} minutos. {complaint_detection.totalComplaintsCount} denuncia(s). Propietario: {complaint_detection.ownerName}"
+                                    else:
+                                        log_title = (
+                                            f"🚨 Vehículo con Denuncias Detectado"
+                                        )
+                                        log_body = f"Placa {plate_number} tiene {complaint_detection.totalComplaintsCount} denuncia(s). Propietario: {complaint_detection.ownerName}"
+
+                                    for admin in admin_users:
+                                        log_data = {
+                                            "type": "vehicle_complaint",
+                                            "plate_number": plate_number,
+                                            "owner_name": complaint_detection.ownerName,
+                                            "complaints_count": complaint_detection.totalComplaintsCount,
+                                            "severity": complaint_detection.severity,
+                                            "case_number": complaint_detection.caseNumber,
+                                            "detected_plate_id": detected_plate_id,
+                                            "complaint_detection_id": complaint_detection.id,
+                                        }
+
+                                        # Agregar info de agrupamiento si existe
+                                        if grouping_info:
+                                            log_data.update(
+                                                {
+                                                    "is_grouped": True,
+                                                    "detection_count": grouping_info[
+                                                        "detection_count"
+                                                    ],
+                                                    "time_window_minutes": grouping_info[
+                                                        "time_window_minutes"
+                                                    ],
+                                                    "locations": ", ".join(
+                                                        grouping_info.get(
+                                                            "locations", []
+                                                        )
+                                                    ),
+                                                }
+                                            )
+
+                                        NotificationLog.objects.create(
+                                            user=admin,
+                                            notification_type="vehicle_complaint",
+                                            title=log_title,
+                                            body=log_body,
+                                            data=log_data,
+                                            fcm_response=fcm_result,
+                                            success=fcm_result["success"] > 0,
+                                        )
+
+                                    # Marcar como notificado
+                                    complaint_detection.wasNotified = True
+                                    complaint_detection.notifiedAt = timezone.now()
+                                    complaint_detection.save(
+                                        update_fields=["wasNotified", "notifiedAt"]
+                                    )
+
+                                else:
+                                    logger.warning(
+                                        f"⚠️ [FCM] No hay dispositivos registrados para administradores"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"⚠️ [FCM] No hay usuarios administradores configurados"
+                                )
+
+                        except Exception as fcm_error:
+                            logger.error(
+                                f"❌ [FCM] Error enviando notificación: {fcm_error}",
+                                exc_info=True,
+                            )
+
+                    else:
+                        logger.warning(
+                            f"⚠️ [DATABASE] No se pudo guardar denuncia en DB"
+                        )
+                except DetectedPlate.DoesNotExist:
+                    logger.error(
+                        f"❌ [DATABASE] DetectedPlate ID={detected_plate_id} no encontrada"
+                    )
+                except Exception as db_error:
+                    logger.error(f"❌ [DATABASE] Error guardando denuncia: {db_error}")
+            else:
+                logger.warning(
+                    f"⚠️ [DATABASE] detected_plate_id no proporcionado, no se guarda en DB"
+                )
 
         return {"plate": plate_number, "found": True, "status": 200, "data": data}
 

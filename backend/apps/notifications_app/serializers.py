@@ -68,8 +68,7 @@ class RegisterFCMTokenSerializer(serializers.Serializer):
         default="other",
         help_text="Device type",
     )
-    
-    
+
     def create_device(self, user):
         """Create or update FCM device for user."""
         validated_data = getattr(self, "validated_data", {})
@@ -117,6 +116,8 @@ class TestNotificationSerializer(serializers.Serializer):
 class NotificationLogSerializer(serializers.ModelSerializer):
     """Serializer for notification logs."""
 
+    vehicle_image = serializers.SerializerMethodField()
+
     class Meta:
         model = NotificationLog
         fields = [
@@ -126,6 +127,36 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             "body",
             "data",
             "success",
+            "fcm_response",
             "sent_at",
+            "vehicle_image",  # Nueva field
         ]
         read_only_fields = ["id", "sent_at"]
+
+    def get_vehicle_image(self, obj):
+        """Obtener la imagen del vehículo si existe detected_plate_id."""
+        try:
+            # Verificar si hay detected_plate_id en data
+            detected_plate_id = obj.data.get("detected_plate_id")
+            if not detected_plate_id:
+                return None
+
+            # Importar aquí para evitar import circular
+            from apps.plates_app.models import DetectedPlateImage
+
+            # Buscar imagen VEHICLE_FULL
+            vehicle_image = DetectedPlateImage.objects.filter(
+                detectedPlateId_id=detected_plate_id, imageType="VEHICLE_FULL"
+            ).first()
+
+            if vehicle_image:
+                return {
+                    "path": vehicle_image.localImagePath,
+                    "type": vehicle_image.imageType,
+                    "captured_at": vehicle_image.capturedAt,
+                }
+
+            return None
+        except Exception as e:
+            # Si hay error, simplemente retornar None
+            return None

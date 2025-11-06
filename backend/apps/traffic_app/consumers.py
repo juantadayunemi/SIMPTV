@@ -122,9 +122,9 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
     async def plate_detection_progress(self, event):
         """
         🆕 NUEVO HANDLER: Actualización de progreso de detección de placas
-        
+
         Enviado periódicamente durante el procesamiento de detección de placas
-        
+
         Payload esperado en event['data']:
         {
             "frame": 450,
@@ -145,9 +145,9 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
     async def plate_detected(self, event):
         """
         🆕 NUEVO HANDLER: Nueva placa detectada
-        
+
         Enviado cada vez que se detecta y guarda una placa
-        
+
         Payload esperado en event['data']:
         {
             "plate_id": 123,
@@ -167,9 +167,9 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
     async def plate_detection_complete(self, event):
         """
         🆕 NUEVO HANDLER: Detección de placas completada
-        
+
         Enviado cuando termina el procesamiento de detección de placas
-        
+
         Payload esperado en event['data']:
         {
             "analysis_id": 123,
@@ -190,9 +190,9 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
     async def plate_detection_error(self, event):
         """
         🆕 NUEVO HANDLER: Error durante detección de placas
-        
+
         Enviado cuando ocurre un error durante el procesamiento
-        
+
         Payload esperado en event['data']:
         {
             "analysis_id": 123,
@@ -205,4 +205,50 @@ class TrafficAnalysisConsumer(AsyncWebsocketConsumer):
             text_data=json.dumps(
                 {"type": "plate_detection_error", "data": event["data"]}
             )
+        )
+
+    # ============================================================================
+    # 🆕 NOTIFICATION HANDLERS (Real-time Alerts)
+    # ============================================================================
+
+    async def complaint_alert(self, event):
+        """
+        🆕 HANDLER: Alerta de denuncia encontrada
+
+        Enviado cuando se encuentra una denuncia para una placa detectada
+
+        Payload esperado en event['data']:
+        {
+            "type": "complaint_alert",
+            "plate_number": "ABC-1234",
+            "vehicle_id": "vehicle_123_45_timestamp",
+            "vehicle_type": "car",
+            "analysis_id": 123,
+            "owner_name": "Juan Pérez",
+            "owner_id": "1234567890",
+            "case_number": "EXP-2024-001",
+            "complaints_count": 3,
+            "complaints": ["Denuncia 1", "Denuncia 2", "Denuncia 3"],
+            "timestamp": "2025-11-05T10:30:45.123Z"
+        }
+        """
+        await self.send(
+            text_data=json.dumps({"type": "complaint_alert", "data": event["data"]})
+        )
+
+    async def notification_badge(self, event):
+        """
+        🆕 HANDLER: Evento simple para hacer parpadear badge de notificaciones
+
+        Enviado cuando se detecta una denuncia para alertar visualmente al usuario
+
+        Payload esperado en event['data']:
+        {
+            "plate_number": "ABC-1234",
+            "complaints_count": 3,
+            "timestamp": "2025-11-05T10:30:45.123Z"
+        }
+        """
+        await self.send(
+            text_data=json.dumps({"type": "notification_badge", "data": event["data"]})
         )

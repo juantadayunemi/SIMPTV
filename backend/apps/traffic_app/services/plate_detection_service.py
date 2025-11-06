@@ -899,6 +899,7 @@ class PlateDetectionService:
                 "detection_method": "triple",
                 "plate_image_path": plate_image_path,
                 "vehicle_image_path": vehicle_image_path,
+                "timestamp": timestamp,  # ✅ AGREGADO: timestamp para WebSocket
             }
 
         except Exception as e:

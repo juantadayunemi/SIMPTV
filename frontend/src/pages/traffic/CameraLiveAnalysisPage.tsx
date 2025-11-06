@@ -1,11 +1,11 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Camera, Play, Pause, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Camera, Play, Pause, Settings } from 'lucide-react';
 import { trafficService } from '../../services/traffic.service';
-import { CameraEntity } from '@traffic-analysis/shared';
+import { CameraEntity, VEHICLE_TYPES } from '@traffic-analysis/shared';
 import { getWebSocketService, cleanupWebSocketService } from '../../services/websocket.service';
 import { DetectionLogPanel } from '../../components/traffic/DetectionLogPanel';
 import BoundingBoxDrawer from '../../components/traffic/BoundingBoxDrawer';
-import type { RealtimeDetectionEvent } from '@traffic-analysis/shared';
+import type { RealtimeDetectionEvent, VehicleTypeKey } from '@traffic-analysis/shared';
 import { useEffect, useRef, useState } from 'react';
 
 interface CameraLiveData {
@@ -85,6 +85,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   const lastProcessedTimestamp = useRef<number>(0);
   const processedTrackIds = useRef<Set<number>>(new Set());
 
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState<boolean>(false);
 
   useEffect(() => {
     if (id) {
@@ -125,44 +127,18 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                 vehicle_type: det.vehicle_type || 'unknown',
                 bbox: det.bbox || [0, 0, 0, 0],
                 confidence: Number(det.confidence || 0),
-                speed_kmh: Number(det.speed_kmh || 0),  // ✅ VELOCIDAD
-                speed_category: det.speed_category || 'unknown'  // ✅ CATEGORÍA
+                speed_kmh: Number(det.speed_kmh || 0),
+                speed_category: det.speed_category || 'unknown'
               }));
 
               setDetectionBuffer(prev => ({
                 ...prev,
                 [timeKey]: formattedDetections
               }));
+
+              // 🚫 NO agregar a la lista aquí - se agregará cuando aparezca en el video
             }
           });
-
-
-
-           // ✅ Agregar detecciones al log (solo vehículos nuevos)
-          formattedDetections.forEach((det) => {
-            if (!processedTrackIds.current.has(det.track_id)) {
-              processedTrackIds.current.add(det.track_id);
-              
-              const detection: RealtimeDetectionEvent = {
-                timestamp: new Date(frameData.timestamp * 1000).toISOString(),
-                vehicleType: det.vehicle_type,
-                plateNumber: null,
-                confidence: det.confidence,
-                bbox: det.bbox,
-                frameNumber: frameData.frame_number || 0,
-                trackId: det.track_id.toString(),
-              };
-
-              setDetections((prev) => [...prev, detection]);
-              setLiveData((prev) => ({
-                ...prev,
-                vehicleCount: prev.vehicleCount + 1,
-                lastUpdate: new Date().toLocaleTimeString(),
-              }));
-            }
-          });
-        
-
 
           // Iniciar video cuando tengamos suficiente buffer
           if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
@@ -209,6 +185,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               ...prev,
               [timeKey]: formattedDetections
             }));
+
+            // 🚫 NO agregar a la lista aquí - se agregará cuando aparezca en el video
           }
 
           if (framesReceivedCount.current >= MIN_FRAMES_TO_START && !hasStartedVideo.current) {
@@ -231,38 +209,60 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         });
         unsubscribers.push(unsubFrameProcessed);
 
-        // Vehículo detectado (para el log)
-        const unsubVehicle = wsService.on('vehicle_detected', (data: any) => {
-          const detection: RealtimeDetectionEvent = {
-            timestamp: data.timestamp || new Date().toISOString(),
-            vehicleType: data.vehicle_type || 'desconocido',
-            plateNumber: data.plate_number || null,
-            confidence: data.confidence || 0,
-            bbox: data.bbox || null,
-            frameNumber: data.frame_number || 0,
-            trackId: data.track_id || '',
-          };
+        // 🚫 EVENTO ELIMINADO: vehicle_detected (ya procesamos detecciones desde frame_processed)
 
-          setDetections((prev) => {
-            const exists = prev.some(d => d.trackId === detection.trackId);
-            if (!exists) {
-              return [...prev, detection];
-            }
-            return prev;
-          });
-
+        // ✅ Evento: Progreso del análisis
+        const unsubProgress = wsService.on('progress_update', (data: any) => {
+          console.log('📊 Progreso:', data.progress + '%', data);
+          
+          // ✅ Iniciar video en el primer progress_update si no ha iniciado
+          if (!hasStartedVideo.current && videoRef.current) {
+            hasStartedVideo.current = true;
+            console.log('🎬 Iniciando video automáticamente con primer progress_update');
+            setIsBuffering(false);
+            setShowProcessedFrames(true);
+            
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = 0;
+                videoRef.current.play().catch(err => {
+                  console.error('❌ Error iniciando video:', err);
+                });
+              }
+            }, 100);
+          }
+          
+          // ✅ Actualizar vehicleCount desde el backend (total real detectado)
+          // El contador mostrará el total de vehículos guardados en BD (ej: 296)
+          // La lista solo muestra los visibles en el video
+          
           setLiveData((prev) => ({
             ...prev,
-            vehicleCount: prev.vehicleCount + 1,
+            vehicleCount: data.vehicles_detected || 0,
+            congestion: Math.min(100, Math.round(((data.vehicles_detected || 0) / 100) * 100)),
             lastUpdate: new Date().toLocaleTimeString(),
           }));
         });
-        unsubscribers.push(unsubVehicle);
-
-        const unsubProgress = wsService.on('progress_update', (data: any) => {
-          console.log('📊 Progreso:', data.percentage + '%');
-        });
         unsubscribers.push(unsubProgress);
+
+        // ✅ Evento: Notificación de denuncia (para campana)
+        const unsubNotificationBadge = wsService.on('notification_badge', (data: {
+          plate_number: string;
+          complaints_count: number;
+          timestamp: string;
+        }) => {
+          console.log(`🔔 [NOTIFICACIÓN] Denuncia detectada: ${data.plate_number} (${data.complaints_count} denuncias)`);
+          
+          // Disparar evento personalizado para el Header
+          window.dispatchEvent(new CustomEvent('newNotification', {
+            detail: {
+              plate: data.plate_number,
+              count: data.complaints_count,
+              timestamp: data.timestamp
+            }
+          }));
+        });
+        unsubscribers.push(unsubNotificationBadge);
 
         const unsubComplete = wsService.on('processing_complete', (data: any) => {
           console.log('✅ Análisis completado:', data);
@@ -363,6 +363,46 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         const detections = getDetectionsForTime(time);
         setCurrentFrameDetections(detections);
         
+        // 🆕 AGREGAR VEHÍCULOS A LA LISTA CUANDO APARECEN EN EL VIDEO
+        detections.forEach((det) => {
+          if (!processedTrackIds.current.has(det.track_id)) {
+            processedTrackIds.current.add(det.track_id);
+            
+            // Convertir vehicle_type a VehicleTypeKey válido
+            const vehicleTypeMap: Record<string, VehicleTypeKey> = {
+              'car': VEHICLE_TYPES.CAR,
+              'truck': VEHICLE_TYPES.TRUCK,
+              'motorcycle': VEHICLE_TYPES.MOTORCYCLE,
+              'bus': VEHICLE_TYPES.BUS,
+              'bicycle': VEHICLE_TYPES.BICYCLE,
+            };
+            
+            const vehicleType = vehicleTypeMap[det.vehicle_type.toLowerCase()] || VEHICLE_TYPES.CAR;
+            
+            const detection: RealtimeDetectionEvent = {
+              timestamp: new Date(),
+              vehicleType: vehicleType,
+              plateNumber: undefined,
+              confidence: det.confidence,
+              bbox: {
+                x: det.bbox[0],
+                y: det.bbox[1],
+                width: det.bbox[2],
+                height: det.bbox[3],
+              },
+              frameNumber: 0,
+              trackId: det.track_id.toString(),
+            };
+
+            setDetections((prev) => [...prev, detection]);
+            
+            // ✅ NO incrementar vehicleCount aquí - se actualiza desde progress_update
+            // El contador viene del backend (total real en BD)
+            
+            console.log(`🚗 Nuevo vehículo en video: ${det.vehicle_type} (track_id: ${det.track_id}) @ ${time.toFixed(2)}s`);
+          }
+        });
+        
         // ✅ Calcular velocidad promedio
         if (detections.length > 0) {
           const speeds = detections
@@ -445,6 +485,14 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     }
   };
 
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackRate(speed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+    setShowSpeedMenu(false);
+  };
+
   const handlePause = async () => {
     if (!analysisId) return;
 
@@ -525,8 +573,10 @@ export const CameraLiveAnalysisPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="h-[85vh] bg-gray-50 flex flex-col overflow-hidden">
+      
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -553,13 +603,14 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-2">
-        <div className="w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-gray-900 rounded-lg overflow-hidden shadow-lg sticky top-2 z-10">
-                <div className="relative w-full aspect-video min-h-[70vh]">
-                  {videoUrl ? (
+      {/* Main content - 2 columnas */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-3">
+          {/* Columna izquierda: Video + Controles */}
+          <div className="lg:col-span-2 flex flex-col">
+            {/* Video container */}
+            <div className="flex-1 bg-gray-900 relative overflow-hidden">
+              {videoUrl ? (
                     <>
                       <video
                                 
@@ -574,6 +625,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                         onLoadedMetadata={() => {
                           if (videoRef.current) {
                             setVideoDuration(videoRef.current.duration);
+                            videoRef.current.playbackRate = playbackRate;
                           }
                         }}
                         onTimeUpdate={(e) => {
@@ -692,92 +744,113 @@ export const CameraLiveAnalysisPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={handleReconnect}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                  Reconectar
-                </button>
-                <button
-                  onClick={handlePause}
-                  disabled={!isPlaying || isBuffering}
-                  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-                >
-                  <Pause className="w-5 h-5" />
-                  Pausar
-                </button>
-                <button
-                  onClick={handlePlay}
-                  disabled={isPlaying || isBuffering}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors shadow-md"
-                >
-                  <Play className="w-5 h-5" />
-                  {isBuffering ? 'Buffering...' : 'Iniciar'}
-                </button>
-              </div>
             </div>
 
-            <div className="lg:col-span-1">
-              <div className="bg-gray-900 text-white rounded-lg p-6 shadow-lg sticky top-2">
-                <div className="grid grid-cols-1 gap-3 mb-4 pb-4 border-b border-gray-700">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-xs">UBICACIÓN</span>
-                    <span className="font-mono text-xs text-right">{location?.description || 'INSIV-001'}</span>
+            {/* Controles - Footer fijo */}
+            <div className="bg-gray-800 px-4 py-3 flex justify-center gap-3 flex-shrink-0">
+              {/* Control de velocidad */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                  className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  {playbackRate}x
+                </button>
+                
+                {showSpeedMenu && (
+                  <div className="absolute bottom-full mb-2 left-0 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-2 w-32">
+                    {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => handleSpeedChange(speed)}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
+                          playbackRate === speed ? 'bg-blue-600 text-white' : 'text-gray-300'
+                        }`}
+                      >
+                        {speed === 1 ? 'Normal' : `${speed}x`}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-xs">VEHÍCULOS</span>
-                    <span className="font-mono text-xl font-bold text-green-400">{liveData.vehicleCount}</span>
-                  </div>
-                  {/* ✅ NUEVO: Mostrar velocidad promedio */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-xs">VELOCIDAD AVG</span>
-                    <span className="font-mono text-lg font-bold text-blue-400">{liveData.avgSpeed} km/h</span>
-                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handlePause}
+                disabled={!isPlaying || isBuffering}
+                className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                <Pause className="w-4 h-4" />
+                Pausar
+              </button>
+              <button
+                onClick={handlePlay}
+                disabled={isPlaying || isBuffering}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                <Play className="w-4 h-4" />
+                {isBuffering ? 'Buffering...' : 'Iniciar'}
+              </button>
+            </div>
+          </div>
+
+          {/* Columna derecha: Panel de detecciones */}
+          <div className="lg:col-span-1 flex flex-col bg-gray-900 text-white overflow-hidden">
+            {/* Stats header */}
+            <div className="p-4 border-b border-gray-700 flex-shrink-0">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-xs">UBICACIÓN</span>
+                  <span className="font-mono text-xs text-right">{location?.description || 'INSIV-001'}</span>
                 </div>
-
-                {showProcessedFrames && videoDuration > 0 && (
-                  <div className="mb-4 p-3 bg-blue-900 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-blue-200">▶️ Reproducción</span>
-                      <span className="text-xs font-mono text-blue-200">
-                        {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
-                      </span>
-                    </div>
-                    <div className="w-full bg-blue-950 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${videoProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
-                  <div className="mb-4 p-3 bg-purple-900 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-purple-200">⏳ Buffering</span>
-                      <span className="text-xs font-mono text-purple-200">
-                        {framesReceivedCount.current}/{MIN_FRAMES_TO_START}
-                      </span>
-                    </div>
-                    <div className="w-full bg-purple-950 rounded-full h-2">
-                      <div
-                        className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${bufferingProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="h-[calc(100vh-300px)] overflow-y-auto">
-                  <DetectionLogPanel detections={[...detections].reverse()} />
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-xs">VEHÍCULOS</span>
+                  <span className="font-mono text-xl font-bold text-green-400">{liveData.vehicleCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-xs">VELOCIDAD AVG</span>
+                  <span className="font-mono text-lg font-bold text-blue-400">{liveData.avgSpeed} km/h</span>
                 </div>
               </div>
+
+              {showProcessedFrames && videoDuration > 0 && (
+                <div className="mt-4 p-3 bg-blue-900 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-blue-200">▶️ Reproducción</span>
+                    <span className="text-xs font-mono text-blue-200">
+                      {Math.floor(currentTime)}s / {Math.floor(videoDuration)}s
+                    </span>
+                  </div>
+                  <div className="w-full bg-blue-950 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${videoProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {isBuffering && framesReceivedCount.current <= MIN_FRAMES_TO_START && (
+                <div className="mt-4 p-3 bg-purple-900 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-purple-200">⏳ Buffering</span>
+                    <span className="text-xs font-mono text-purple-200">
+                      {framesReceivedCount.current}/{MIN_FRAMES_TO_START}
+                    </span>
+                  </div>
+                  <div className="w-full bg-purple-950 rounded-full h-2">
+                    <div
+                      className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${bufferingProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lista de detecciones con scroll */}
+            <div className="flex-1 overflow-y-auto">
+              <DetectionLogPanel detections={[...detections].reverse()} />
             </div>
           </div>
         </div>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Sonidos - TrafiSmart</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .sound-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .sound-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.stop {
+            background: #f44336;
+        }
+        button.stop:hover {
+            background: #da190b;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 Generador de Sonidos TrafiSmart</h1>
+        
+        <div class="info">
+            <strong>Instrucciones:</strong> Usa los botones para probar diferentes tonos. 
+            Una vez que encuentres el que te guste, puedes grabar tu pantalla con audio o 
+            usar software de captura de audio para guardar el sonido como MP3.
+        </div>
+
+        <!-- DEFAULT -->
+        <div class="sound-section" style="border-color: #4CAF50;">
+            <h3>🔔 DEFAULT (NONE, LOW)</h3>
+            <p>Notificación suave - 1 beep corto</p>
+            <div class="controls">
+                <button onclick="playDefault()">▶️ Reproducir</button>
+                <button class="stop" onclick="stopAll()">⏹️ Detener</button>
+            </div>
+        </div>
+
+        <!-- ALERT -->
+        <div class="sound-section" style="border-color: #FFC107;">
+            <h3>⚠️ ALERT (MEDIUM)</h3>
+            <p>Atención moderada - 2 beeps</p>
+            <div class="controls">
+                <button onclick="playAlert()">▶️ Reproducir</button>
+                <button class="stop" onclick="stopAll()">⏹️ Detener</button>
+            </div>
+        </div>
+
+        <!-- URGENT -->
+        <div class="sound-section" style="border-color: #FF5722;">
+            <h3>🔴 URGENT (HIGH)</h3>
+            <p>Urgente - 3 beeps rápidos</p>
+            <div class="controls">
+                <button onclick="playUrgent()">▶️ Reproducir</button>
+                <button class="stop" onclick="stopAll()">⏹️ Detener</button>
+            </div>
+        </div>
+
+        <!-- ALARM -->
+        <div class="sound-section" style="border-color: #C62828;">
+            <h3>🆘 ALARM (CRITICAL)</h3>
+            <p>Alarma crítica - Sirena continua</p>
+            <div class="controls">
+                <button onclick="playAlarm()">▶️ Reproducir</button>
+                <button class="stop" onclick="stopAll()">⏹️ Detener</button>
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>Nota:</strong> Para usar estos sonidos en producción:
+            <ol>
+                <li>Descarga sonidos profesionales de sitios como Freesound.org o Zapsplat.com</li>
+                <li>O graba estos tonos usando software de captura de audio (ej: Audacity)</li>
+                <li>Convierte a MP3 y guárdalos en esta carpeta con los nombres correctos</li>
+                <li>Archivos necesarios: default.mp3, alert.mp3, urgent.mp3, alarm.mp3</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let oscillators = [];
+        let gainNode;
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        function stopAll() {
+            oscillators.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch(e) {}
+            });
+            oscillators = [];
+            if (gainNode) {
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            }
+        }
+
+        function createBeep(frequency, duration, delay = 0) {
+            const ctx = initAudio();
+            
+            setTimeout(() => {
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+                
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+                
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + duration);
+                
+                oscillators.push(oscillator);
+            }, delay);
+        }
+
+        function playDefault() {
+            stopAll();
+            // Un beep suave
+            createBeep(800, 0.2);
+        }
+
+        function playAlert() {
+            stopAll();
+            // Dos beeps medianos
+            createBeep(1000, 0.3, 0);
+            createBeep(1000, 0.3, 400);
+        }
+
+        function playUrgent() {
+            stopAll();
+            // Tres beeps rápidos
+            createBeep(1200, 0.25, 0);
+            createBeep(1200, 0.25, 300);
+            createBeep(1200, 0.25, 600);
+        }
+
+        function playAlarm() {
+            stopAll();
+            const ctx = initAudio();
+            
+            // Sirena alternante
+            for (let i = 0; i < 5; i++) {
+                createBeep(800, 0.3, i * 400);
+                createBeep(1200, 0.3, i * 400 + 200);
+            }
+        }
+
+        // Información sobre el AudioContext
+        console.log('🔊 Generador de sonidos cargado. AudioContext disponible:', 
+                    'AudioContext' in window || 'webkitAudioContext' in window);
+    </script>
+</body>
+</html>

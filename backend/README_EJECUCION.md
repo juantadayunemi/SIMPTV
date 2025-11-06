@@ -28,9 +28,14 @@ pip install -r requirements.txt
 ```cmd
 # PRERREQUISITOS: Redis debe estar corriendo
 # Desde el directorio backend (con venv activado)
-celery -A config purge
-celery -A config worker --loglevel=info --pool=solo
-celery -A config worker --loglevel=info
+
+# OPCIÓN RECOMENDADA: Pool eventlet (100 green threads para tareas concurrentes)
+celery -A config worker --pool=eventlet --concurrency=100 --loglevel=info
+
+# Otras opciones:
+# celery -A config purge  # Limpiar cola
+# celery -A config worker --pool=solo --loglevel=info  # Single-threaded (solo para debug)
+# celery -A config beat --loglevel=info  # Para tareas programadas
 ```
 
 ### Paso 4: Iniciar Django Server (en terminal separado)

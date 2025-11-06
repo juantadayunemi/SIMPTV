@@ -238,6 +238,27 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
         }
       }));
     });
+    
+    // 🔔 Evento: Notificación de denuncia (hacer parpadear campana)
+    ws.on('notification_badge', (data: {
+      plate_number: string;
+      complaints_count: number;
+      timestamp: string;
+    }) => {
+      console.log(`🔔 [NOTIFICACIÓN] Denuncia detectada: ${data.plate_number} (${data.complaints_count} denuncias)`);
+      
+      // Disparar evento personalizado para el Header
+      window.dispatchEvent(new CustomEvent('newNotification', {
+        detail: {
+          plate: data.plate_number,
+          count: data.complaints_count,
+          timestamp: data.timestamp
+        }
+      }));
+      
+      // Opcional: Mostrar toast o alerta visual
+      console.log(`🚨 ALERTA: Vehículo con ${data.complaints_count} denuncia(s) detectado!`);
+    });
 
     // 🔥 Evento CRÍTICO: Frame procesado con buffer
     ws.on('frame_processed', (data: {

@@ -6,43 +6,45 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [notificationCount, setNotificationCount] = useState(0);
+  const [isBlinking, setIsBlinking] = useState(false);
 
   useEffect(() => {
-    // Listen for new notifications from localStorage or state management
-    const handleNotificationUpdate = () => {
-      const unreadCount = getUnreadNotificationsCount();
-      setNotificationCount(unreadCount);
+    // 🔔 Manejar nuevas notificaciones en tiempo real desde WebSocket
+    const handleNewNotification = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('🔔 Header: Nueva notificación WebSocket recibida', customEvent.detail);
+      
+      // Incrementar contador
+      setNotificationCount(prev => {
+        const newCount = prev + 1;
+        console.log(`� Contador de notificaciones: ${prev} → ${newCount}`);
+        return newCount;
+      });
+      
+      // Activar parpadeo
+      setIsBlinking(true);
+      
+      // Detener parpadeo después de 5 segundos
+      setTimeout(() => {
+        setIsBlinking(false);
+      }, 5000);
     };
 
-    // Initial count
-    handleNotificationUpdate();
-
-    // Listen for storage events (notifications from other tabs)
-    window.addEventListener('storage', handleNotificationUpdate);
-    
-    // Listen for custom notification events
-    window.addEventListener('newNotification', handleNotificationUpdate);
+    // Escuchar solo eventos de nuevas notificaciones WebSocket
+    window.addEventListener('newNotification', handleNewNotification);
 
     return () => {
-      window.removeEventListener('storage', handleNotificationUpdate);
-      window.removeEventListener('newNotification', handleNotificationUpdate);
+      window.removeEventListener('newNotification', handleNewNotification);
     };
   }, []);
 
-  const getUnreadNotificationsCount = (): number => {
-    try {
-      const notifications = localStorage.getItem('notifications');
-      if (notifications) {
-        const parsed = JSON.parse(notifications);
-        return parsed.filter((n: any) => !n.read).length;
-      }
-    } catch (error) {
-      console.error('Error getting notification count:', error);
-    }
-    return 0;
-  };
-
   const handleNotificationClick = () => {
+    // 🔄 Resetear contador al hacer click
+    console.log('🔔 Usuario hizo click en campana, reseteando contador');
+    setNotificationCount(0);
+    setIsBlinking(false);
+    
+    // Navegar a la página de notificaciones
     navigate('/notifications');
   };
 
@@ -138,12 +140,12 @@ export const Header: React.FC = () => {
               >
                 {notificationCount > 0 ? (
                   <div className="relative">
-                    <div className="h-10 w-10 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-white cursor-pointer hover:from-red-600 hover:to-red-700 transition-all hover:scale-110">
+                    <div className={`h-10 w-10 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-white cursor-pointer hover:from-red-600 hover:to-red-700 transition-all hover:scale-110 ${isBlinking ? 'animate-bounce' : ''}`}>
                       <span className="relative z-10">
                         {notificationCount > 99 ? '99+' : notificationCount}
                       </span>
-                      {/* Pulse ring effect */}
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+                      {/* Pulse ring effect - más intenso cuando parpadea */}
+                      <span className={`absolute inline-flex h-full w-full rounded-full bg-red-400 ${isBlinking ? 'opacity-100 animate-ping' : 'opacity-75 animate-ping'}`}></span>
                     </div>
                     {/* Tooltip */}
                     <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
@@ -154,12 +156,15 @@ export const Header: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white cursor-pointer hover:bg-green-600 transition-all hover:scale-110 relative">
-                    <Bell className="w-5 h-5 text-white" />
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white cursor-pointer transition-all hover:scale-110 relative ${isBlinking ? 'animate-bounce bg-yellow-500' : 'bg-gray-400 hover:bg-gray-500'}`}>
+                    <Bell className={`w-5 h-5 text-white ${isBlinking ? 'animate-pulse' : ''}`} />
+                    {isBlinking && (
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75 animate-ping"></span>
+                    )}
                     {/* Tooltip */}
                     <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
                       <div className="bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
-                        Sin notificaciones
+                        {isBlinking ? 'Nueva notificación' : 'Sin notificaciones'}
                         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>

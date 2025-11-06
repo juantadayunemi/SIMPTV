@@ -1,5 +1,6 @@
 import React from 'react';
 import { FCMSettings } from '../../components/notifications/FCMSettings';
+import { NotificationHistory } from '../../components/notifications/NotificationHistory';
 
 export const NotificationsPage: React.FC = () => {
   return (
@@ -9,7 +10,11 @@ export const NotificationsPage: React.FC = () => {
         <p className="text-gray-600">Gestiona las notificaciones push y alertas del sistema</p>
       </div>
 
+      {/* Configuración FCM */}
       <FCMSettings />
+
+      {/* Historial de notificaciones */}
+      <NotificationHistory />
     </div>
   );
 };

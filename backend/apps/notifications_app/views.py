@@ -88,9 +88,29 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationLogSerializer
+    # pagination_class = None  # Usar paginación por defecto (settings.py)
 
     def get_queryset(self):
-        return NotificationLog.objects.filter(user=self.request.user)
+        queryset = NotificationLog.objects.filter(user=self.request.user).order_by(
+            "-sent_at"
+        )
+
+        # Filtro por búsqueda de placa
+        search = self.request.query_params.get("search", None)
+        if search:
+            queryset = queryset.filter(data__plate_number__icontains=search)
+
+        # Filtro por severidad
+        severity = self.request.query_params.get("severity", None)
+        if severity:
+            queryset = queryset.filter(data__severity=severity)
+
+        # Filtro por tipo de notificación
+        notification_type = self.request.query_params.get("type", None)
+        if notification_type:
+            queryset = queryset.filter(notification_type=notification_type)
+
+        return queryset
 
     @action(detail=False, methods=["post"])
     def send_test(self, request):

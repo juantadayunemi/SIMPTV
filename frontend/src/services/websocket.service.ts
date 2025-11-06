@@ -9,7 +9,9 @@ export type WebSocketMessageType =
   | 'processing_complete'
   | 'processing_error'
   | 'log_message'
-  | 'frame_processed';
+  | 'frame_processed'
+  | 'notification_badge'
+  | 'complaint_alert';
 
 export interface WebSocketMessage {
   type: WebSocketMessageType;

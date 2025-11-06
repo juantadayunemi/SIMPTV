@@ -50,7 +50,7 @@ def convert_to_relative_media_path(absolute_path):
     return absolute_path
 
 
-def save_detected_plate_to_db(plate_data, analysis, vehicle):
+def save_detected_plate_to_db(plate_data, analysis, vehicle=None):
     """
     Guarda una placa detectada en la base de datos
 
@@ -64,18 +64,19 @@ def save_detected_plate_to_db(plate_data, analysis, vehicle):
             - vehicle_image_path: Ruta de imagen de vehículo completo
             - timestamp (opcional): Timestamp de detección
         analysis: Instancia de TrafficAnalysis
-        vehicle: Instancia de Vehicle (debe estar guardada en DB)
+        vehicle: Instancia de Vehicle (OPCIONAL - puede ser None para guardar inmediatamente)
 
     Returns:
         DetectedPlate: Instancia guardada o None si falla
     """
-    if not plate_data or not vehicle:
-        logger.warning("⚠️ plate_data o vehicle es None, saltando guardado")
+    if not plate_data:
+        logger.warning("⚠️ plate_data es None, saltando guardado")
         return None
 
-    # Verificar que vehicle tiene ID (está guardado en DB)
-    if not vehicle.id:
-        logger.error(f"❌ Vehicle no tiene ID, no se puede guardar placa: {vehicle}")
+    # ⚠️ CAMBIO: vehicle puede ser None (se actualiza después)
+    # Verificar que vehicle tiene ID si se proporciona
+    if vehicle and not vehicle.id:
+        logger.error(f"❌ Vehicle proporcionado no tiene ID: {vehicle}")
         return None
 
     # Verificar que la placa es válida (no es error/no detectada)
@@ -117,7 +118,7 @@ def save_detected_plate_to_db(plate_data, analysis, vehicle):
             )
 
             logger.info(
-                f"✅ DetectedPlate guardada: ID={detected_plate.id}, Placa={plate_number}, Vehicle={vehicle.id}"
+                f"✅ DetectedPlate guardada: ID={detected_plate.id}, Placa={plate_number}, Vehicle={vehicle.id if vehicle else 'NULL (temporal)'}"
             )
 
             # Guardar imágenes asociadas
@@ -175,4 +176,119 @@ def save_detected_plate_to_db(plate_data, analysis, vehicle):
 
     except Exception as e:
         logger.error(f"❌ Error guardando DetectedPlate en DB: {e}", exc_info=True)
+        return None
+
+
+def save_complaint_detection_to_db(detected_plate, api_response_data):
+    """
+    Guarda información de denuncia desde la API gubernamental en la base de datos.
+
+    Args:
+        detected_plate: Instancia de DetectedPlate (debe estar guardada en DB)
+        api_response_data: Dict con datos de la API gubernamental:
+            {
+                'placa': 'ABC1234',
+                'propietario': {'nombre': '...', 'cedula': '...'},
+                'ubicacion': {'direccion': '...'},
+                'expediente': '...',
+                'denuncias': ['...', '...']
+            }
+
+    Returns:
+        VehicleComplaintDetection: Instancia guardada o None si falla
+    """
+    from .models import VehicleComplaintDetection, VehicleComplaint
+
+    if not detected_plate or not api_response_data:
+        logger.warning(
+            "⚠️ detected_plate o api_response_data es None, saltando guardado de denuncia"
+        )
+        return None
+
+    # Verificar que detected_plate tiene ID
+    if not detected_plate.id:
+        logger.error(f"❌ DetectedPlate no tiene ID, no se puede guardar denuncia")
+        return None
+
+    try:
+        with transaction.atomic():
+            # Extraer datos del propietario
+            propietario = api_response_data.get("propietario", {})
+            owner_name = propietario.get("nombre", "DESCONOCIDO")[:200]
+            owner_id_number = propietario.get("cedula", "N/A")[:32]
+
+            # Extraer ubicación
+            ubicacion = api_response_data.get("ubicacion", {})
+            owner_address = ubicacion.get("direccion", "NO DISPONIBLE")[:400]
+
+            # Extraer expediente
+            case_number = api_response_data.get("expediente", "N/A")[:64]
+
+            # Contar denuncias
+            denuncias = api_response_data.get("denuncias", [])
+            total_complaints = len(denuncias)
+
+            # Determinar severidad basada en cantidad de denuncias
+            if total_complaints == 0:
+                severity = "NONE"
+            elif total_complaints == 1:
+                severity = "LOW"
+            elif total_complaints <= 3:
+                severity = "MEDIUM"
+            elif total_complaints <= 5:
+                severity = "HIGH"
+            else:
+                severity = "CRITICAL"
+
+            # Crear VehicleComplaintDetection (header/resumen)
+            complaint_detection = VehicleComplaintDetection.objects.create(
+                detectedPlateId=detected_plate,
+                ownerName=owner_name,
+                ownerIdNumber=owner_id_number,
+                ownerAddress=owner_address,
+                caseNumber=case_number,
+                totalComplaintsCount=total_complaints,
+                severity=severity,
+                wasNotified=False,  # Aún no se ha notificado
+                notes=f"Detectado automáticamente desde API gubernamental",
+            )
+
+            logger.info(
+                f"✅ VehicleComplaintDetection guardada: ID={complaint_detection.id}, "
+                f"Placa={api_response_data.get('placa')}, Denuncias={total_complaints}, "
+                f"Severidad={severity}"
+            )
+
+            # Crear registros individuales de denuncias
+            complaints_created = 0
+            for idx, complaint_text in enumerate(denuncias, start=1):
+                if complaint_text and len(complaint_text.strip()) > 0:
+                    VehicleComplaint.objects.create(
+                        detectionId=complaint_detection,
+                        complaintText=complaint_text[
+                            :2000
+                        ],  # TextField, pero limitamos
+                        sequenceNumber=idx,
+                        severity=severity,  # Heredar severidad del detection
+                    )
+                    complaints_created += 1
+
+            logger.info(
+                f"✅ {complaints_created} denuncias individuales guardadas para detección {complaint_detection.id}"
+            )
+
+            # Actualizar DetectedPlate para marcar que tiene denuncias
+            detected_plate.hasComplaints = True
+            detected_plate.wasCheckedForComplaints = True
+            detected_plate.checkedAt = timezone.now()
+            detected_plate.save(
+                update_fields=["hasComplaints", "wasCheckedForComplaints", "checkedAt"]
+            )
+
+            return complaint_detection
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error guardando VehicleComplaintDetection en DB: {e}", exc_info=True
+        )
         return None

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔔 Diagnóstico de Notificaciones</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status-box {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        h1 { color: #1e293b; }
+        h2 { color: #475569; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>🔔 Diagnóstico de Notificaciones Push</h1>
+
+    <div class="status-box">
+        <h2>📋 Estado del Sistema</h2>
+        <div id="status"></div>
+    </div>
+
+    <div class="status-box">
+        <h2>🛠️ Acciones</h2>
+        <button onclick="checkPermissions()">1️⃣ Verificar Permisos</button>
+        <button onclick="requestPermissions()">2️⃣ Solicitar Permisos</button>
+        <button onclick="unregisterAll()">3️⃣ Limpiar Service Workers</button>
+        <button onclick="registerSW()">4️⃣ Registrar Service Worker</button>
+        <button onclick="testNotification()">5️⃣ Probar Notificación Local</button>
+    </div>
+
+    <div class="status-box">
+        <h2>📝 Log de Eventos</h2>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        const statusDiv = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const colors = {
+                info: '#60a5fa',
+                success: '#22c55e',
+                error: '#ef4444',
+                warning: '#f59e0b'
+            };
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.color = colors[type];
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function updateStatus() {
+            let html = '';
+            
+            // Verificar soporte
+            const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+            html += `<p><strong>Soporte del Navegador:</strong> <span class="${supported ? 'success' : 'error'}">${supported ? '✅ Compatible' : '❌ No Compatible'}</span></p>`;
+            
+            // Verificar permisos
+            const permission = Notification.permission;
+            const permClass = permission === 'granted' ? 'success' : permission === 'denied' ? 'error' : 'warning';
+            html += `<p><strong>Permisos:</strong> <span class="${permClass}">${permission === 'granted' ? '✅' : permission === 'denied' ? '❌' : '⚠️'} ${permission}</span></p>`;
+            
+            // Verificar Service Workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                html += `<p><strong>Service Workers:</strong> ${registrations.length} registrado(s)</p>`;
+                registrations.forEach((reg, i) => {
+                    html += `<p style="margin-left: 20px;">• SW ${i+1}: ${reg.active ? '✅ Activo' : '⚠️ Inactivo'} - ${reg.scope}</p>`;
+                });
+            }
+            
+            statusDiv.innerHTML = html;
+        }
+
+        async function checkPermissions() {
+            log('Verificando permisos...', 'info');
+            const permission = Notification.permission;
+            log(`Permisos actuales: ${permission}`, permission === 'granted' ? 'success' : 'warning');
+            
+            if (permission === 'denied') {
+                log('⚠️ PERMISOS DENEGADOS - Debes habilitarlos manualmente en la configuración del navegador', 'error');
+                alert('Los permisos de notificación están BLOQUEADOS.\n\n' +
+                      '1. Haz clic en el candado 🔒 en la barra de direcciones\n' +
+                      '2. Busca "Notificaciones"\n' +
+                      '3. Selecciona "Permitir"\n' +
+                      '4. Recarga la página');
+            }
+            
+            await updateStatus();
+        }
+
+        async function requestPermissions() {
+            log('Solicitando permisos de notificación...', 'info');
+            
+            if (Notification.permission === 'denied') {
+                log('⚠️ Los permisos fueron denegados previamente. Debes habilitarlos manualmente.', 'error');
+                alert('Los permisos están bloqueados. Ver la consola para instrucciones.');
+                return;
+            }
+            
+            try {
+                const permission = await Notification.requestPermission();
+                log(`Resultado: ${permission}`, permission === 'granted' ? 'success' : 'error');
+                
+                if (permission === 'granted') {
+                    log('✅ ¡Permisos concedidos!', 'success');
+                } else {
+                    log('❌ Permisos denegados', 'error');
+                }
+                
+                await updateStatus();
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function unregisterAll() {
+            log('Eliminando todos los Service Workers...', 'info');
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                log(`Encontrados ${registrations.length} Service Worker(s)`, 'info');
+                
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    log(`✅ Service Worker eliminado: ${registration.scope}`, 'success');
+                }
+                
+                log('✅ Todos los Service Workers han sido eliminados', 'success');
+                log('⚠️ IMPORTANTE: Recarga la página AHORA (Ctrl + Shift + R)', 'warning');
+                await updateStatus();
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function registerSW() {
+            log('Registrando Service Worker para FCM...', 'info');
+            
+            try {
+                if (!('serviceWorker' in navigator)) {
+                    log('❌ Service Workers no soportados', 'error');
+                    return;
+                }
+                
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                log(`✅ Service Worker registrado: ${registration.scope}`, 'success');
+                
+                await registration.update();
+                log('✅ Service Worker actualizado', 'success');
+                
+                log('⚠️ Espera 2 segundos y verifica el estado...', 'warning');
+                setTimeout(updateStatus, 2000);
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNotification() {
+            log('Probando notificación local...', 'info');
+            
+            if (Notification.permission !== 'granted') {
+                log('❌ Primero debes conceder permisos de notificación', 'error');
+                return;
+            }
+            
+            try {
+                const notification = new Notification('🧪 Prueba de Notificación', {
+                    body: 'Si ves esto, las notificaciones funcionan correctamente',
+                    icon: '/icon-192x192.png',
+                    badge: '/badge-72x72.png',
+                    tag: 'test-notification',
+                    requireInteraction: true,
+                    data: { test: true }
+                });
+                
+                notification.onclick = () => {
+                    log('✅ Usuario hizo clic en la notificación', 'success');
+                    notification.close();
+                };
+                
+                log('✅ Notificación enviada - ¿La ves?', 'success');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Inicializar
+        log('🚀 Página de diagnóstico cargada', 'success');
+        updateStatus();
+    </script>
+</body>
+</html>
