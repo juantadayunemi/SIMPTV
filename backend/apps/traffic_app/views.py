@@ -397,6 +397,64 @@ class TrafficAnalysisViewSet(viewsets.ModelViewSet):
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=["post"])
+    def clone(self, request, pk=None):
+        """
+        Clonar/Duplicar un análisis existente
+        Crea un nuevo TrafficAnalysis con los mismos datos (camera, location, video)
+        pero con nuevo ID y fecha de creación
+        Útil para hacer tracking de múltiples ejecuciones del mismo video
+        """
+        original_analysis = self.get_object()
+
+        try:
+            logger.info(f"🔄 Clonando análisis ID: {original_analysis.id}")
+
+            # Crear nuevo análisis con los mismos datos
+            new_analysis = TrafficAnalysis.objects.create(
+                cameraId=original_analysis.cameraId,
+                locationId=original_analysis.locationId,
+                userId=original_analysis.userId,
+                videoPath=original_analysis.videoPath,  # Mismo video
+                weatherConditions=original_analysis.weatherConditions,
+                startedAt=timezone.now(),  # Nueva fecha
+                status="PENDING",  # Siempre empieza en PENDING
+                totalVehicleCount=0,  # Resetear contadores
+                densityLevel="LOW",
+                carCount=0,
+                truckCount=0,
+                motorcycleCount=0,
+                busCount=0,
+                bicycleCount=0,
+                otherCount=0,
+                avgSpeed=0,
+                duration=0,
+            )
+
+            logger.info(
+                f"✅ Nuevo análisis clonado: ID={new_analysis.id} (original={original_analysis.id})"
+            )
+
+            serializer = TrafficAnalysisSerializer(new_analysis)
+            return Response(
+                {
+                    "message": "Analysis cloned successfully",
+                    "original_analysis_id": original_analysis.id,
+                    "new_analysis_id": new_analysis.id,
+                    "analysis": serializer.data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Error cloning analysis: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=True, methods=["get"])
     def status_detail(self, request, pk=None):
         """

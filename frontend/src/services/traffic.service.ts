@@ -284,6 +284,17 @@ async uploadVideoInChunks(
     return response.data;
   }
 
+  // Clone/Duplicate analysis (crear nuevo análisis con los mismos datos)
+  async cloneAnalysis(analysisId: number): Promise<{
+    message: string;
+    original_analysis_id: number;
+    new_analysis_id: number;
+    analysis: TrafficAnalysis;
+  }> {
+    const response = await api.post(`/api/traffic/analysis/${analysisId}/clone/`);
+    return response.data;
+  }
+
    // Pause analysis (pausar procesamiento)
   async pauseAnalysis(analysisId: number): Promise<{
     message: string;

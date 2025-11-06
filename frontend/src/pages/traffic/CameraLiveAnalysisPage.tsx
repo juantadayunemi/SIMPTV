@@ -238,7 +238,8 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           
           setLiveData((prev) => ({
             ...prev,
-            vehicleCount: data.vehicles_detected || 0,
+            // ✅ NO actualizar vehicleCount aquí - se cuenta localmente desde la lista
+            // vehicleCount: data.vehicles_detected || 0,
             congestion: Math.min(100, Math.round(((data.vehicles_detected || 0) / 100) * 100)),
             lastUpdate: new Date().toLocaleTimeString(),
           }));
@@ -292,7 +293,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     };
   }, [analysisId]);
 
-  // ✅ Sincronización mejorada con interpolación
+  // ✅ Sincronización mejorada con interpolación y persistencia
   const getDetectionsForTime = (currentTime: number): Detection[] => {
     if (!detectionBuffer || Object.keys(detectionBuffer).length === 0) return [];
 
@@ -300,14 +301,28 @@ export const CameraLiveAnalysisPage: React.FC = () => {
       .map(Number)
       .sort((a, b) => a - b);
 
+    // Buscar el timestamp más cercano (anterior o igual)
     const pastTimestamps = timestamps.filter(t => t <= currentTime);
-    if (pastTimestamps.length === 0) return [];
+    if (pastTimestamps.length === 0) {
+      // Si no hay timestamps pasados, buscar el siguiente más cercano
+      const futureTimestamps = timestamps.filter(t => t > currentTime);
+      if (futureTimestamps.length > 0) {
+        const nextTimestamp = futureTimestamps[0];
+        const timeDifference = nextTimestamp - currentTime;
+        // Si el siguiente frame está muy cerca (< 1s), mostrarlo
+        if (timeDifference < 1.0) {
+          return detectionBuffer[nextTimestamp];
+        }
+      }
+      return [];
+    }
 
     const lastValidTimestamp = pastTimestamps[pastTimestamps.length - 1];
     const timeDifference = currentTime - lastValidTimestamp;
     
-    // ✅ Aumentar tolerancia a 0.5s
-    if (timeDifference > 0.5) return [];
+    // Aumentar tolerancia a 2s para velocidades lentas (0.25x, 0.5x)
+    // Esto permite que las detecciones persistan más tiempo en pantalla
+    if (timeDifference > 1.0) return [];
 
     return detectionBuffer[lastValidTimestamp];
   };
@@ -396,8 +411,12 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
             setDetections((prev) => [...prev, detection]);
             
-            // ✅ NO incrementar vehicleCount aquí - se actualiza desde progress_update
-            // El contador viene del backend (total real en BD)
+            // ✅ Actualizar contador local con la cantidad de vehículos en la lista
+            setLiveData((prev) => ({
+              ...prev,
+              vehicleCount: processedTrackIds.current.size,
+              lastUpdate: new Date().toLocaleTimeString(),
+            }));
             
             console.log(`🚗 Nuevo vehículo en video: ${det.vehicle_type} (track_id: ${det.track_id}) @ ${time.toFixed(2)}s`);
           }
@@ -516,11 +535,15 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
     try {
       if (isPaused) {
+        // ✅ Si está en pausa, simplemente reanudar
         await trafficService.resumeAnalysis(analysisId);
         if (videoRef.current && videoUrl) {
           videoRef.current.play();
         }
       } else {
+        // ✅ Si NO está en pausa, clonar el análisis (crear nuevo con mismos datos)
+        console.log(`🔄 Clonando análisis ${analysisId}...`);
+        
         setDetections([]);
         framesReceivedCount.current = 0;
         processedTrackIds.current.clear();
@@ -530,7 +553,18 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         setBufferingProgress(0);
         setIsBuffering(true);
 
-        await trafficService.startAnalysis(analysisId);
+        // Clonar el análisis existente
+        const cloneResponse = await trafficService.cloneAnalysis(analysisId);
+        const newAnalysisId = cloneResponse.new_analysis_id;
+        
+        console.log(`✅ Nuevo análisis clonado: ${newAnalysisId} (original: ${analysisId})`);
+        
+        // Actualizar el analysisId al nuevo
+        setAnalysisId(newAnalysisId);
+        
+        // Iniciar el nuevo análisis
+        await trafficService.startAnalysis(newAnalysisId);
+        
         setLiveData((prev) => ({
           ...prev,
           startTime: new Date().toLocaleTimeString(),
