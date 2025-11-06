@@ -9,6 +9,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ConfirmEmailPage from './pages/auth/ConfirmEmailPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import HomePage from './pages/dashboard/HomePage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import RealTimeAnalysisPage from './pages/traffic/RealTimeAnalysisPage';
@@ -88,7 +89,7 @@ const App: React.FC = () => {
             path="/login" 
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/home" replace />
               ) : (
                 <LoginPage />
               )
@@ -98,7 +99,7 @@ const App: React.FC = () => {
             path="/register" 
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/home" replace />
               ) : (
                 <RegisterPage />
               )
@@ -108,7 +109,7 @@ const App: React.FC = () => {
             path="/forgot-password" 
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/home" replace />
               ) : (
                 <ForgotPasswordPage />
               )
@@ -118,7 +119,7 @@ const App: React.FC = () => {
             path="/reset-password" 
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/home" replace />
               ) : (
                 <ResetPasswordPage />
               )
@@ -138,7 +139,8 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<Navigate to="/home" replace />} />
+            <Route path="home" element={<HomePage />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="traffic" element={<CamerasPage />} />
             <Route path="traffic/analysis" element={<TrafficAnalysisPage />} />
@@ -148,7 +150,7 @@ const App: React.FC = () => {
             <Route path="camera/:id" element={<CameraLiveAnalysisPage />} /> {/* Live Analysis */}
             <Route path="history-traffic" element={<HistoryTrafficPage />} /> {/* Historial de V1 */}
 
-            <Route path="plates" element={<PlateDetectionPage />} />
+            {/* <Route path="plates" element={<PlateDetectionPage />} /> */}
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="bottleneck" element={<BottleneckPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
@@ -163,7 +165,7 @@ const App: React.FC = () => {
             path="*" 
             element={
               isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
+                <Navigate to="/home" replace />
               ) : (
                 <Navigate to="/login" replace />
               )

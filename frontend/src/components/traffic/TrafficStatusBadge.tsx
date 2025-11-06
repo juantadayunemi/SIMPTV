@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface TrafficStatusBadgeProps {
-  level: 'low' | 'moderate' | 'heavy' | 'congested';
+  level: 'low' | 'moderate' | 'high' | 'critical' | 'heavy' | 'congested';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -20,12 +20,14 @@ const TrafficStatusBadge: React.FC<TrafficStatusBadgeProps> = ({ level, size = '
           color: 'bg-warning-100 text-warning-800 border-warning-200',
           dotColor: 'bg-warning-500'
         };
+      case 'high':
       case 'heavy':
         return {
           label: 'Congestionado',
           color: 'bg-orange-100 text-orange-800 border-orange-200',
           dotColor: 'bg-orange-500'
         };
+      case 'critical':
       case 'congested':
         return {
           label: 'Muy Congestionado',

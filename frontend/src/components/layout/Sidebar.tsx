@@ -8,7 +8,7 @@ import { USER_ROLES, type UserRoleType } from '@traffic-analysis/shared';
 const navigationItems = [
   {
     name: 'Inicio',
-    href: '/dashboard',
+    href: '/home',
     icon: (
       <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
@@ -36,9 +36,19 @@ const navigationItems = [
     ),
     roles: [USER_ROLES.ADMIN, USER_ROLES.OPERATOR, USER_ROLES.VIEWER] as UserRoleType[]
   },
-  {
+  // {
+  //   name: 'Placas',
+  //   href: '/plates',
+  //   icon: (
+  //     <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+  //       <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm3-4H7v-2h8v2zm0-4H7V7h8v2z"/>
+  //     </svg>
+  //   ),
+  //   roles: [USER_ROLES.ADMIN, USER_ROLES.OPERATOR, USER_ROLES.VIEWER] as UserRoleType[]
+  // },
+    {
     name: 'Dashboard',
-    href: '/plates',
+    href: '/dashboard',
     icon: (
       <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
         <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>

@@ -54,7 +54,7 @@ export const Header: React.FC = () => {
     switch (path) {
       case '/dashboard':
         return {
-          title: 'Inicio',
+          title: 'Dashboard',
           subtitle: 'Resumen general del sistema de análisis de tráfico'
         };
       case '/traffic':

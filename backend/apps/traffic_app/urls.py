@@ -17,6 +17,14 @@ from .views import (
     analyze_video_endpoint,
 )
 
+# Dashboard views
+from .views_dashboard import (
+    dashboard_stats,
+    current_traffic_data,
+    critical_alerts,
+    stats_by_date_range,
+)
+
 
 # Intento importar TrafficChunkedUploadView y muestro cualquier error de importación
 try:
@@ -38,4 +46,9 @@ urlpatterns = [
     # Endpoint para frontend
     path("analyze-video/", analyze_video_endpoint, name="analyze-video"),
     path("upload-chunk/", TrafficChunkedUploadView.as_view(), name="upload-chunk"),
+    # Dashboard endpoints
+    path("dashboard/stats", dashboard_stats, name="dashboard-stats"),
+    path("dashboard/current-traffic", current_traffic_data, name="current-traffic"),
+    path("dashboard/critical-alerts", critical_alerts, name="critical-alerts"),
+    path("dashboard/stats-by-date", stats_by_date_range, name="stats-by-date"),
 ]

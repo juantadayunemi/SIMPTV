@@ -37,6 +37,7 @@ export default {
           100: '#fef3c7',
           200: '#fde68a',
           500: '#f59e0b',
+          700: '#cf8713ff',
           800: '#92400e',
         },
         error: {
