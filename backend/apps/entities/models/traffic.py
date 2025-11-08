@@ -212,13 +212,23 @@ class TrafficAnalysisEntity(BaseModel):
     avgSpeed = models.DecimalField(
         max_digits=6, decimal_places=2, blank=True, null=True
     )
-    densityLevel = models.CharField(max_length=10)
+    densityLevel = models.CharField(
+        max_length=10,
+        choices=DENSITY_LEVELS_CHOICES,
+        db_column="densityLevel",
+        verbose_name="Density Level",
+    )
     isPlaying = models.BooleanField(default=False)
     isPaused = models.BooleanField(default=False)
     currentTimestamp = models.IntegerField(default=0)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
     analysisData = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=20)
+    status = models.CharField(
+        max_length=20,
+        choices=ANALYSIS_STATUS_CHOICES,
+        db_column="status",
+        verbose_name="Analysis Status",
+    )
     errorMessage = models.TextField(blank=True, null=True)
     carCount = models.IntegerField(default=0)
     truckCount = models.IntegerField(default=0)

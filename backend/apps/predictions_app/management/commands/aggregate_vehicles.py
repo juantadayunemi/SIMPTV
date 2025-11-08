@@ -12,6 +12,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         result = aggregate_prediction_data()
-        self.stdout.write(
-            self.style.SUCCESS(f"Procesados {result['blocks_processed']} bloques, ")
-        )
+        # self.stdout.write(
+        #     self.style.SUCCESS(f"Procesados {result['blocks_processed']} bloques, ")
+        # )

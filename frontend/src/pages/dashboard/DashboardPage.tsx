@@ -85,7 +85,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-sm text-gray-600">En toda la red</span>
+            <span className="text-sm text-gray-600">Últimas tendencias (50 análisis)</span>
           </div>
         </div>
 
@@ -115,7 +115,11 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-sm text-warning-600">Buena performance</span>
+            <span className="text-sm text-gray-600">
+              {stats.networkEfficiency >= 80 ? '🟢 Excelente' : 
+               stats.networkEfficiency >= 60 ? '🟡 Buena' : 
+               stats.networkEfficiency >= 40 ? '🟠 Regular' : '🔴 Baja'}
+            </span>
           </div>
         </div>
       </div>

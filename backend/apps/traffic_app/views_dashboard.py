@@ -14,7 +14,7 @@ from datetime import timedelta
 
 from .models import Camera, TrafficAnalysis, Vehicle
 from apps.plates_app.models import VehicleComplaint
-from apps.entities.constants import CAMERA_STATUS
+from apps.entities.constants import CAMERA_STATUS, ANALYSIS_STATUS, DENSITY_LEVELS
 
 logger = logging.getLogger(__name__)
 
@@ -41,35 +41,21 @@ def dashboard_stats(request):
         active_cameras = Camera.objects.filter(status=CAMERA_STATUS.ACTIVE).count()
         total_cameras = Camera.objects.count()
 
-        # 2. Velocidad promedio (últimas 24 horas) - Mejorado
-        yesterday = timezone.now() - timedelta(hours=24)
+        # 2. Velocidad promedio - ÚLTIMOS 50 ANÁLISIS
         recent_analyses = TrafficAnalysis.objects.filter(
-            startedAt__gte=yesterday,
-            status="COMPLETED",
+            status=ANALYSIS_STATUS.COMPLETED,
             avgSpeed__isnull=False,
             avgSpeed__gt=0,  # Excluir velocidades 0
-        )
+        ).order_by("-endedAt")[
+            :50
+        ]  # Últimos 50 análisis completados
 
-        # Calcular velocidad promedio ponderada por número de vehículos
-        speed_stats = recent_analyses.aggregate(
-            total_speed=Sum("avgSpeed"),
-            total_vehicles=Sum("totalVehicleCount"),
-            count=Count("id"),
-        )
-
-        if speed_stats["count"] and speed_stats["count"] > 0:
-            avg_speed = round(speed_stats["total_speed"] / speed_stats["count"], 1)
+        if recent_analyses.exists():
+            # Calcular promedio simple de los últimos 50 análisis
+            avg_speed_data = recent_analyses.aggregate(avg_speed=Avg("avgSpeed"))
+            avg_speed = round(float(avg_speed_data["avg_speed"] or 45), 1)
         else:
-            # Si no hay datos, intentar con todas las cámaras
-            all_analyses = TrafficAnalysis.objects.filter(
-                status="COMPLETED", avgSpeed__isnull=False, avgSpeed__gt=0
-            ).order_by("-startedAt")[:10]
-
-            if all_analyses.exists():
-                avg_speed_data = all_analyses.aggregate(avg_speed=Avg("avgSpeed"))
-                avg_speed = round(avg_speed_data["avg_speed"] or 45, 1)
-            else:
-                avg_speed = 45.0  # Valor por defecto razonable
+            avg_speed = 45.0  # Valor por defecto razonable
 
         # 3. Alertas críticas (denuncias de vehículos) - USANDO VehicleComplaint
         # Contar denuncias de los últimos 7 días
@@ -81,81 +67,167 @@ def dashboard_stats(request):
             .count()
         )
 
-        # 4. Eficiencia de la red - Cálculo mejorado
-        # Basado en: cámaras activas, velocidad promedio, y ausencia de alertas
+        # 4. Eficiencia de la red - BASADO EN FPS DE PROCESAMIENTO
+        # La eficiencia mide la capacidad del sistema de procesar video en tiempo real
+
+        # Factores que afectan la eficiencia del sistema:
+        # 1. Cámaras activas vs total (40% - disponibilidad del sistema)
         camera_efficiency = (
             (active_cameras / max(total_cameras, 1)) * 100 if total_cameras > 0 else 0
         )
 
-        # Eficiencia de velocidad (60 km/h = 100%, 30 km/h = 50%, escalado lineal)
-        speed_efficiency = min(100, max(0, (avg_speed / 60) * 100))
+        # 2. Capacidad de procesamiento - FPS (60% - calidad del sistema)
+        # Obtener los últimos 10 análisis completados para calcular FPS promedio
+        recent_completed = TrafficAnalysis.objects.filter(
+            status=ANALYSIS_STATUS.COMPLETED,
+            startedAt__isnull=False,  # Necesitamos fecha de inicio
+            endedAt__isnull=False,  # Necesitamos fecha de fin
+            totalFrames__gt=0,  # Excluir análisis sin frames
+        ).order_by("-endedAt")[:10]
 
-        # Penalización por alertas críticas (cada 10 alertas reduce 5%)
-        alert_penalty = min(20, (critical_alerts / 10) * 5)
+        avg_fps = 0
+        if recent_completed.exists():
+            # Calcular FPS de procesamiento para cada análisis
+            fps_list = []
+            for analysis in recent_completed:
+                # Calcular duración real del análisis (endedAt - startedAt)
+                duration_seconds = (
+                    analysis.endedAt - analysis.startedAt
+                ).total_seconds()
 
-        # Fórmula final: 50% cámaras + 40% velocidad - penalización alertas
+                if duration_seconds > 0:
+                    # FPS = totalFrames / duración en segundos
+                    fps = analysis.totalFrames / duration_seconds
+                    fps_list.append(fps)
+
+            if fps_list:
+                # Promedio de FPS
+                avg_fps = sum(fps_list) / len(fps_list)
+
+                # Escalar FPS a porcentaje
+                # Consideramos:
+                # - 30+ FPS = 100% (excelente)
+                # - 15-30 FPS = 50-100% (bueno)
+                # - <15 FPS = 0-50% (necesita mejora)
+                if avg_fps >= 30:
+                    processing_efficiency = 100
+                elif avg_fps >= 15:
+                    processing_efficiency = 50 + ((avg_fps - 15) / 15) * 50
+                else:
+                    processing_efficiency = (avg_fps / 15) * 50
+            else:
+                # Si no hay análisis válidos, asumir eficiencia media
+                processing_efficiency = 50
+        else:
+            # Si no hay análisis, asumir eficiencia media
+            processing_efficiency = 50
+
+        # Fórmula final: 40% disponibilidad cámaras + 60% capacidad procesamiento
         network_efficiency = int(
-            (camera_efficiency * 0.5) + (speed_efficiency * 0.4) - alert_penalty
+            (float(camera_efficiency) * 0.4) + (float(processing_efficiency) * 0.6)
         )
         network_efficiency = max(0, min(100, network_efficiency))  # Entre 0-100
 
-        # 5. Datos de tráfico actual por cámara (últimas 6 horas)
-        six_hours_ago = timezone.now() - timedelta(hours=6)
+        # 5. Datos de tráfico actual por cámara - USANDO PROCEDIMIENTO ALMACENADO
         current_traffic_data = []
 
-        # Obtener el análisis más reciente de cada cámara ACTIVA
-        cameras = Camera.objects.filter(status=CAMERA_STATUS.ACTIVE)
+        # Ejecutar procedimiento almacenado
+        from django.db import connection
 
-        for camera in cameras:
-            latest_analysis = (
-                TrafficAnalysis.objects.filter(
-                    cameraId=camera,
-                    startedAt__gte=six_hours_ago,
-                    status__in=["COMPLETED", "PROCESSING"],
-                )
-                .order_by("-startedAt")
-                .first()
-            )
+        with connection.cursor() as cursor:
+            try:
+                cursor.execute("EXEC sp_get_latest_analysis_per_camera")
+                columns = [col[0] for col in cursor.description]
+                results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-            if latest_analysis:
-                # Calcular nivel de congestión basado en densityLevel
+                # Mapeo de densityLevel a congestion info
                 congestion_map = {
-                    "LOW": ("low", 20),
-                    "MODERATE": ("moderate", 50),
-                    "HIGH": ("high", 80),
-                    "CRITICAL": ("critical", 95),
+                    DENSITY_LEVELS.LOW: ("low", 20),
+                    DENSITY_LEVELS.MEDIUM: ("moderate", 50),
+                    DENSITY_LEVELS.HIGH: ("high", 80),
+                    DENSITY_LEVELS.HEAVY: ("critical", 95),
                 }
 
-                congestion_level, congestion_index = congestion_map.get(
-                    latest_analysis.densityLevel, ("low", 10)
+                for row in results:
+                    density_level = row.get("densityLevel", DENSITY_LEVELS.LOW)
+                    congestion_level, congestion_index = congestion_map.get(
+                        density_level, ("low", 10)
+                    )
+
+                    # Manejar el timestamp correctamente
+                    ended_at = row.get("endedAt")
+                    timestamp_iso = ended_at.isoformat() if ended_at else None
+
+                    current_traffic_data.append(
+                        {
+                            "cameraId": row.get("cameraId"),
+                            "cameraName": row.get("cameraName", "Desconocida"),
+                            "location": f"{row.get('city', 'Ciudad')}, {row.get('locationDescription', '')}",
+                            "congestionLevel": congestion_level,
+                            "averageSpeed": round(float(row.get("avgSpeed") or 0), 1),
+                            "vehicleCount": row.get("totalVehicles", 0),
+                            "congestionIndex": congestion_index,
+                            "timestamp": timestamp_iso,
+                        }
+                    )
+
+            except Exception as sp_error:
+                logger.warning(
+                    f"⚠️ Error ejecutando procedimiento almacenado: {sp_error}"
                 )
+                # Fallback: usar método anterior si falla el SP
+                cameras = Camera.objects.filter(status=CAMERA_STATUS.ACTIVE)
+                six_hours_ago = timezone.now() - timedelta(hours=6)
 
-                # Calcular velocidad promedio (si no existe, usar valor estimado)
-                avg_speed_camera = latest_analysis.avgSpeed or 50
+                for camera in cameras:
+                    latest_analysis = (
+                        TrafficAnalysis.objects.filter(
+                            cameraId=camera,
+                            startedAt__gte=six_hours_ago,
+                            status__in=[
+                                ANALYSIS_STATUS.COMPLETED,
+                                ANALYSIS_STATUS.PROCESSING,
+                            ],
+                        )
+                        .order_by("-startedAt")
+                        .first()
+                    )
 
-                # Contar vehículos totales
-                vehicle_count = latest_analysis.totalVehicleCount or 0
+                    if latest_analysis:
+                        congestion_map = {
+                            DENSITY_LEVELS.LOW: ("low", 20),
+                            DENSITY_LEVELS.MEDIUM: ("moderate", 50),
+                            DENSITY_LEVELS.HIGH: ("high", 80),
+                            DENSITY_LEVELS.HEAVY: ("critical", 95),
+                        }
 
-                current_traffic_data.append(
-                    {
-                        "cameraId": camera.id,
-                        "cameraName": camera.name,
-                        "location": (
-                            f"{camera.locationId.city}, {camera.locationId.country}"
-                            if camera.locationId
-                            else "Ubicación desconocida"
-                        ),
-                        "congestionLevel": congestion_level,
-                        "averageSpeed": round(avg_speed_camera, 1),
-                        "vehicleCount": vehicle_count,
-                        "congestionIndex": congestion_index,
-                        "timestamp": (
-                            latest_analysis.startedAt.isoformat()
-                            if latest_analysis.startedAt
-                            else None
-                        ),
-                    }
-                )
+                        congestion_level, congestion_index = congestion_map.get(
+                            latest_analysis.densityLevel, ("low", 10)
+                        )
+
+                        avg_speed_camera = latest_analysis.avgSpeed or 50
+                        vehicle_count = latest_analysis.totalVehicleCount or 0
+
+                        current_traffic_data.append(
+                            {
+                                "cameraId": camera.id,
+                                "cameraName": camera.name,
+                                "location": (
+                                    f"{camera.locationId.city}, {camera.locationId.country}"
+                                    if camera.locationId
+                                    else "Ubicación desconocida"
+                                ),
+                                "congestionLevel": congestion_level,
+                                "averageSpeed": round(float(avg_speed_camera), 1),
+                                "vehicleCount": vehicle_count,
+                                "congestionIndex": congestion_index,
+                                "timestamp": (
+                                    latest_analysis.startedAt.isoformat()
+                                    if latest_analysis.startedAt
+                                    else None
+                                ),
+                            }
+                        )
 
         # Si no hay datos reales, generar datos de ejemplo
         if not current_traffic_data:
@@ -213,7 +285,7 @@ def current_traffic_data(request):
                 TrafficAnalysis.objects.filter(
                     cameraId=camera,
                     startedAt__gte=six_hours_ago,
-                    status__in=["COMPLETED", "PROCESSING"],
+                    status__in=[ANALYSIS_STATUS.COMPLETED, ANALYSIS_STATUS.PROCESSING],
                 )
                 .order_by("-startedAt")
                 .first()
@@ -221,10 +293,10 @@ def current_traffic_data(request):
 
             if latest_analysis:
                 congestion_map = {
-                    "LOW": ("low", 20),
-                    "MODERATE": ("moderate", 50),
-                    "HIGH": ("high", 80),
-                    "CRITICAL": ("critical", 95),
+                    DENSITY_LEVELS.LOW: ("low", 20),
+                    DENSITY_LEVELS.MEDIUM: ("moderate", 50),
+                    DENSITY_LEVELS.HIGH: ("high", 80),
+                    DENSITY_LEVELS.HEAVY: ("critical", 95),
                 }
 
                 congestion_level, congestion_index = congestion_map.get(
@@ -271,12 +343,15 @@ def critical_alerts(request):
         one_hour_ago = timezone.now() - timedelta(hours=1)
 
         critical_analyses = TrafficAnalysis.objects.filter(
-            startedAt__gte=one_hour_ago, densityLevel__in=["HIGH", "CRITICAL"]
+            startedAt__gte=one_hour_ago,
+            densityLevel__in=[DENSITY_LEVELS.HIGH, DENSITY_LEVELS.HEAVY],
         ).select_related("cameraId")
 
         alerts = []
         for analysis in critical_analyses:
-            severity = "critical" if analysis.densityLevel == "CRITICAL" else "high"
+            severity = (
+                "critical" if analysis.densityLevel == DENSITY_LEVELS.HEAVY else "high"
+            )
 
             alerts.append(
                 {
@@ -320,7 +395,9 @@ def stats_by_date_range(request):
             )
 
         analyses = TrafficAnalysis.objects.filter(
-            startedAt__gte=start_date, startedAt__lte=end_date, status="COMPLETED"
+            startedAt__gte=start_date,
+            startedAt__lte=end_date,
+            status=ANALYSIS_STATUS.COMPLETED,
         )
 
         # Velocidad promedio
@@ -341,7 +418,12 @@ def stats_by_date_range(request):
 
         # Tendencias de congestión
         congestion_trends = []
-        for level in ["LOW", "MODERATE", "HIGH", "CRITICAL"]:
+        for level in [
+            DENSITY_LEVELS.LOW,
+            DENSITY_LEVELS.MEDIUM,
+            DENSITY_LEVELS.HIGH,
+            DENSITY_LEVELS.HEAVY,
+        ]:
             count = analyses.filter(densityLevel=level).count()
             if count > 0:
                 congestion_trends.append(

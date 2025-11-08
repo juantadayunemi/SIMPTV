@@ -362,9 +362,6 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
   });
 };
 
-
-
-
   // 🔥 FUNCIÓN DE SINCRONIZACIÓN CON INTERPOLACIÓN
    const getDetectionsForTime = (cameraId: number, currentTime: number): Detection[] => {
       const buffer = detectionBuffer[cameraId];
