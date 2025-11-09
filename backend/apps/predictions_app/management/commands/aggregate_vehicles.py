@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from apps.predictions_app.tasks import aggregate_prediction_data
+from backend.apps.predictions_app.tasks.tasks_aggregate_vehicles import aggregate_prediction_data
 
 """
 Comando para ejecutar la tarea de agregación manualmente:
@@ -12,6 +12,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         result = aggregate_prediction_data()
-        self.stdout.write(
-            self.style.SUCCESS(f"Procesados {result['blocks_processed']} bloques, ")
-        )
+        # self.stdout.write(
+        #     self.style.SUCCESS(f"Procesados {result['blocks_processed']} bloques, ")
+        # )

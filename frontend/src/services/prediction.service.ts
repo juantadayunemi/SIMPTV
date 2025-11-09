@@ -1,7 +1,7 @@
 import api from "./api";
-import { ForecastData, LevelTrafficData } from '../types/forecast';
+import { ForecastData,ForecastDataTraffic,ForecastDataSpeed, LevelTrafficData } from '../types/forecast';
 
-export const getForecast = async (
+export const getAllForecast = async (
   locationId: string,
   selectedCamera: string,
   date: string,
@@ -15,13 +15,28 @@ export const getForecast = async (
   return resp.data
 }
 
+
+export const getForecast = async (
+  locationId: string,
+  selectedCamera: string,
+  date: string,
+  hour: string,
+  minute: string,
+  selectedPeriod: 'daily' | 'monthly' | 'yearly'
+):Promise<ForecastDataTraffic[]>=>{
+  const resp = await api.get(
+    `/api/predictions/traffic-predictions/?locationId=${locationId}&cameraId=${selectedCamera}&date=${date}&hour=${hour}&minute=${minute}&periodsType=${selectedPeriod}`
+);
+  return resp.data
+}
+
 export const getForecastSpeed = async (
   locationId: string,
   selectedCamera: string,
   date: string,
   hour: string,
   minute: string,
-):Promise<ForecastData[]>=>{
+):Promise<ForecastDataSpeed[]>=>{
   console.log("Desde servicio: ",locationId, selectedCamera, date, hour, minute);
   const resp = await api.get(
     `/api/predictions/speed-predictions/?locationId=${locationId}&cameraId=${selectedCamera}&date=${date}&hour=${hour}&minute=${minute}`

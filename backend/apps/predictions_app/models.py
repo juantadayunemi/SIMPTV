@@ -39,6 +39,7 @@ class PredictionSource(PredictionSourceEntity):
         indexes = [
             models.Index(fields=["locationId"]),
             models.Index(fields=["cameraId"]),
+            models.Index(fields=["isActive"]),
         ]
 
     def __str__(self):

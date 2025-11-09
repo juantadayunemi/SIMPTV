@@ -3,6 +3,7 @@ from apps.predictions_app.models import PredictionSource
 from django.db import connection
 from django.utils import timezone
 from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ def aggregate_prediction_data():
             # Primera ejecución
             cursor.execute("SELECT MIN(firstDetectedAt) as first FROM traffic_vehicles")
             first_vehicle = cursor.fetchone()[0]
+            print(f"First vehicle detected at: {first_vehicle}")
 
             if not first_vehicle:
                 logger.info("No hay vehículos para procesar")
@@ -40,12 +42,18 @@ def aggregate_prediction_data():
 
         if now < current_block_start + timedelta(minutes=9, seconds=59):
             end_time = current_block_start - timedelta(seconds=1)
-            end_time = _round_to_block_start(end_time)
+            # end_time = _round_to_block_start(end_time) #09:59:59 -> 09:50:00
         else:
-            end_time = current_block_start
-
+            end_time = (
+                current_block_start - timedelta(seconds=1) + timedelta(minutes=10)
+            )
+        print(
+            f"Current time: {now}, Current block start: {current_block_start}, End time set to: {end_time}"
+        )
         start_time = _to_aware(start_time)
         end_time = _to_aware(end_time)
+
+        print(f"Procesando desde {start_time} hasta {end_time}")
 
         if start_time > end_time:
             logger.info("No hay bloques completos para procesar")
@@ -68,9 +76,16 @@ def aggregate_prediction_data():
         FROM traffic_vehicles tv
         INNER JOIN traffic_analyses ta ON tv.trafficAnalysisId = ta.id
         WHERE tv.firstDetectedAt >= %s 
-          AND tv.firstDetectedAt < %s
+          AND tv.firstDetectedAt <= %s
           AND ta.cameraId IS NOT NULL
           AND ta.locationId IS NOT NULL
+          AND NOT EXISTS (
+              -- Evitar duplicados: no insertar si ya existe bloque para esa cámara/ubicación
+              SELECT 1 FROM prediction_sources ps
+              WHERE ps.startedAt = DATEADD(minute, DATEDIFF(minute, 0, tv.firstDetectedAt) / 10 * 10, 0)
+                AND ps.cameraId_id = ta.cameraId
+                AND ps.locationId_id = ta.locationId
+          )
         GROUP BY 
             DATEDIFF(minute, 0, tv.firstDetectedAt) / 10,
             ta.cameraId,
@@ -80,14 +95,17 @@ def aggregate_prediction_data():
         cursor.execute(sql, [start_time, end_time])
         rows_inserted = cursor.rowcount
 
-        time_diff = end_time - start_time
-        blocks_processed = int(time_diff.total_seconds() / 600)  #
+        # time_diff = end_time - start_time
+        # blocks_processed = int(time_diff.total_seconds() / 600)
 
-        logger.info(f"Agregación completada. {rows_inserted} registros insertados")
+        logger.info(
+            f"Agregación completada. {rows_inserted} registros insertados, "
+            # f"{blocks_processed} bloques procesados"
+        )
 
         return {
             "rows_inserted": rows_inserted,
-            "blocks_processed": blocks_processed,
+            # "blocks_processed": blocks_processed,
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
         }
@@ -99,7 +117,7 @@ def _round_to_block_start(dt):
 
 
 def _to_aware(dt):
-    """Convierte un datetime naive a aware (UTC) si es necesario."""
+    """Convierte un datetime naive a aware si es necesario."""
     if timezone.is_naive(dt):
-        return timezone.make_aware(dt, timezone.get_current_timezone())
+        return timezone.make_aware(dt, dt_timezone.utc)
     return dt

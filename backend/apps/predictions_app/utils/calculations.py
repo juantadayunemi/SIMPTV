@@ -93,3 +93,14 @@ def previous_periods(date, period_type: str) -> date:
         raise ValueError(
             "Tipo de periodo no válido. Use 'yearly', 'monthly' o 'daily'."
         )
+
+
+def calculate_periods(df, date, hour, minute):
+    # calcular el periodo a predecir en el futuro
+    last_datetime = df["ds"].max()
+    current_datetime = convert_datetime(date, hour, minute)
+    target_datetime = current_datetime.replace(hour=23, minute=50)
+    delta = target_datetime - last_datetime
+    periods = int(delta.total_seconds() // 600)
+
+    return periods, current_datetime

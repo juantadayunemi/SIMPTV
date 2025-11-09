@@ -310,7 +310,7 @@ useEffect(() => {
 
       {isLoading && (
         <LoadingContainer
-          type="global"
+          type="section"
           loading={isLoading}
           message="Cargando, espere por favor..."
         />

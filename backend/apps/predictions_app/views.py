@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.predictions_app.services.prediction_service import (
+    get_all_predictions,
     get_bottleneck_traffic,
     get_level_prediction,
     get_speed_prediction,
@@ -19,7 +20,7 @@ class TrafficPredictionView(APIView):
 
     def get(self, request):
         try:
-            result = get_traffic_prediction(request.query_params)
+            result = get_all_predictions(request.query_params)
 
             return Response(result, status=status.HTTP_200_OK)
 

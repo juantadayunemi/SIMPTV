@@ -1,86 +1,55 @@
-import pandas as pd
-import numpy as np
-from prophet import Prophet
-from datetime import datetime
-from apps.predictions_app.models import PredictionSource
-from apps.predictions_app.utils.predictions import (
-    get_forecast_by_date,
-    get_previous_forecast,
-    get_total_seasonality,
-    traffic_level_classification,
+from apps.predictions_app.utils.data_preparation import (
+    get_filter_params,
+    create_dataframe,
+    get_model_prediction,
+)
+from apps.predictions_app.utils.prophet_forecasting import (
     get_forecast,
+    get_forecast_by_date,
 )
 from apps.predictions_app.utils.holidays import (
-    create_dataframe_holiday,
     create_holidays_object,
+    create_dataframe_holiday,
     get_name_holiday,
 )
 from apps.predictions_app.utils.calculations import (
-    add_to_date,
-    convert_datetime,
-    get_percentage,
+    calculate_periods,
     previous_periods,
+    convert_datetime,
 )
-
-
-import pandas as pd
-from prophet import Prophet
-from datetime import datetime
-from apps.predictions_app.models import PredictionSource
-from apps.predictions_app.utils.predictions import (
-    get_forecast_by_date,
-    get_previous_forecast,
+from apps.predictions_app.utils.calculations import get_percentage
+from apps.predictions_app.utils.forecast_analysis import (
     get_total_seasonality,
+    get_previous_forecast,
     traffic_level_classification,
 )
-from apps.predictions_app.utils.holidays import (
-    create_dataframe_holiday,
-    create_holidays_object,
-    get_name_holiday,
-)
-from apps.predictions_app.utils.calculations import (
-    convert_datetime,
-    get_percentage,
-    previous_periods,
-)
+from config.settings import FORECAST_MODELS_PATH
 
 
-def get_filter_params(location_id, camera_id):
-    """
-    Filtra los parámetros de la consulta para obtener las predicciones.
-    """
-    predictions = PredictionSource.objects.filter(
-        locationId=location_id,
-        cameraId=camera_id,
-        isActive=True,
-    ).order_by("startedAt")
-
-    if not predictions.exists():
-        return None
-
-    return predictions
+def get_model_path(location_id, camera_id, variable):
+    return f"{FORECAST_MODELS_PATH}/prophet_{variable}_location_{location_id}_camera_{camera_id}.joblib"
 
 
-def create_dataframe(predictions, values: tuple) -> pd.DataFrame:
-    df = pd.DataFrame(
-        list(
-            predictions.values(
-                *values,
-            )
-        )
+def get_all_predictions(params):
+    traffic = get_traffic_prediction(params)
+    speed = get_speed_prediction(params)
+
+    print("Traffic Prediction: ", traffic)
+    print("Speed Prediction: ", speed)
+    level = get_level_prediction(
+        {
+            "locationId": params.get("locationId"),
+            "cameraId": params.get("cameraId"),
+            "yhat_count": traffic["yhat"],
+            "yhat_speed": speed["yhat_speed"],
+        }
     )
-    return df
-
-
-def calculate_periods(df, date, hour, minute):
-    # calcular el periodo a predecir en el futuro
-    last_datetime = df["ds"].max()
-    current_datetime = convert_datetime(date, hour, minute)
-    target_datetime = current_datetime.replace(hour=23, minute=50)
-    delta = target_datetime - last_datetime
-    periods = int(delta.total_seconds() // 600)
-
-    return periods, current_datetime
+    print("Level Prediction: ", level)
+    return {
+        "traffic": traffic,
+        "speed": speed,
+        "level": level,
+    }
 
 
 def get_traffic_prediction(params):
@@ -119,11 +88,13 @@ def get_traffic_prediction(params):
 
     local_holidays = create_holidays_object()
     holidays = create_dataframe_holiday(local_holidays)
+    model_path = get_model_path(location_id, camera_id, "traffic")
+    df_model = get_model_prediction(model_path, holidays, df)
 
     # calcular el periodo a predecir en el futuro
     periods, current_datetime = calculate_periods(df, date, hour, minute)
     # predicciones de la variable totalVehicleCount
-    forecast = get_forecast(df, periods, holidays)
+    forecast = get_forecast(df_model, periods, freq="10T")
 
     row = get_forecast_by_date(forecast, current_datetime)
     yhat = row["yhat"]
@@ -189,11 +160,14 @@ def get_speed_prediction(params):
     local_holidays = create_holidays_object()
     holidays = create_dataframe_holiday(local_holidays)
 
+    model_path = get_model_path(location_id, camera_id, "speed")
+    model = get_model_prediction(model_path, holidays, df_speed)
+
     # calcular el periodo a predecir en el futuro
     periods, current_datetime = calculate_periods(df_speed, date, hour, minute)
 
     # se obtienen las predicciones de la variable velocidad
-    forecast_speed = get_forecast(df_speed, periods, holidays)
+    forecast_speed = get_forecast(model, periods, freq="10T")
     row_speed = get_forecast_by_date(forecast_speed, current_datetime)
 
     print(
@@ -250,10 +224,16 @@ def get_bottleneck_traffic(params):
 
 
 def get_level_prediction(params):
-    yhat_count = float(params.get("yhat_count"))
-    yhat_speed = float(params.get("yhat_speed"))
+    print("Params in level prediction: ", params)
+    print(params.get("locationId"))
+    print("Ultima prueba")
+    print(params.get("cameraId"))
+    print("Pasa la prueba")
     location_id = int(params.get("locationId"))
     camera_id = int(params.get("cameraId"))
+    print("Pasa la prueba de location y camera")
+    yhat_count = float(params.get("yhat_count"))
+    yhat_speed = float(params.get("yhat_speed"))
 
     historical = get_filter_params(location_id, camera_id)
     if not historical:

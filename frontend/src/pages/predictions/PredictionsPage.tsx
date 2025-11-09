@@ -12,11 +12,7 @@ import {
   LevelTrafficData,
 } from "../../types/forecast";
 import { trafficService } from "../../services/traffic.service";
-import {
-  getForecast,
-  getForecastSpeed,
-  getLevelTraffic,
-} from "../../services/prediction.service";
+import { getAllForecast } from "../../services/prediction.service";
 import { Location } from "../../types/forecast";
 import { useToast } from "../../components/ui/ToastContainer";
 //import { getNextDate } from "../../utils/dateUtils";
@@ -113,7 +109,7 @@ export default function PredictionPage() {
         return;
       }
 
-      const resp = await getForecast(
+      const resp = await getAllForecast(
         selectedLocation,
         selectedCamera,
         selectedDate,
@@ -121,23 +117,13 @@ export default function PredictionPage() {
         minute,
         selectedPeriod
       );
+      console.log("Forecast Response:", resp);
 
-      const respSpeed = await getForecastSpeed(
-        selectedLocation,
-        selectedCamera,
-        selectedDate,
-        hour,
-        minute
-      );
+      const respTraffic = resp.traffic;
+      const respSpeed = resp.speed;
+      const levelTrafficData = resp.level;
 
-      const levelTrafficData = await getLevelTraffic(
-        selectedLocation,
-        selectedCamera,
-        resp?.yhat,
-        respSpeed?.yhat_speed
-      );
-
-      if (resp.is_reliable===false || respSpeed.is_reliable===false) {
+      if (respTraffic.is_reliable === false || respSpeed.is_reliable === false) {
         setIsOpen(true);
       }
 
@@ -146,11 +132,10 @@ export default function PredictionPage() {
 
       setForecastSpeedData([respSpeed]);
 
-      setForecastChangePercent(resp?.variation_forecast_metrics);
-      setForecastData([resp]);
+      setForecastChangePercent(respTraffic?.variation_forecast_metrics);
+      setForecastData([respTraffic]);
 
       if (isOpen) toast.success("Pronóstico generado con éxito.");
-
     } catch (error) {
       if (error?.response?.status === 400) {
         toast.error(
@@ -220,7 +205,7 @@ export default function PredictionPage() {
     setForecastData([]);
   };
   const handleDateChange = (value: string) => {
-    const today = new Date()
+    const today = new Date();
     const todayString = getLocalDateString(today);
     if (value < todayString) {
       toast.warning("La fecha seleccionada no puede ser anterior a hoy.");
@@ -262,7 +247,7 @@ export default function PredictionPage() {
         }}
         closeText="Regresar"
         applyText="Continuar"
-        buttonClose={true}  
+        buttonClose={true}
         buttonApply={true}
         placeholder="La ubicación seleccionada tiene pocos datos históricos por lo que puede haber inexactitudes en el pronóstico. ¿Desea continuar?"
         type="warning"

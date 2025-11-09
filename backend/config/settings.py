@@ -416,7 +416,11 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
         # "schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute="*/10"), 
+        "schedule": crontab(minute="*/10"),
+    },
+    "remove-old-forecast-models": {
+        "task": "apps.predictions_app.tasks.remove_old_forecast_models",
+        "schedule": 30 * 60,  # cada 30 minutos
     },
 }
 
@@ -487,3 +491,5 @@ STREAM_TIMEOUT = 10  # seconds
 # Frontend URL for email links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5174")
 LOGO_URL = os.getenv("LOGO_URL", "https://via.placeholder.com/80")
+
+FORECAST_MODELS_PATH = "forecast_models"

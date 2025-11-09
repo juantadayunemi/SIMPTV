@@ -212,7 +212,7 @@ export default function TrafficChart({ data, color, title, subtitle }: TrafficCh
             }}
           >
             <div className="font-semibold">{formatDate(points[hoveredPoint.index].date)}</div>
-            <div className="text-gray-300">Total: {Math.round(points[hoveredPoint.index].value)} km/h</div>
+            <div className="text-gray-300">Total: {Math.round(points[hoveredPoint.index].value)}</div>
           </div>
         )}
       </div>
