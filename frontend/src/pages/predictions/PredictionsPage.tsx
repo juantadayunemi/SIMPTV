@@ -164,7 +164,7 @@ export default function PredictionPage() {
         return;
       }
       const [hour, minute] = selectedTime.split(":");
-      const resp = await getForecast(
+      const resp = await getAllForecast(
         selectedLocation,
         selectedCamera,
         selectedDate,
@@ -172,7 +172,7 @@ export default function PredictionPage() {
         minute,
         period
       );
-      setForecastChangePercent(resp?.variation_forecast_metrics);
+      setForecastChangePercent(resp?.traffic?.variation_forecast_metrics);
       toast.success("Periodo de comparación actualizado.");
     } catch (error) {
       toast.error("Error loading forecast data:", error);

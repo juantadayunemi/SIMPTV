@@ -33,9 +33,6 @@ def get_model_path(location_id, camera_id, variable):
 def get_all_predictions(params):
     traffic = get_traffic_prediction(params)
     speed = get_speed_prediction(params)
-
-    print("Traffic Prediction: ", traffic)
-    print("Speed Prediction: ", speed)
     level = get_level_prediction(
         {
             "locationId": params.get("locationId"),
@@ -224,14 +221,8 @@ def get_bottleneck_traffic(params):
 
 
 def get_level_prediction(params):
-    print("Params in level prediction: ", params)
-    print(params.get("locationId"))
-    print("Ultima prueba")
-    print(params.get("cameraId"))
-    print("Pasa la prueba")
     location_id = int(params.get("locationId"))
     camera_id = int(params.get("cameraId"))
-    print("Pasa la prueba de location y camera")
     yhat_count = float(params.get("yhat_count"))
     yhat_speed = float(params.get("yhat_speed"))
 
