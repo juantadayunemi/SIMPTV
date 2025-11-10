@@ -27,16 +27,51 @@ const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({ videoRef, detecti
     if (!ctx) return;
 
     const updateCanvas = () => {
-      // Ajustar tamaño del canvas al video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // ✅ Obtener dimensiones RENDERIZADAS del video en pantalla
+      const displayWidth = video.clientWidth;
+      const displayHeight = video.clientHeight;
+      
+      // ✅ Ajustar canvas al tamaño VISUAL del video (no al tamaño original)
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+
+      // ✅ Calcular el área visible con object-cover
+      // object-cover hace que el video llene el container manteniendo aspect ratio
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const displayAspect = displayWidth / displayHeight;
+      
+      let renderWidth, renderHeight, offsetX, offsetY;
+      
+      if (videoAspect > displayAspect) {
+        // Video más ancho que container - se recorta a los lados
+        renderHeight = displayHeight;
+        renderWidth = displayHeight * videoAspect;
+        offsetX = (displayWidth - renderWidth) / 2;
+        offsetY = 0;
+      } else {
+        // Video más alto que container - se recorta arriba/abajo
+        renderWidth = displayWidth;
+        renderHeight = displayWidth / videoAspect;
+        offsetX = 0;
+        offsetY = (displayHeight - renderHeight) / 2;
+      }
+
+      // ✅ Calcular escala considerando el área renderizada real
+      const scaleX = renderWidth / video.videoWidth;
+      const scaleY = renderHeight / video.videoHeight;
 
       // Limpiar canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Dibujar cada detección
       detections.forEach((det) => {
-        const [x, y, w, h] = det.bbox;
+        const [origX, origY, origW, origH] = det.bbox;
+        
+        // ✅ ESCALAR coordenadas y aplicar offset por object-cover
+        const x = origX * scaleX + offsetX;
+        const y = origY * scaleY + offsetY;
+        const w = origW * scaleX;
+        const h = origH * scaleY;
         
         // Color según tipo de vehículo
         let color = '#00FF00'; // verde por defecto
@@ -70,7 +105,7 @@ const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({ videoRef, detecti
 
         // Dibujar bounding box
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.strokeRect(x, y, w, h);
 
         // ✅ Fondo para el texto (más grande para velocidad)
@@ -101,6 +136,17 @@ const BoundingBoxDrawer: React.FC<BoundingBoxDrawerProps> = ({ videoRef, detecti
     };
 
     updateCanvas();
+
+    // ✅ Observer para redimensionar canvas cuando cambia el tamaño del video
+    const resizeObserver = new ResizeObserver(() => {
+      updateCanvas();
+    });
+
+    resizeObserver.observe(video);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [detections, videoRef]);
 
   return (

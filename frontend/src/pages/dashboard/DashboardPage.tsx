@@ -107,7 +107,7 @@ const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Eficiencia Red</p>
+              <p className="text-sm font-medium text-gray-600">Estado Sistema</p>
               <p className="text-3xl font-bold text-gray-900">{stats.networkEfficiency}%</p>
             </div>
             <div className="w-12 h-12 bg-warning-50 rounded-lg flex items-center justify-center">

@@ -309,6 +309,23 @@ def analyze_video_async(self, analysis_id, video_path):
                 half=False,
             )
 
+            # 🔍 LOG CRÍTICO: Dimensiones del frame analizado
+            if frame_count == 3:  # Solo en frame 3 para no saturar
+                logger.info(f"=" * 80)
+                logger.info(f"🔍 [DIMENSIONES] Diagnóstico de escalado:")
+                logger.info(f"📹 Video original: {width}x{height}")
+                logger.info(f"🎯 YOLO IMGSZ configurado: {IMGSZ}")
+                if results[0].orig_shape is not None:
+                    logger.info(f"📐 Frame original shape: {results[0].orig_shape}")
+                if hasattr(results[0], "boxes") and results[0].boxes is not None:
+                    logger.info(
+                        f"📦 Shape después de YOLO: {results[0].boxes.data.shape if len(results[0].boxes) > 0 else 'sin detecciones'}"
+                    )
+                logger.info(
+                    f"⚠️ Las coordenadas bbox estarán en escala del frame original ({width}x{height})"
+                )
+                logger.info(f"=" * 80)
+
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
 
@@ -502,6 +519,19 @@ def analyze_video_async(self, analysis_id, video_path):
                     frame_detections if len(frame_detections) > 0 else []
                 )
 
+                # 🔍 LOG: Primera detección para debug de coordenadas
+                if frame_count == 3 and len(payload_detections) > 0:
+                    det_sample = payload_detections[0]
+                    logger.info(
+                        f"🎯 [COORDENADAS] Muestra de detección enviada al frontend:"
+                    )
+                    logger.info(f"   - bbox: {det_sample['bbox']}")
+                    logger.info(f"   - frame_width (implícito): {width}")
+                    logger.info(f"   - frame_height (implícito): {height}")
+                    logger.info(
+                        f"   ⚠️ Frontend debe escalar desde {width}x{height} a su tamaño de video"
+                    )
+
                 send_ws(
                     "frame_processed",
                     {
@@ -509,6 +539,8 @@ def analyze_video_async(self, analysis_id, video_path):
                         "timestamp": timestamp_seconds,
                         "detections": payload_detections,
                         "total_vehicles": len(tracked_vehicles),
+                        "frame_width": width,  # ✅ ENVIAR DIMENSIONES ORIGINALES
+                        "frame_height": height,  # ✅ PARA QUE FRONTEND ESCALE CORRECTAMENTE
                     },
                 )
 

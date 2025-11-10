@@ -15,6 +15,9 @@ const UserTable: React.FC<UserTableProps> = ({
   onEditRoles,
   onDeleteUser,
 }) => {
+
+
+  
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -120,6 +123,7 @@ const UserTable: React.FC<UserTableProps> = ({
     </div>
   );
 };
+
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -374,52 +378,33 @@ const RoleModal: React.FC<RoleModalProps> = ({
 };
 
 export const UserManagementSection: React.FC = () => {
-  const [users, setUsers] = useState<UserWithRoles[]>([]);
-  const [loading, setLoading] = useState(true);
+
+//   export interface UserRole {
+//   id: string;
+//   name: 'ADMIN' | 'OPERATOR' | 'VIEWER';
+//   permissions: string[];
+// }
+  const [users, setUsers] = useState<UserWithRoles[]>([
+
+]);
+
+  const [loading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [availableRoles, setAvailableRoles] = useState<Array<{ id: string; name: UserRoleType; permissions: string[] }>>([]);
+  const [availableRoles] = useState<Array<{ id: string; name: UserRoleType; permissions: string[] }>>([
+    { id: 'r1', name: 'ADMIN', permissions: [] },
+    { id: 'r2', name: 'OPERATOR', permissions: [] },
+    { id: 'r3', name: 'VIEWER', permissions: [] },
+  ]);
 
-  useEffect(() => {
-    loadUsers();
-    loadRoles();
-  }, []);
-
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const userData = await userService.getUsers({
-        role: filterRole || undefined,
-        isActive: filterStatus ? filterStatus === 'active' : undefined
-      });
-      setUsers(userData);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRoles = async () => {
-    try {
-      const roles = await userService.getRoles();
-      setAvailableRoles(roles);
-    } catch (error) {
-      console.error('Error loading roles:', error);
-    }
-  };
-
-  const handleToggleStatus = async (userId: string, isActive: boolean) => {
-    try {
-      await userService.toggleUserStatus(userId, isActive);
-      await loadUsers();
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-    }
+  const handleToggleStatus = (userId: string, isActive: boolean) => {
+    setUsers(prev =>
+      prev.map(u => (u.id === userId ? { ...u, isActive } : u))
+    );
   };
 
   const handleEditRoles = (user: UserWithRoles) => {
@@ -427,41 +412,29 @@ export const UserManagementSection: React.FC = () => {
     setIsRoleModalOpen(true);
   };
 
-  const handleSaveRoles = async (userId: string, roleIds: string[]) => {
-    try {
-      await userService.updateUserRoles(userId, roleIds);
-      setIsRoleModalOpen(false);
-      setSelectedUser(null);
-      await loadUsers();
-    } catch (error) {
-      console.error('Error updating user roles:', error);
-    }
+  const handleSaveRoles = (userId: string, roleIds: string[]) => {
+    const updatedRoles = availableRoles.filter(r => roleIds.includes(r.id));
+    setUsers(prev =>
+      prev.map(u => (u.id === userId ? { ...u, roles: updatedRoles } : u))
+    );
+    setIsRoleModalOpen(false);
+    setSelectedUser(null);
   };
 
-  const handleCreateUser = async (userData: { email: string; password: string; roleIds: string[] }) => {
-    try {
-      await userService.createUser({
-        email: userData.email,
-        password: userData.password,
-        fullName: userData.email, // Using email as fullName for now
-        roleIds: userData.roleIds
-      });
-      setIsCreateModalOpen(false);
-      await loadUsers();
-    } catch (error) {
-      console.error('Error creating user:', error);
-    }
+  const handleCreateUser = (userData: { email: string; password: string; roleIds: string[] }) => {
+    const newUser: UserWithRoles = {
+      id: Math.random().toString(36).substring(2, 10),
+      email: userData.email,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+      roles: availableRoles.filter(r => userData.roleIds.includes(r.id)),
+    };
+    setUsers(prev => [...prev, newUser]);
+    setIsCreateModalOpen(false);
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este usuario?')) {
-      try {
-        await userService.deleteUser(userId);
-        await loadUsers();
-      } catch (error) {
-        console.error('Error deleting user:', error);
-      }
-    }
+  const handleDeleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
   const filteredUsers = users.filter(user => {
@@ -470,129 +443,49 @@ export const UserManagementSection: React.FC = () => {
     const matchesStatus = !filterStatus || 
                          (filterStatus === 'active' && user.isActive) ||
                          (filterStatus === 'inactive' && !user.isActive);
-    
     return matchesSearch && matchesRole && matchesStatus;
   });
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
       {/* Action Bar */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900">Gestión de Usuarios</h2>
- 
       </div>
 
-      {/* Filters and Search */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Buscar usuarios
-          </label>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Email..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+        <div className="bg-blue-50 rounded-lg p-4 flex items-center">
+          <div className="text-blue-600 text-2xl mr-3">👥</div>
+          <div>
+            <div className="text-lg font-semibold text-blue-900">{users.length}</div>
+            <div className="text-sm text-blue-600">Total Usuarios</div>
+          </div>
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Filtrar por rol
-          </label>
-          <select
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Todos los roles</option>
-            <option value="ADMIN">Administrador</option>
-            <option value="OPERATOR">Operador</option>
-            <option value="VIEWER">Visor</option>
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Filtrar por estado
-          </label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Todos</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-          </select>
-        </div>
-        
-        <div className="flex items-end">
-          <button
-            onClick={loadUsers}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Actualizar
-          </button>
-        </div>
-      </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-blue-600 text-2xl mr-3">👥</div>
-            <div>
-              <div className="text-lg font-semibold text-blue-900">
-                {users.length}
-              </div>
-              <div className="text-sm text-blue-600">Total Usuarios</div>
-            </div>
+        <div className="bg-green-50 rounded-lg p-4 flex items-center">
+          <div className="text-green-600 text-2xl mr-3">✅</div>
+          <div>
+            <div className="text-lg font-semibold text-green-900">{users.filter(u => u.isActive).length}</div>
+            <div className="text-sm text-green-600">Usuarios Activos</div>
           </div>
         </div>
-        
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-green-600 text-2xl mr-3">✅</div>
-            <div>
-              <div className="text-lg font-semibold text-green-900">
-                {users.filter(u => u.isActive).length}
-              </div>
-              <div className="text-sm text-green-600">Usuarios Activos</div>
-            </div>
+
+        <div className="bg-red-50 rounded-lg p-4 flex items-center">
+          <div className="text-red-600 text-2xl mr-3">❌</div>
+          <div>
+            <div className="text-lg font-semibold text-red-900">{users.filter(u => !u.isActive).length}</div>
+            <div className="text-sm text-red-600">Usuarios Inactivos</div>
           </div>
         </div>
-        
-        <div className="bg-red-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-red-600 text-2xl mr-3">❌</div>
-            <div>
-              <div className="text-lg font-semibold text-red-900">
-                {users.filter(u => !u.isActive).length}
-              </div>
-              <div className="text-sm text-red-600">Usuarios Inactivos</div>
+
+        <div className="bg-purple-50 rounded-lg p-4 flex items-center">
+          <div className="text-purple-600 text-2xl mr-3">🔐</div>
+          <div>
+            <div className="text-lg font-semibold text-purple-900">
+              {users.filter(u => u.roles.some(r => r.name === 'ADMIN')).length}
             </div>
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-purple-600 text-2xl mr-3">🔐</div>
-            <div>
-              <div className="text-lg font-semibold text-purple-900">
-                {users.filter(u => u.roles.some((r: any) => r.name === 'ADMIN')).length}
-              </div>
-              <div className="text-sm text-purple-600">Administradores</div>
-            </div>
+            <div className="text-sm text-purple-600">Administradores</div>
           </div>
         </div>
       </div>
@@ -604,33 +497,21 @@ export const UserManagementSection: React.FC = () => {
             Lista de Usuarios ({filteredUsers.length})
           </h3>
         </div>
-        
-        {filteredUsers.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <div className="text-gray-500 text-lg">No se encontraron usuarios</div>
-            <div className="text-gray-400 text-sm mt-1">
-              Intenta ajustar los filtros de búsqueda
-            </div>
-          </div>
-        ) : (
-          <UserTable
-            users={filteredUsers}
-            onToggleStatus={handleToggleStatus}
-            onEditRoles={handleEditRoles}
-            onDeleteUser={handleDeleteUser}
-          />
-        )}
+        <UserTable
+          users={filteredUsers}
+          onToggleStatus={handleToggleStatus}
+          onEditRoles={handleEditRoles}
+          onDeleteUser={handleDeleteUser}
+        />
       </div>
 
-      {/* Create User Modal */}
+      {/* Modals */}
       <CreateUserModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSave={handleCreateUser}
         availableRoles={availableRoles}
       />
-
-      {/* Role Edit Modal */}
       <RoleModal
         user={selectedUser}
         isOpen={isRoleModalOpen}

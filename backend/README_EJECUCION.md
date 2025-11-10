@@ -30,6 +30,8 @@ pip install -r requirements.txt
 # Desde el directorio backend (con venv activado)
 
 # OPCIÓN RECOMENDADA: Pool eventlet (100 green threads para tareas concurrentes)
+taskkill /F /IM celery.exe
+
 celery -A config worker --pool=eventlet --concurrency=100 --loglevel=info
 
 # Otras opciones:

@@ -83,12 +83,12 @@ export const VehicleReportsPage: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <span className="text-2xl">✅</span>
+                <span className="text-2xl">📈</span>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Resueltos Hoy
+                    Alertas Hoy
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
                     12
@@ -98,6 +98,8 @@ export const VehicleReportsPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+
       </div>
 
       {/* Filters and Search */}
@@ -182,124 +184,92 @@ export const VehicleReportsPage: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">Vehículos reportados ordenados por fecha</p>
         </div>
         <div className="overflow-x-auto">
+
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Placa
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo de Vehículo
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo de Denuncia
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Prioridad
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Vehículo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Denuncia</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prioridad</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {[
                 {
-                  plate: 'ABC123',
-                  vehicleType: 'Automóvil',
-                  reportType: 'Exceso de Velocidad',
-                  date: '2025-09-18',
+                  plate: 'PBC-3942',
+                  vehicleType: 'Camioneta',
+                  reportType: 'Vehículo reportado como robado',
+                  date: '2025-11-02',
                   priority: 'Alta',
-                  status: 'Activo',
-                  location: 'Av. Principal km 15'
                 },
                 {
-                  plate: 'XYZ789',
-                  vehicleType: 'Motocicleta',
-                  reportType: 'Tránsito no Autorizado',
-                  date: '2025-09-18',
+                  plate: 'GSP-1173',
+                  vehicleType: 'Automóvil',
+                  reportType: 'Robo parcial',
+                  date: '2025-10-29',
                   priority: 'Media',
-                  status: 'En investigación',
-                  location: 'Calle 10 de Agosto'
                 },
                 {
-                  plate: 'DEF456',
-                  vehicleType: 'Camión',
-                  reportType: 'Estacionamiento Prohibido',
-                  date: '2025-09-17',
+                  plate: 'TBA-6541',
+                  vehicleType: 'SUV',
+                  reportType: 'Denuncia por documentos falsos',
+                  date: '2025-11-07',
+                  priority: 'Media',
+                },
+                {
+                  plate: 'GLL-2389',
+                  vehicleType: 'Sedán',
+                  reportType: 'Robo total',
+                  date: '2025-10-31',
                   priority: 'Baja',
-                  status: 'Resuelto',
-                  location: 'Plaza Central'
                 },
                 {
-                  plate: 'GHI321',
-                  vehicleType: 'Automóvil',
-                  reportType: 'Semáforo en Rojo',
-                  date: '2025-09-17',
-                  priority: 'Alta',
-                  status: 'Activo',
-                  location: 'Intersección Bolívar'
-                },
-                {
-                  plate: 'JKL654',
+                  plate: 'PBX-8814',
                   vehicleType: 'Motocicleta',
-                  reportType: 'Documentos Vencidos',
-                  date: '2025-09-16',
+                  reportType: 'Robo parcial',
+                  date: '2025-11-04',
+                  priority: 'Baja',
+                },
+                {
+                  plate: 'MAQ-5920',
+                  vehicleType: 'Furgoneta',
+                  reportType: 'Vehículo reportado como robado',
+                  date: '2025-11-01',
                   priority: 'Media',
-                  status: 'En investigación',
-                  location: 'Control Policía'
                 },
               ].map((report, index) => (
                 <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.plate}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.vehicleType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reportType}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          🚗
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{report.plate}</div>
-                        <div className="text-sm text-gray-500">{report.location}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {report.vehicleType}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {report.reportType}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {report.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      report.priority === 'Alta' 
-                        ? 'bg-red-100 text-red-800' 
-                        : report.priority === 'Media'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${report.priority === 'Alta'
+                          ? 'bg-red-100 text-red-800'
+                          : report.priority === 'Media'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                    >
                       {report.priority}
                     </span>
                   </td>
-          
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">Ver detalles</button>
-
-                    </div>
+                    <button className="text-blue-600 hover:text-blue-900">Ver detalles</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+
+
         </div>
-        
+
         {/* Pagination */}
         <div className="bg-white px-6 py-3 border-t border-gray-200">
           <div className="flex items-center justify-between">

@@ -1,12 +1,18 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Camera, Play, Pause, Settings } from 'lucide-react';
+import { ArrowLeft, Camera, Play, Pause, Settings, Link as LinkIcon } from 'lucide-react';
 import { trafficService } from '../../services/traffic.service';
 import { CameraEntity, VEHICLE_TYPES } from '@traffic-analysis/shared';
 import { getWebSocketService, cleanupWebSocketService } from '../../services/websocket.service';
 import { DetectionLogPanel } from '../../components/traffic/DetectionLogPanel';
 import BoundingBoxDrawer from '../../components/traffic/BoundingBoxDrawer';
+import ConnectPathModal from '../../components/traffic/ConnectPathModal';
 import type { RealtimeDetectionEvent, VehicleTypeKey } from '@traffic-analysis/shared';
 import { useEffect, useRef, useState } from 'react';
+
+// ✅ Interface para el estado de navegación
+interface LocationState {
+  analysisId?: number;
+}
 
 interface CameraLiveData {
   vehicleCount: number;
@@ -87,6 +93,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState<boolean>(false);
+  const [showReconnectModal, setShowReconnectModal] = useState<boolean>(false);
 
   useEffect(() => {
     if (id) {
@@ -166,10 +173,16 @@ export const CameraLiveAnalysisPage: React.FC = () => {
 
         // ✅ Mantener frame_processed para compatibilidad
         const unsubFrameProcessed = wsService.on('frame_processed', (data: any) => {
+          console.log(`🎯 [FRAME_PROCESSED] Datos recibidos:`, data);
+          console.log(`🎯 [FRAME_PROCESSED] Tipo de data:`, typeof data);
+          console.log(`🎯 [FRAME_PROCESSED] Keys:`, Object.keys(data));
+          
           framesReceivedCount.current++;
           lastProcessedTimestamp.current = data.timestamp;
 
           const timeKey = Math.round(data.timestamp * 100) / 100;
+
+          console.log(`🔑 [BUFFER] Guardando en timeKey: ${timeKey} | Timestamp original: ${data.timestamp}`);
 
           if (data.detections && Array.isArray(data.detections)) {
             const formattedDetections: Detection[] = data.detections.map((det: any) => ({
@@ -266,12 +279,15 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         unsubscribers.push(unsubNotificationBadge);
 
         const unsubComplete = wsService.on('processing_complete', (data: any) => {
-          console.log('✅ Análisis completado:', data);
-          setIsPlaying(false);
-          setIsPaused(false);
-          setShowProcessedFrames(false);
-          setCurrentFrameDetections([]);
-          setIsBuffering(false);
+          console.log('✅ Análisis completado por el backend:', data);
+          console.log(`📊 Total vehículos detectados: ${data.total_vehicles}`);
+          console.log(`⏱️ Tiempo de procesamiento: ${data.processing_time}s`);
+          console.log(`🚗 Desglose: ${JSON.stringify(data.vehicle_breakdown)}`);
+          
+          // ✅ NO detener la reproducción - Los datos ya están en el buffer
+          // El video seguirá reproduciéndose y mostrando las detecciones almacenadas
+          // Solo marcamos que el análisis backend terminó
+          console.log('ℹ️ El video continuará mostrando las detecciones ya procesadas');
         });
         unsubscribers.push(unsubComplete);
 
@@ -379,11 +395,12 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         setCurrentFrameDetections(detections);
         
         // 🆕 AGREGAR VEHÍCULOS A LA LISTA CUANDO APARECEN EN EL VIDEO
+        // Solo agregar si el track_id es NUEVO (no importa el orden de llegada)
         detections.forEach((det) => {
           if (!processedTrackIds.current.has(det.track_id)) {
             processedTrackIds.current.add(det.track_id);
             
-            // Convertir vehicle_type a VehicleTypeKey válido
+            // Mapear vehicle_type a VehicleTypeKey válido
             const vehicleTypeMap: Record<string, VehicleTypeKey> = {
               'car': VEHICLE_TYPES.CAR,
               'truck': VEHICLE_TYPES.TRUCK,
@@ -409,6 +426,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               trackId: det.track_id.toString(),
             };
 
+            // ✅ Agregar a la lista para mostrar en DetectionLogPanel
             setDetections((prev) => [...prev, detection]);
             
             // ✅ Actualizar contador local con la cantidad de vehículos en la lista
@@ -418,7 +436,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               lastUpdate: new Date().toLocaleTimeString(),
             }));
             
-            console.log(`🚗 Nuevo vehículo en video: ${det.vehicle_type} (track_id: ${det.track_id}) @ ${time.toFixed(2)}s`);
+            console.log(`🚗 Nuevo vehículo agregado al log: ${det.vehicle_type} (track_id: ${det.track_id}) @ ${time.toFixed(2)}s`);
           }
         });
         
@@ -501,6 +519,43 @@ export const CameraLiveAnalysisPage: React.FC = () => {
     } catch (error) {
       console.error('Error al reconectar:', error);
       setIsConnected(false);
+    }
+  };
+
+  // ✅ NUEVO: Manejar reconexión desde modal (igual que CamerasPage)
+  const handleReconnectFromModal = async (videoFile: File, newAnalysisId: number) => {
+    console.log('🔗 Reconectando video:', { videoFile: videoFile.name, newAnalysisId });
+
+    try {
+      // 1. Limpiar estado anterior
+      setDetections([]);
+      framesReceivedCount.current = 0;
+      processedTrackIds.current.clear();
+      hasStartedVideo.current = false;
+      setLiveData(prev => ({ ...prev, vehicleCount: 0, avgSpeed: 0 }));
+      setDetectionBuffer({});
+      setBufferingProgress(0);
+      setCurrentFrameDetections([]);
+
+      // 2. Crear URL local del video subido (NO del backend)
+      const localVideoUrl = URL.createObjectURL(videoFile);
+      setVideoUrl(localVideoUrl);
+
+      // 3. Establecer nuevo analysisId
+      setAnalysisId(newAnalysisId);
+
+      // 4. Activar buffering
+      setIsBuffering(true);
+
+      // 5. WebSocket se conectará automáticamente por el useEffect[analysisId]
+      // Los datos llegarán por frame_processed y se almacenarán en detectionBuffer
+      // Cuando haya suficientes frames, auto-iniciará el video
+
+      console.log('✅ Video local configurado — esperando frames del backend');
+
+    } catch (error) {
+      console.error('❌ Error al reconectar video:', error);
+      alert('Error al reconectar el video');
     }
   };
 
@@ -810,6 +865,15 @@ export const CameraLiveAnalysisPage: React.FC = () => {
               </div>
 
               <button
+                onClick={() => setShowReconnectModal(true)}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                title="Reconectar con nuevo video"
+              >
+                <LinkIcon className="w-4 h-4" />
+                Reconectar
+              </button>
+
+              <button
                 onClick={handlePause}
                 disabled={!isPlaying || isBuffering}
                 className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -889,6 +953,20 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ Modal de Reconexión usando ConnectPathModal */}
+      {camera && (
+        <ConnectPathModal
+          isOpen={showReconnectModal}
+          onClose={() => setShowReconnectModal(false)}
+          cameraName={camera.name}
+          cameraId={camera.id}
+          locationId={camera.locationId}
+          userId={1}
+          onPlay={handleReconnectFromModal}
+          mode="connect"
+        />
+      )}
     </div>
   );
 };

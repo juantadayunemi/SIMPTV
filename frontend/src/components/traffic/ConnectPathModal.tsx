@@ -10,6 +10,7 @@ interface ConnectPathModalProps {
   locationId: number;
   userId: number;
   onPlay: (videoFile: File, analysisId: number) => void;
+  mode?: 'play' | 'connect'; // ✅ NUEVO: modo para cambiar el texto del botón
 }
 
 export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
@@ -20,6 +21,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
   locationId,
   userId,
   onPlay,
+  mode = 'play', // ✅ Por defecto es 'play'
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -129,7 +131,9 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
         {/* Encabezado */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Conectar Video</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {mode === 'connect' ? 'Reconectar Video' : 'Conectar Video'}
+            </h2>
             <p className="text-sm text-gray-600 mt-1">Cámara: {cameraName}</p>
           </div>
           <button
@@ -244,7 +248,7 @@ export const ConnectPathModal: React.FC<ConnectPathModalProps> = ({
             ) : (
               <>
                 <Play className="w-5 h-5 mr-2" />
-                Reproducir
+                {mode === 'connect' ? 'Reconectar' : 'Reproducir'}
               </>
             )}
           </button>

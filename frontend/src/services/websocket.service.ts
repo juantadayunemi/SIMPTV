@@ -131,7 +131,6 @@ export class TrafficWebSocketService {
   private handleMessage(message: WebSocketMessage): void {
 
     console.log(`📨 Mensaje recibido :`, message.data);
-
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach((handler) => handler(message.data));
