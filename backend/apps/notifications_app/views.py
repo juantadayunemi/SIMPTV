@@ -6,12 +6,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db.models import Q, Count, Prefetch
 from .models import FCMDevice, NotificationLog
+from apps.plates_app.models import VehicleComplaintDetection, VehicleComplaint
 from .serializers import (
     FCMDeviceListSerializer,
     RegisterFCMTokenSerializer,
     TestNotificationSerializer,
     NotificationLogSerializer,
+    VehicleComplaintDetectionSerializer,
+    VehicleComplaintDetectionDetailSerializer,
 )
 from utils.fcm_service import FCMService
 import logging
@@ -328,4 +332,78 @@ def send_traffic_violation_alert(request):
         return Response(
             {"error": "Error interno del servidor"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+class VehicleComplaintViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para listar vehículos con denuncias.
+    Solo lectura (no permite crear/editar).
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = VehicleComplaintDetectionSerializer
+
+    def get_serializer_class(self):
+        """Use detail serializer for retrieve action."""
+        if self.action == "retrieve":
+            return VehicleComplaintDetectionDetailSerializer
+        return VehicleComplaintDetectionSerializer
+
+    def get_queryset(self):
+        queryset = (
+            VehicleComplaintDetection.objects.select_related(
+                "detectedPlateId", "detectedPlateId__vehicleId"
+            )
+            .prefetch_related(
+                Prefetch(
+                    "vehiclecomplaintentity_detection_set",
+                    queryset=VehicleComplaint.objects.all().order_by("sequenceNumber"),
+                )
+            )
+            .filter(isActive=True)
+            .order_by("-createdAt")
+        )
+
+        # Filtro por búsqueda de placa
+        search = self.request.query_params.get("search", None)
+        if search:
+            queryset = queryset.filter(detectedPlateId__plateNumber__icontains=search)
+
+        # Filtro por severidad
+        severity = self.request.query_params.get("severity", None)
+        if severity and severity != "all":
+            queryset = queryset.filter(severity=severity.upper())
+
+        # Filtro por estado de notificación
+        notified = self.request.query_params.get("notified", None)
+        if notified == "true":
+            queryset = queryset.filter(wasNotified=True)
+        elif notified == "false":
+            queryset = queryset.filter(wasNotified=False)
+
+        return queryset
+
+    @action(detail=False, methods=["get"])
+    def stats(self, request):
+        """Obtener estadísticas de denuncias."""
+        total = VehicleComplaintDetection.objects.filter(isActive=True).count()
+        medium_priority = VehicleComplaintDetection.objects.filter(
+            isActive=True, severity="MEDIUM"
+        ).count()
+        high_priority = VehicleComplaintDetection.objects.filter(
+            isActive=True, severity="HIGH"
+        ).count()
+        today = timezone.now().date()
+        today_alerts = VehicleComplaintDetection.objects.filter(
+            isActive=True, createdAt__date=today
+        ).count()
+
+        return Response(
+            {
+                "totalComplaints": total,
+                "mediumPriority": medium_priority,
+                "highPriority": high_priority,
+                "alertsToday": today_alerts,
+            }
         )

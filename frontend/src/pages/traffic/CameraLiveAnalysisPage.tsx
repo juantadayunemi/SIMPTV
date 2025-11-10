@@ -651,7 +651,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
           <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">Cámara no encontrada</p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/home')}
             className="mt-4 text-blue-600 hover:text-blue-700"
           >
             Volver al inicio
@@ -669,7 +669,7 @@ export const CameraLiveAnalysisPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/home')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />

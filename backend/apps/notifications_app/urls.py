@@ -6,6 +6,9 @@ from . import views
 router = DefaultRouter()
 router.register(r"devices", views.FCMDeviceViewSet, basename="fcm-device")
 router.register(r"notifications", views.NotificationViewSet, basename="notification")
+router.register(
+    r"complaints", views.VehicleComplaintViewSet, basename="vehicle-complaint"
+)
 
 # URL patterns
 urlpatterns = [

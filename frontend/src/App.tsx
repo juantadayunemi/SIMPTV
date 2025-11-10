@@ -17,6 +17,7 @@ import CamerasPage from './pages/traffic/CamerasPage';
 import PlateDetectionPage from './pages/plates/PlateDetectionPage';
 import PredictionsPage from './pages/predictions/PredictionsPage';
 import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
+import VehicleComplaintDetailPage from './pages/vehicles/VehicleComplaintDetailPage';
 import UsersPage from './pages/users/UsersPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
@@ -154,6 +155,7 @@ const App: React.FC = () => {
             <Route path="predictions" element={<PredictionsPage />} />
             <Route path="bottleneck" element={<BottleneckPage />} />
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
+            <Route path="vehicles/complaints/:id" element={<VehicleComplaintDetailPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
