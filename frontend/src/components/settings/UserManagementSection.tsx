@@ -396,6 +396,8 @@ export const UserManagementSection: React.FC = () => {
   const [availableRoles, setAvailableRoles] = useState<Array<{ id: string; name: UserRoleType; permissions: string[] }>>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const PROTECTED_EMAIL = "juantadaymalan3@gmail.com";
+
   // Cargar usuarios y roles al montar el componente
   useEffect(() => {
     loadUsers();
@@ -431,14 +433,20 @@ export const UserManagementSection: React.FC = () => {
 
   const handleToggleStatus = async (userId: string, isActive: boolean) => {
     try {
+      const user = users.find(u => u.id === userId);
+      if (user?.email === PROTECTED_EMAIL) {
+        alert("No se puede inhabilitar la cuenta protegida.");
+        return;
+      }
+
       await userService.toggleUserStatus(userId, isActive);
       // Actualizar usuario en la lista local
       setUsers(prev =>
         prev.map(u => (u.id === userId ? { ...u, isActive } : u))
       );
     } catch (error: any) {
-      console.error('Error toggling user status:', error);
-      alert(error.response?.data?.error || 'Error al cambiar estado del usuario');
+      console.error("Error toggling user status:", error);
+      alert(error.response?.data?.error || "Error al cambiar estado del usuario");
     }
   };
 
@@ -449,6 +457,12 @@ export const UserManagementSection: React.FC = () => {
 
   const handleSaveRoles = async (userId: string, roleIds: string[]) => {
     try {
+      const user = users.find(u => u.id === userId);
+      if (user?.email === PROTECTED_EMAIL && !roleIds.includes("ADMIN")) {
+        alert("No se puede quitar el rol de ADMIN de la cuenta protegida.");
+        return;
+      }
+
       const updatedUser = await userService.updateUserRoles(userId, roleIds);
       // Actualizar usuario en la lista local
       setUsers(prev =>
@@ -457,8 +471,8 @@ export const UserManagementSection: React.FC = () => {
       setIsRoleModalOpen(false);
       setSelectedUser(null);
     } catch (error: any) {
-      console.error('Error updating roles:', error);
-      alert(error.response?.data?.error || 'Error al actualizar roles');
+      console.error("Error updating roles:", error);
+      alert(error.response?.data?.error || "Error al actualizar roles");
     }
   };
 
@@ -505,16 +519,11 @@ export const UserManagementSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Action Bar */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900">Gestión de Usuarios</h2>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-        >
-          <span>+</span>
-          Crear Usuario
-        </button>
+    
       </div>
 
       {/* Search and Filters */}

@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, UserRole
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .validators import validate_email_complete
 from apps.entities.constants.roles import ROLE_PERMISSIONS
+from django.utils import timezone
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -68,7 +69,7 @@ class RegisterSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
-        """Create new user"""
+        """Create new user and assign default role"""
         from django.contrib.auth.hashers import make_password
 
         # Remove confirmPassword from data
@@ -83,6 +84,14 @@ class RegisterSerializer(serializers.Serializer):
             emailConfirmed=False,
             isActive=False,
         )
+
+        # Assign default role VIEWER
+        try:
+            UserRole.objects.create(user=user, role="VIEWER", assignedAt=timezone.now())
+        except Exception as e:
+            raise serializers.ValidationError(
+                f"Error al asignar el rol VIEWER: {str(e)}"
+            )
 
         return user
 
