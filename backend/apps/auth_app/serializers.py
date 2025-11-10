@@ -3,6 +3,7 @@ from .models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .validators import validate_email_complete
+from apps.entities.constants.roles import ROLE_PERMISSIONS
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -86,6 +87,14 @@ class RegisterSerializer(serializers.Serializer):
         return user
 
 
+class UserRoleSerializer(serializers.Serializer):
+    """Serializer para roles de usuario"""
+
+    id = serializers.CharField()
+    name = serializers.CharField()
+    permissions = serializers.ListField(child=serializers.CharField())
+
+
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for user data
@@ -97,6 +106,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     fullName = serializers.ReadOnlyField()
     profileImageUrl = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -112,13 +122,17 @@ class UserSerializer(serializers.ModelSerializer):
             "isActive",
             "emailConfirmed",
             "createdAt",
+            "updatedAt",
+            "roles",
         ]
         read_only_fields = [
             "id",
             "email",
             "emailConfirmed",
             "createdAt",
+            "updatedAt",
             "profileImageUrl",
+            "roles",
         ]
 
     def get_profileImageUrl(self, obj):
@@ -129,6 +143,22 @@ class UserSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(f"/media/{obj.profileImage}")
             return f"/media/{obj.profileImage}"
         return None
+
+    def get_roles(self, obj):
+        """Obtener roles del usuario con sus permisos"""
+        user_roles = obj.roles.all()
+        roles_data = []
+
+        for user_role in user_roles:
+            roles_data.append(
+                {
+                    "id": user_role.role,
+                    "name": user_role.role,
+                    "permissions": ROLE_PERMISSIONS.get(user_role.role, []),
+                }
+            )
+
+        return roles_data
 
 
 class EmailConfirmationSerializer(serializers.Serializer):

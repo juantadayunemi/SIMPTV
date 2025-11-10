@@ -55,7 +55,7 @@ const UserTable: React.FC<UserTableProps> = ({
                       {user.email}
                     </div>
                     <div className="text-sm text-gray-500">
-                      ID: {user.id.substring(0, 8)}...
+                      ID: {user.id.toString().substring(0, 4)}...
                     </div>
                   </div>
                 </div>
@@ -384,27 +384,62 @@ export const UserManagementSection: React.FC = () => {
 //   name: 'ADMIN' | 'OPERATOR' | 'VIEWER';
 //   permissions: string[];
 // }
-  const [users, setUsers] = useState<UserWithRoles[]>([
+  const [users, setUsers] = useState<UserWithRoles[]>([]);
 
-]);
-
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [availableRoles] = useState<Array<{ id: string; name: UserRoleType; permissions: string[] }>>([
-    { id: 'r1', name: 'ADMIN', permissions: [] },
-    { id: 'r2', name: 'OPERATOR', permissions: [] },
-    { id: 'r3', name: 'VIEWER', permissions: [] },
-  ]);
+  const [availableRoles, setAvailableRoles] = useState<Array<{ id: string; name: UserRoleType; permissions: string[] }>>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleToggleStatus = (userId: string, isActive: boolean) => {
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, isActive } : u))
-    );
+  // Cargar usuarios y roles al montar el componente
+  useEffect(() => {
+    loadUsers();
+    loadRoles();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const usersData = await userService.getUsers();
+      setUsers(usersData);
+    } catch (error: any) {
+      console.error('Error loading users:', error);
+      setError(error.response?.data?.error || 'Error al cargar usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const rolesData = await userService.getRoles();
+      setAvailableRoles(rolesData.map(role => ({
+        id: role.id,
+        name: role.name as UserRoleType,
+        permissions: role.permissions
+      })));
+    } catch (error: any) {
+      console.error('Error loading roles:', error);
+    }
+  };
+
+  const handleToggleStatus = async (userId: string, isActive: boolean) => {
+    try {
+      await userService.toggleUserStatus(userId, isActive);
+      // Actualizar usuario en la lista local
+      setUsers(prev =>
+        prev.map(u => (u.id === userId ? { ...u, isActive } : u))
+      );
+    } catch (error: any) {
+      console.error('Error toggling user status:', error);
+      alert(error.response?.data?.error || 'Error al cambiar estado del usuario');
+    }
   };
 
   const handleEditRoles = (user: UserWithRoles) => {
@@ -412,29 +447,51 @@ export const UserManagementSection: React.FC = () => {
     setIsRoleModalOpen(true);
   };
 
-  const handleSaveRoles = (userId: string, roleIds: string[]) => {
-    const updatedRoles = availableRoles.filter(r => roleIds.includes(r.id));
-    setUsers(prev =>
-      prev.map(u => (u.id === userId ? { ...u, roles: updatedRoles } : u))
-    );
-    setIsRoleModalOpen(false);
-    setSelectedUser(null);
+  const handleSaveRoles = async (userId: string, roleIds: string[]) => {
+    try {
+      const updatedUser = await userService.updateUserRoles(userId, roleIds);
+      // Actualizar usuario en la lista local
+      setUsers(prev =>
+        prev.map(u => (u.id === userId ? updatedUser : u))
+      );
+      setIsRoleModalOpen(false);
+      setSelectedUser(null);
+    } catch (error: any) {
+      console.error('Error updating roles:', error);
+      alert(error.response?.data?.error || 'Error al actualizar roles');
+    }
   };
 
-  const handleCreateUser = (userData: { email: string; password: string; roleIds: string[] }) => {
-    const newUser: UserWithRoles = {
-      id: Math.random().toString(36).substring(2, 10),
-      email: userData.email,
-      isActive: true,
-      updatedAt: new Date().toISOString(),
-      roles: availableRoles.filter(r => userData.roleIds.includes(r.id)),
-    };
-    setUsers(prev => [...prev, newUser]);
-    setIsCreateModalOpen(false);
+  const handleCreateUser = async (userData: { email: string; password: string; roleIds: string[] }) => {
+    try {
+      const newUser = await userService.createUser({
+        email: userData.email,
+        password: userData.password,
+        fullName: userData.email.split('@')[0], // Temporal
+        roleIds: userData.roleIds
+      });
+      // Agregar usuario a la lista local
+      setUsers(prev => [newUser, ...prev]);
+      setIsCreateModalOpen(false);
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      alert(error.response?.data?.error || 'Error al crear usuario');
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) {
+      return;
+    }
+    
+    try {
+      await userService.deleteUser(userId);
+      // Eliminar usuario de la lista local
+      setUsers(prev => prev.filter(u => u.id !== userId));
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert(error.response?.data?.error || 'Error al eliminar usuario');
+    }
   };
 
   const filteredUsers = users.filter(user => {
@@ -451,7 +508,70 @@ export const UserManagementSection: React.FC = () => {
       {/* Action Bar */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900">Gestión de Usuarios</h2>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+        >
+          <span>+</span>
+          Crear Usuario
+        </button>
       </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Buscar
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por email..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Filtrar por Rol
+            </label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Todos los roles</option>
+              {availableRoles.map((role) => (
+                <option key={role.id} value={role.name}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Filtrar por Estado
+            </label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Todos los estados</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -497,12 +617,23 @@ export const UserManagementSection: React.FC = () => {
             Lista de Usuarios ({filteredUsers.length})
           </h3>
         </div>
-        <UserTable
-          users={filteredUsers}
-          onToggleStatus={handleToggleStatus}
-          onEditRoles={handleEditRoles}
-          onDeleteUser={handleDeleteUser}
-        />
+        
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            No se encontraron usuarios
+          </div>
+        ) : (
+          <UserTable
+            users={filteredUsers}
+            onToggleStatus={handleToggleStatus}
+            onEditRoles={handleEditRoles}
+            onDeleteUser={handleDeleteUser}
+          />
+        )}
       </div>
 
       {/* Modals */}

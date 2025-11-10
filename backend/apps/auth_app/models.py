@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager
 from apps.entities.models import UserEntity, UserRoleEntity
+from apps.entities.constants.roles import USER_ROLES_CHOICES
 
 # ============================================================================
 # AUTHENTICATION MODELS - Using ENTITIES DLL
@@ -135,6 +136,9 @@ class UserRole(UserRoleEntity):
         related_name="roles",
         db_column="user_id",  # Mapea a la columna user_id (desde FK)
     )
+
+    # Definir ROLE_CHOICES desde las constantes importadas
+    ROLE_CHOICES = USER_ROLES_CHOICES
 
     class Meta:
         db_table = "auth_user_roles"

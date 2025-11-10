@@ -3,11 +3,14 @@ ROLES CONSTANTS
 Auto-generated from TypeScript types
 """
 
+
 class USER_ROLES:
     """Constants from TypeScript USER_ROLES"""
+
     ADMIN = "ADMIN"
     OPERATOR = "OPERATOR"
     VIEWER = "VIEWER"
+
 
 USER_ROLES_CHOICES = (
     ("ADMIN", "Admin"),
@@ -15,8 +18,10 @@ USER_ROLES_CHOICES = (
     ("VIEWER", "Viewer"),
 )
 
+
 class PERMISSIONS:
     """Constants from TypeScript PERMISSIONS"""
+
     TRAFFIC_CREATE = "traffic:create"
     TRAFFIC_READ = "traffic:read"
     TRAFFIC_UPDATE = "traffic:update"
@@ -32,6 +37,7 @@ class PERMISSIONS:
     SYSTEM_ADMIN = "system:admin"
     SETTINGS_MANAGE = "settings:manage"
     NOTIFICATIONS_MANAGE = "notifications:manage"
+
 
 PERMISSIONS_CHOICES = (
     ("traffic:create", "Traffic Create"),
@@ -51,8 +57,38 @@ PERMISSIONS_CHOICES = (
     ("notifications:manage", "Notifications Manage"),
 )
 
-class ROLE_PERMISSIONS:
-    """Constants from TypeScript ROLE_PERMISSIONS"""
-
-ROLE_PERMISSIONS_CHOICES = (
-)
+# Role Permissions Mapping (from TypeScript ROLE_PERMISSIONS)
+ROLE_PERMISSIONS = {
+    USER_ROLES.ADMIN: [
+        PERMISSIONS.TRAFFIC_CREATE,
+        PERMISSIONS.TRAFFIC_READ,
+        PERMISSIONS.TRAFFIC_UPDATE,
+        PERMISSIONS.TRAFFIC_DELETE,
+        PERMISSIONS.PLATE_CREATE,
+        PERMISSIONS.PLATE_READ,
+        PERMISSIONS.PLATE_UPDATE,
+        PERMISSIONS.PLATE_DELETE,
+        PERMISSIONS.USER_CREATE,
+        PERMISSIONS.USER_READ,
+        PERMISSIONS.USER_UPDATE,
+        PERMISSIONS.USER_DELETE,
+        PERMISSIONS.SYSTEM_ADMIN,
+        PERMISSIONS.SETTINGS_MANAGE,
+        PERMISSIONS.NOTIFICATIONS_MANAGE,
+    ],
+    USER_ROLES.OPERATOR: [
+        PERMISSIONS.TRAFFIC_CREATE,
+        PERMISSIONS.TRAFFIC_READ,
+        PERMISSIONS.TRAFFIC_UPDATE,
+        PERMISSIONS.PLATE_CREATE,
+        PERMISSIONS.PLATE_READ,
+        PERMISSIONS.PLATE_UPDATE,
+        PERMISSIONS.USER_READ,
+        PERMISSIONS.NOTIFICATIONS_MANAGE,
+    ],
+    USER_ROLES.VIEWER: [
+        PERMISSIONS.TRAFFIC_READ,
+        PERMISSIONS.PLATE_READ,
+        PERMISSIONS.USER_READ,
+    ],
+}

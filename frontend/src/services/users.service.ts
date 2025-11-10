@@ -33,70 +33,70 @@ class UserService {
     page?: number;
     limit?: number;
   }): Promise<UserWithRoles[]> {
-    const response = await api.get('/api/users', { params });
-    return response.data;
+    const response = await api.get('/api/auth/admin/users/', { params });
+    return response.data.users || response.data;
   }
 
   // Get specific user
   async getUser(userId: string): Promise<UserWithRoles> {
-    const response = await api.get(`/api/users/${userId}`);
-    return response.data;
+    const response = await api.get(`/api/auth/admin/users/${userId}/`);
+    return response.data.user || response.data;
   }
 
   // Create new user
   async createUser(userData: CreateUserData): Promise<UserWithRoles> {
-    const response = await api.post('/api/users', userData);
-    return response.data;
+    const response = await api.post('/api/auth/admin/users/', userData);
+    return response.data.user || response.data;
   }
 
   // Update user
   async updateUser(userId: string, userData: UpdateUserData): Promise<UserWithRoles> {
-    const response = await api.put(`/api/users/${userId}`, userData);
-    return response.data;
+    const response = await api.put(`/api/auth/admin/users/${userId}/`, userData);
+    return response.data.user || response.data;
   }
 
   // Delete user
   async deleteUser(userId: string): Promise<{ message: string }> {
-    const response = await api.delete(`/api/users/${userId}`);
+    const response = await api.delete(`/api/auth/admin/users/${userId}/`);
     return response.data;
   }
 
   // Activate/Deactivate user
   async toggleUserStatus(userId: string, isActive: boolean): Promise<UserWithRoles> {
-    const response = await api.patch(`/api/users/${userId}/status`, { isActive });
-    return response.data;
+    const response = await api.patch(`/api/auth/admin/users/${userId}/status/`, { isActive });
+    return response.data.user || response.data;
   }
 
   // Get all roles
   async getRoles(): Promise<UserRole[]> {
-    const response = await api.get('/api/users/roles');
-    return response.data;
+    const response = await api.get('/api/auth/admin/roles/');
+    return response.data.roles || response.data;
   }
 
   // Get user permissions
   async getUserPermissions(userId: string): Promise<string[]> {
-    const response = await api.get(`/api/users/${userId}/permissions`);
+    const response = await api.get(`/api/auth/admin/users/${userId}/permissions/`);
     return response.data;
   }
 
   // Update user roles
   async updateUserRoles(userId: string, roleIds: string[]): Promise<UserWithRoles> {
-    const response = await api.put(`/api/users/${userId}/roles`, { roleIds });
-    return response.data;
+    const response = await api.put(`/api/auth/admin/users/${userId}/roles/`, { roleIds });
+    return response.data.user || response.data;
   }
 
   // Reset user password (Admin only)
   async resetUserPassword(userId: string, newPassword: string): Promise<{ message: string }> {
-    const response = await api.post(`/api/users/${userId}/reset-password`, { newPassword });
+    const response = await api.post(`/api/auth/admin/users/${userId}/reset-password/`, { newPassword });
     return response.data;
   }
 
   // Search users
   async searchUsers(query: string): Promise<UserWithRoles[]> {
-    const response = await api.get('/api/users/search', {
+    const response = await api.get('/api/auth/admin/users/search/', {
       params: { q: query }
     });
-    return response.data;
+    return response.data.users || response.data;
   }
 
   // Get user activity log
