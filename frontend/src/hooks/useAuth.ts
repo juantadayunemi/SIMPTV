@@ -150,7 +150,7 @@ export const useAuth = () => {
       localStorage.removeItem('user');
       
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
       // Force clear even if there's an error
       localStorage.clear();
       setState({

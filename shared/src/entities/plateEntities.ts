@@ -32,7 +32,7 @@
 export interface DetectedPlateEntity {
   id: number; // @db:primary @db:identity - ID autoincremental
   trafficAnalysisId: number; // @db:foreignKey traffic_app.TrafficAnalysis @db:int - FK a TrafficAnalysis
-  vehicleId: string; // @db:foreignKey traffic_app.Vehicle @db:varchar(50) - FK a Vehicle (tracking ID único de esa pasada)
+  vehicleId?: string; // @db:foreignKey traffic_app.Vehicle @db:varchar(50) - FK a Vehicle (tracking ID único de esa pasada)
   
   // Datos de la placa detectada
   plateNumber: string; // @db:varchar(20) - Número de placa detectado por OCR (Ej: "ABC-1234")

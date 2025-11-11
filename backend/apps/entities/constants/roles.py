@@ -57,38 +57,41 @@ PERMISSIONS_CHOICES = (
     ("notifications:manage", "Notifications Manage"),
 )
 
-# Role Permissions Mapping (from TypeScript ROLE_PERMISSIONS)
-ROLE_PERMISSIONS = {
-    USER_ROLES.ADMIN: [
-        PERMISSIONS.TRAFFIC_CREATE,
-        PERMISSIONS.TRAFFIC_READ,
-        PERMISSIONS.TRAFFIC_UPDATE,
-        PERMISSIONS.TRAFFIC_DELETE,
-        PERMISSIONS.PLATE_CREATE,
-        PERMISSIONS.PLATE_READ,
-        PERMISSIONS.PLATE_UPDATE,
-        PERMISSIONS.PLATE_DELETE,
-        PERMISSIONS.USER_CREATE,
-        PERMISSIONS.USER_READ,
-        PERMISSIONS.USER_UPDATE,
-        PERMISSIONS.USER_DELETE,
-        PERMISSIONS.SYSTEM_ADMIN,
-        PERMISSIONS.SETTINGS_MANAGE,
-        PERMISSIONS.NOTIFICATIONS_MANAGE,
+
+class ROLE_PERMISSIONS:
+    """Constants from TypeScript ROLE_PERMISSIONS"""
+
+
+ROLE_PERMISSIONS_CHOICES = ()
+
+# Dictionary mapping roles to their permissions
+ROLE_PERMISSIONS_DICT = {
+    "ADMIN": [
+        "traffic:create",
+        "traffic:read",
+        "traffic:update",
+        "traffic:delete",
+        "plate:create",
+        "plate:read",
+        "plate:update",
+        "plate:delete",
+        "user:create",
+        "user:read",
+        "user:update",
+        "user:delete",
+        "system:admin",
+        "settings:manage",
+        "notifications:manage",
     ],
-    USER_ROLES.OPERATOR: [
-        PERMISSIONS.TRAFFIC_CREATE,
-        PERMISSIONS.TRAFFIC_READ,
-        PERMISSIONS.TRAFFIC_UPDATE,
-        PERMISSIONS.PLATE_CREATE,
-        PERMISSIONS.PLATE_READ,
-        PERMISSIONS.PLATE_UPDATE,
-        PERMISSIONS.USER_READ,
-        PERMISSIONS.NOTIFICATIONS_MANAGE,
+    "OPERATOR": [
+        "traffic:create",
+        "traffic:read",
+        "traffic:update",
+        "plate:create",
+        "plate:read",
+        "plate:update",
+        "user:read",
+        "notifications:manage",
     ],
-    USER_ROLES.VIEWER: [
-        PERMISSIONS.TRAFFIC_READ,
-        PERMISSIONS.PLATE_READ,
-        PERMISSIONS.USER_READ,
-    ],
+    "VIEWER": ["traffic:read", "plate:read", "user:read"],
 }

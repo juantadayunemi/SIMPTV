@@ -3,7 +3,7 @@
  */
 
 // ============= NOTIFICATION TYPES =============
-export const NotificationType = {
+export const NOTIFICATION_TYPES = {
   TRAFFIC_ALERT: 'TRAFFIC_ALERT' as const,
   PLATE_DETECTION: 'PLATE_DETECTION' as const,
   SYSTEM_ALERT: 'SYSTEM_ALERT' as const,
@@ -13,7 +13,7 @@ export const NotificationType = {
 } as const;
 
 
-export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
+export type NotificationTypeKey = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
 
 
 

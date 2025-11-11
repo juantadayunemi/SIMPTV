@@ -18,10 +18,12 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q, Count, Prefetch
 from django.contrib.auth.hashers import make_password
-from .models import User, UserRole
+from django.db import transaction
+from django.utils import timezone
+from .models import User, UserRole, RolePermission, UserPermissionOverride
 from .serializers import UserSerializer
-from .permissions import IsAdminUser
-from apps.entities.constants.roles import ROLE_PERMISSIONS
+from .permissions import IsAdminUser, get_user_permissions
+from apps.entities.constants import USER_ROLES_CHOICES, ROLE_PERMISSIONS_DICT
 
 # ============================================================================
 # USER MANAGEMENT VIEWS
@@ -42,8 +44,8 @@ class UserListCreateView(APIView):
     def get(self, request):
         """Listar usuarios con filtros opcionales"""
         try:
-            # Query base
-            users = User.objects.prefetch_related("roles").all()
+            # Query base (usar userRoles, no roles)
+            users = User.objects.prefetch_related("userRoles").all()
 
             # Filtros opcionales
             role_filter = request.query_params.get("role")
@@ -51,7 +53,7 @@ class UserListCreateView(APIView):
             search = request.query_params.get("search")
 
             if role_filter:
-                users = users.filter(roles__role=role_filter)
+                users = users.filter(userRoles__role=role_filter)
 
             if is_active is not None:
                 users = users.filter(isActive=is_active.lower() == "true")
@@ -66,8 +68,8 @@ class UserListCreateView(APIView):
             # Ordenar por fecha de creación (más recientes primero)
             users = users.order_by("-createdAt").distinct()
 
-            # Serializar con roles incluidos
-            serializer = UserSerializer(users, many=True)
+            # Serializar con roles incluidos y contexto
+            serializer = UserSerializer(users, many=True, context={"request": request})
 
             return Response(
                 {
@@ -158,8 +160,8 @@ class UserDetailView(APIView):
     def get(self, request, user_id):
         """Obtener detalle de usuario"""
         try:
-            user = User.objects.prefetch_related("roles").get(id=user_id)
-            serializer = UserSerializer(user)
+            user = User.objects.prefetch_related("userRoles").get(id=user_id)
+            serializer = UserSerializer(user, context={"request": request})
             return Response(
                 {"success": True, "user": serializer.data}, status=status.HTTP_200_OK
             )
@@ -304,26 +306,63 @@ class UserRolesView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def put(self, request, user_id):
-        """Actualizar roles de usuario"""
+        """Actualizar roles de usuario con transacción atómica"""
+        from django.db import transaction
+
         try:
             user = User.objects.get(id=user_id)
             role_ids = request.data.get("roleIds", [])
 
-            # Eliminar roles actuales
-            UserRole.objects.filter(user=user).delete()
+            # ⚠️ VALIDACIÓN CRÍTICA: El usuario DEBE tener al menos un rol
+            if not role_ids or len(role_ids) == 0:
+                return Response(
+                    {
+                        "success": False,
+                        "error": "El usuario debe tener al menos un rol asignado. Como mínimo debe ser VIEWER.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # Asignar nuevos roles
-            for role_name in role_ids:
-                UserRole.objects.create(user=user, role=role_name)
+            # Validar que todos los roles sean válidos
+            valid_roles = [choice[0] for choice in USER_ROLES_CHOICES]
+            invalid_roles = [r for r in role_ids if r not in valid_roles]
+
+            if invalid_roles:
+                return Response(
+                    {
+                        "success": False,
+                        "error": f"Roles inválidos: {', '.join(invalid_roles)}. Roles válidos: {', '.join(valid_roles)}",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # 🔒 TRANSACCIÓN ATÓMICA: Todo o nada
+            with transaction.atomic():
+                # Eliminar roles actuales
+                UserRole.objects.filter(user=user).delete()
+
+                # Asignar nuevos roles
+                roles_created = []
+                for role_name in role_ids:
+                    role_obj = UserRole.objects.create(
+                        user=user,
+                        role=role_name,
+                        assignedBy=request.user.id,
+                    )
+                    roles_created.append(role_obj)
+
+                # Verificar que se crearon roles
+                if len(roles_created) == 0:
+                    raise Exception("No se pudieron crear los roles")
 
             # Recargar usuario con roles
             user.refresh_from_db()
-            serializer = UserSerializer(user)
+            serializer = UserSerializer(user, context={"request": request})
 
             return Response(
                 {
                     "success": True,
-                    "message": "Roles actualizados exitosamente",
+                    "message": f"Roles actualizados exitosamente. Asignados: {', '.join(role_ids)}",
                     "user": serializer.data,
                 },
                 status=status.HTTP_200_OK,
@@ -339,6 +378,22 @@ class UserRolesView(APIView):
             import traceback
 
             traceback.print_exc()
+
+            # En caso de error, asegurar que el usuario tenga al menos VIEWER
+            try:
+                user = User.objects.get(id=user_id)
+                if user.userRoles.count() == 0:
+                    print(
+                        f"⚠️ Usuario {user.email} sin roles. Asignando VIEWER por seguridad..."
+                    )
+                    UserRole.objects.create(
+                        user=user,
+                        role="VIEWER",
+                        assignedBy=request.user.id,
+                    )
+            except:
+                pass
+
             return Response(
                 {"success": False, "error": f"Error al actualizar roles: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -360,7 +415,7 @@ class RoleListView(APIView):
             # Roles predefinidos del sistema
             roles_data = []
 
-            for role_choice in UserRole.ROLE_CHOICES:
+            for role_choice in USER_ROLES_CHOICES:
                 role_name = role_choice[0]
                 role_label = role_choice[1]
 
@@ -368,7 +423,7 @@ class RoleListView(APIView):
                 user_count = UserRole.objects.filter(role=role_name).count()
 
                 # Obtener permisos del rol (desde constantes importadas)
-                permissions = ROLE_PERMISSIONS.get(role_name, [])
+                permissions = ROLE_PERMISSIONS_DICT.get(role_name, [])
 
                 roles_data.append(
                     {
@@ -417,11 +472,11 @@ class UserSearchView(APIView):
                 Q(email__icontains=query)
                 | Q(firstName__icontains=query)
                 | Q(lastName__icontains=query)
-            ).prefetch_related("roles")[
+            ).prefetch_related("userRoles")[
                 :20
             ]  # Limitar a 20 resultados
 
-            serializer = UserSerializer(users, many=True)
+            serializer = UserSerializer(users, many=True, context={"request": request})
 
             return Response(
                 {
@@ -436,5 +491,281 @@ class UserSearchView(APIView):
             print(f"❌ ERROR SEARCH USERS: {str(e)}")
             return Response(
                 {"success": False, "error": f"Error al buscar usuarios: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# ============================================================================
+# PERMISSION MANAGEMENT VIEWS
+# ============================================================================
+
+
+class RolePermissionsView(APIView):
+    """
+    GET  /api/auth/admin/roles/<role>/permissions/
+    POST /api/auth/admin/roles/<role>/permissions/
+
+    Gestionar permisos personalizados de un rol
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, role):
+        """Obtener permisos de un rol (default + custom)"""
+        try:
+            # Validar que el rol existe
+            valid_roles = [choice[0] for choice in USER_ROLES_CHOICES]
+            if role not in valid_roles:
+                return Response(
+                    {"success": False, "error": f"Rol inválido: {role}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Permisos por defecto del rol
+            default_permissions = ROLE_PERMISSIONS_DICT.get(role, [])
+
+            # Permisos personalizados activos
+            now = timezone.now()
+            custom_permissions = RolePermission.objects.filter(role=role).filter(
+                Q(expiresAt__isnull=True) | Q(expiresAt__gt=now)
+            )
+
+            # Formatear respuesta
+            custom_perms_data = [
+                {
+                    "id": perm.id,
+                    "permission": perm.permission,
+                    "isGranted": perm.isGranted,
+                    "grantedBy": perm.grantedBy.email if perm.grantedBy else None,
+                    "grantedAt": perm.grantedAt,
+                    "expiresAt": perm.expiresAt,
+                }
+                for perm in custom_permissions
+            ]
+
+            return Response(
+                {
+                    "success": True,
+                    "role": role,
+                    "defaultPermissions": list(default_permissions),
+                    "customPermissions": custom_perms_data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ ERROR GET ROLE PERMISSIONS: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error al obtener permisos: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def post(self, request, role):
+        """Actualizar permisos personalizados de un rol"""
+        try:
+            # Validar rol
+            valid_roles = [choice[0] for choice in USER_ROLES_CHOICES]
+            if role not in valid_roles:
+                return Response(
+                    {"success": False, "error": f"Rol inválido: {role}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            permissions_data = request.data.get("permissions", [])
+
+            if not isinstance(permissions_data, list):
+                return Response(
+                    {"success": False, "error": "permissions debe ser una lista"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Actualizar permisos en transacción atómica
+            with transaction.atomic():
+                # Eliminar permisos personalizados anteriores
+                RolePermission.objects.filter(role=role).delete()
+
+                # Crear nuevos permisos
+                for perm_data in permissions_data:
+                    RolePermission.objects.create(
+                        role=role,
+                        permission=perm_data.get("permission"),
+                        isGranted=perm_data.get("isGranted", True),
+                        grantedBy=request.user,
+                        expiresAt=perm_data.get("expiresAt"),
+                    )
+
+            return Response(
+                {
+                    "success": True,
+                    "message": f"Permisos de {role} actualizados correctamente",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            print(f"❌ ERROR UPDATE ROLE PERMISSIONS: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error al actualizar permisos: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class UserPermissionsView(APIView):
+    """
+    GET  /api/auth/admin/users/<user_id>/permissions/
+    POST /api/auth/admin/users/<user_id>/permissions/override/
+
+    Ver permisos efectivos de un usuario y gestionar overrides
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, user_id):
+        """Obtener permisos efectivos de un usuario"""
+        try:
+            user = User.objects.get(id=user_id)
+
+            # Permisos efectivos (con precedencia aplicada)
+            effective_permissions = get_user_permissions(user)
+
+            # Overrides activos del usuario
+            now = timezone.now()
+            user_overrides = UserPermissionOverride.objects.filter(user=user).filter(
+                Q(expiresAt__isnull=True) | Q(expiresAt__gt=now)
+            )
+
+            overrides_data = [
+                {
+                    "id": override.id,
+                    "permission": override.permission,
+                    "isGranted": override.isGranted,
+                    "overrideReason": override.overrideReason,
+                    "grantedBy": (
+                        override.grantedBy.email if override.grantedBy else None
+                    ),
+                    "grantedAt": override.grantedAt,
+                    "expiresAt": override.expiresAt,
+                }
+                for override in user_overrides
+            ]
+
+            return Response(
+                {
+                    "success": True,
+                    "userId": user_id,
+                    "effectivePermissions": list(effective_permissions),
+                    "overrides": overrides_data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"success": False, "error": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            print(f"❌ ERROR GET USER PERMISSIONS: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error al obtener permisos: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def post(self, request, user_id):
+        """Crear/actualizar override de permiso para usuario"""
+        try:
+            user = User.objects.get(id=user_id)
+
+            permission = request.data.get("permission")
+            is_granted = request.data.get("isGranted")
+            override_reason = request.data.get("overrideReason", "")
+            expires_at = request.data.get("expiresAt")
+
+            if not permission:
+                return Response(
+                    {"success": False, "error": "Campo 'permission' es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if is_granted is None:
+                return Response(
+                    {"success": False, "error": "Campo 'isGranted' es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Crear o actualizar override
+            with transaction.atomic():
+                override, created = UserPermissionOverride.objects.update_or_create(
+                    user=user,
+                    permission=permission,
+                    defaults={
+                        "isGranted": is_granted,
+                        "overrideReason": override_reason,
+                        "grantedBy": request.user,
+                        "expiresAt": expires_at,
+                    },
+                )
+
+            action = "creado" if created else "actualizado"
+            return Response(
+                {
+                    "success": True,
+                    "message": f"Override {action} correctamente",
+                    "override": {
+                        "id": override.id,
+                        "permission": override.permission,
+                        "isGranted": override.isGranted,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {"success": False, "error": "Usuario no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            print(f"❌ ERROR CREATE USER OVERRIDE: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error al crear override: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class UserPermissionOverrideDeleteView(APIView):
+    """
+    DELETE /api/auth/admin/users/<user_id>/permissions/override/<override_id>/
+
+    Eliminar un override de permiso
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def delete(self, request, user_id, override_id):
+        """Eliminar override de permiso"""
+        try:
+            override = UserPermissionOverride.objects.get(
+                id=override_id, user_id=user_id
+            )
+            override.delete()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Override eliminado correctamente",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except UserPermissionOverride.DoesNotExist:
+            return Response(
+                {"success": False, "error": "Override no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            print(f"❌ ERROR DELETE OVERRIDE: {str(e)}")
+            return Response(
+                {"success": False, "error": f"Error al eliminar override: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

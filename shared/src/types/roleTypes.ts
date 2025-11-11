@@ -9,27 +9,27 @@ export const USER_ROLES = {
 
 export const PERMISSIONS = {
   // Traffic Analysis
-  TRAFFIC_CREATE: 'traffic:create',
-  TRAFFIC_READ: 'traffic:read',
-  TRAFFIC_UPDATE: 'traffic:update',
-  TRAFFIC_DELETE: 'traffic:delete',
+  TRAFFIC_CREATE: 'traffic:create' as const,
+  TRAFFIC_READ: 'traffic:read' as const,
+  TRAFFIC_UPDATE: 'traffic:update' as const,
+  TRAFFIC_DELETE: 'traffic:delete' as const,
   
   // Plate Detection
-  PLATE_CREATE: 'plate:create',
-  PLATE_READ: 'plate:read',
-  PLATE_UPDATE: 'plate:update',
-  PLATE_DELETE: 'plate:delete',
+  PLATE_CREATE: 'plate:create' as const,
+  PLATE_READ: 'plate:read' as const,
+  PLATE_UPDATE: 'plate:update' as const,
+  PLATE_DELETE: 'plate:delete' as const,
   
   // Users Management
-  USER_CREATE: 'user:create',
-  USER_READ: 'user:read',
-  USER_UPDATE: 'user:update',
-  USER_DELETE: 'user:delete',
+  USER_CREATE: 'user:create' as const,
+  USER_READ: 'user:read' as const,
+  USER_UPDATE: 'user:update' as const,
+  USER_DELETE: 'user:delete' as const,
   
   // System
-  SYSTEM_ADMIN: 'system:admin',
-  SETTINGS_MANAGE: 'settings:manage',
-  NOTIFICATIONS_MANAGE: 'notifications:manage'
+  SYSTEM_ADMIN: 'system:admin' as const,
+  SETTINGS_MANAGE: 'settings:manage' as const,
+  NOTIFICATIONS_MANAGE: 'notifications:manage' as const,
 } as const;
 
 export const ROLE_PERMISSIONS = {

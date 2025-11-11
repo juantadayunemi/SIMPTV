@@ -126,10 +126,41 @@ export const RoleManagementSection: React.FC = () => {
   };
 
   const handleSavePermissions = async () => {
-    // This would save custom permissions for a role
-    // Implementation depends on backend support for custom role permissions
-    console.log('Saving permissions for role:', selectedRole, customPermissions);
-    alert('Funcionalidad de permisos personalizados pendiente de implementación en el backend');
+    if (!selectedRole) return;
+    
+    try {
+      setLoading(true);
+      
+      // Preparar datos de permisos
+      const permissionsData = customPermissions.map(permission => ({
+        permission,
+        isGranted: true,
+      }));
+      
+      // Llamar al API para actualizar permisos del rol
+      const response = await fetch(`/api/auth/admin/roles/${selectedRole}/permissions/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({ permissions: permissionsData }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ Permisos de ${selectedRole} actualizados correctamente`);
+        await loadRoles(); // Recargar roles
+      } else {
+        alert(`❌ Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      alert('❌ Error al guardar permisos');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {

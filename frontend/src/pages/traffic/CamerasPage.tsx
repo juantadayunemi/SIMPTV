@@ -8,7 +8,9 @@ import EditCameraModal from '../../components/traffic/EditCameraModal';
 import CameraMenuDropdown from '../../components/traffic/CameraMenuDropdown';
 import ConnectPathModal from '../../components/traffic/ConnectPathModal';
 import BoundingBoxDrawer from '../../components/traffic/BoundingBoxDrawer';
-import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
+import { CameraEntity, CameraStatusKey } from '@traffic-analysis/shared';
+import { CAMERA_STATUS } from '@shared/types/trafficTypes';
+
 
 interface CameraUIEntity extends CameraEntity {
   location?: string;
@@ -44,7 +46,7 @@ const CamerasPage: React.FC = () => {
   // 🔥 Buffer de detecciones ordenado por timestamp
   const [detectionBuffer, setDetectionBuffer] = useState<Record<number, DetectionBuffer>>({});
   
-  const [filterStatus, setFilterStatus] = useState<'all' | StatusCameraKey>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | CameraStatusKey>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -83,11 +85,11 @@ const CamerasPage: React.FC = () => {
       const camerasUI: CameraUIEntity[] = camerasData.map((camera) => {
         const lastAnalysis = analyses.length > 0 ? analyses[0] : undefined;
         
-        let status: StatusCameraKey = StatusCameraKey.INACTIVE;
+        let status: CameraStatusKey = CAMERA_STATUS.INACTIVE;
         if (camera.status === 'ACTIVE') {
-          status = StatusCameraKey.ACTIVE;
+          status = CAMERA_STATUS.ACTIVE;
         } else if (camera.status === 'MAINTENANCE') {
-          status = StatusCameraKey.MAINTENANCE;
+          status = CAMERA_STATUS.MAINTENANCE;
         }
         
         return {
@@ -304,7 +306,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
         setCameras(prev =>
           prev.map(cam =>
             cam.id === cameraId
-              ? { ...cam, status: StatusCameraKey.ACTIVE, isPlaying: true, videoUrl }
+              ? { ...cam, status: CAMERA_STATUS.ACTIVE, isPlaying: true, videoUrl }
               : cam
           )
         );
@@ -393,30 +395,30 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
     filterStatus === 'all' || camera.status === filterStatus
   );
 
-  const getStatusIcon = (status: StatusCameraKey) => {
+  const getStatusIcon = (status: CameraStatusKey) => {
     switch (status) {
-      case StatusCameraKey.ACTIVE:
+      case CAMERA_STATUS.ACTIVE:
         return <Wifi className="w-4 h-4 text-success-500" />;
-      case StatusCameraKey.MAINTENANCE:
+      case CAMERA_STATUS.MAINTENANCE:
         return <Settings className="w-4 h-4 text-warning-500" />;
       default:
         return <WifiOff className="w-4 h-4 text-error-500" />;
     }
   };
 
-  const getStatusText = (status: StatusCameraKey) => {
+  const getStatusText = (status: CameraStatusKey) => {
     switch (status) {
-      case StatusCameraKey.ACTIVE: return 'Activa';
-      case StatusCameraKey.MAINTENANCE: return 'En Mantenimiento';
+      case CAMERA_STATUS.ACTIVE: return 'Activa';
+      case CAMERA_STATUS.MAINTENANCE: return 'En Mantenimiento';
       default: return 'Inactiva';
     }
   };
 
-  const getStatusColor = (status: StatusCameraKey) => {
+  const getStatusColor = (status: CameraStatusKey) => {
     switch (status) {
-      case StatusCameraKey.ACTIVE:
+      case CAMERA_STATUS.ACTIVE:
         return 'text-success-600 bg-success-50 border-success-200';
-      case StatusCameraKey.MAINTENANCE:
+      case CAMERA_STATUS.MAINTENANCE:
         return 'text-warning-600 bg-warning-50 border-warning-200';
       default:
         return 'text-error-600 bg-error-50 border-error-200';
@@ -445,13 +447,13 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | StatusCameraKey)}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | CameraStatusKey)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">Todas las cámaras</option>
-              <option value={StatusCameraKey.ACTIVE}>Activas</option>
-              <option value={StatusCameraKey.MAINTENANCE}>En Mantenimiento</option>
-              <option value={StatusCameraKey.INACTIVE}>Inactivas</option>
+              <option value={CAMERA_STATUS.ACTIVE}>Activas</option>
+              <option value={CAMERA_STATUS.MAINTENANCE}>En Mantenimiento</option>
+              <option value={CAMERA_STATUS.INACTIVE}>Inactivas</option>
             </select>
 
             <button
@@ -482,7 +484,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
             <div>
               <p className="text-sm font-medium text-gray-600">Activas</p>
               <p className="text-2xl font-bold text-success-600">
-                {cameras.filter(c => c.status === StatusCameraKey.ACTIVE).length}
+                {cameras.filter(c => c.status === CAMERA_STATUS.ACTIVE).length}
               </p>
             </div>
             <Wifi className="w-8 h-8 text-success-500" />
@@ -494,7 +496,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
             <div>
               <p className="text-sm font-medium text-gray-600">Mantenimiento</p>
               <p className="text-2xl font-bold text-warning-600">
-                {cameras.filter(c => c.status === StatusCameraKey.MAINTENANCE).length}
+                {cameras.filter(c => c.status === CAMERA_STATUS.MAINTENANCE).length}
               </p>
             </div>
             <Settings className="w-8 h-8 text-warning-500" />
@@ -506,7 +508,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
             <div>
               <p className="text-sm font-medium text-gray-600">Inactivas</p>
               <p className="text-2xl font-bold text-error-600">
-                {cameras.filter(c => c.status === StatusCameraKey.INACTIVE).length}
+                {cameras.filter(c => c.status === CAMERA_STATUS.INACTIVE).length}
               </p>
             </div>
             <WifiOff className="w-8 h-8 text-error-500" />
@@ -607,7 +609,7 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
                       <div className="text-center text-white">
                         <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p className="text-sm opacity-75">
-                          {camera.status === StatusCameraKey.ACTIVE ? 'Transmisión en vivo' : 'Sin señal'}
+                          {camera.status === CAMERA_STATUS.ACTIVE ? 'Transmisión en vivo' : 'Sin señal'}
                         </p>
                       </div>
                     </div>
@@ -681,10 +683,10 @@ const handlePlayVideo = (videoFile: File, analysisId: number) => {
                     </>
                   )}
 
-                  {!camera.isPlaying && camera.status !== StatusCameraKey.ACTIVE && (
+                  {!camera.isPlaying && camera.status !== CAMERA_STATUS.ACTIVE && (
                     <div className="text-center py-4">
                       <p className="text-sm text-gray-500">
-                        {camera.status === StatusCameraKey.MAINTENANCE 
+                        {camera.status === CAMERA_STATUS.MAINTENANCE 
                           ? 'En Mantenimiento - Procesando análisis de tráfico...'
                           : 'Cámara fuera de servicio'
                         }

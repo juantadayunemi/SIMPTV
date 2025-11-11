@@ -3,9 +3,7 @@ from .base import BaseModel, BaseModelString
 import uuid
 import decimal
 from ..constants import (
-    ALERT_TYPE_CHOICES,
     ANALYSIS_STATUS_CHOICES,
-    CAMERA_STATUS,
     CAMERA_STATUS_CHOICES,
     DENSITY_LEVELS_CHOICES,
     PLATE_PROCESSING_STATUS_CHOICES,
@@ -17,7 +15,6 @@ from ..constants import (
 
 class CreateVehicleComplaintDetectionDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateVehicleComplaintDetectionDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDetectionDTO): pass"""
 
     detectedPlateId = models.IntegerField()
@@ -34,12 +31,10 @@ class CreateVehicleComplaintDetectionDTO(BaseModel):
         verbose_name_plural = "Abstract CreateVehicleComplaintDetectionDTOs"
 
     def __str__(self):
-        return f"CreateVehicleComplaintDetectionDTO ({self.pk})"
-
+        return f'CreateVehicleComplaintDetectionDTO ({self.pk})'
 
 class CreateVehicleComplaintDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateVehicleComplaintDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateVehicleComplaintDTO): pass"""
 
     detectionId = models.IntegerField()
@@ -55,32 +50,22 @@ class CreateVehicleComplaintDTO(BaseModel):
         verbose_name_plural = "Abstract CreateVehicleComplaintDTOs"
 
     def __str__(self):
-        return f"CreateVehicleComplaintDTO ({self.pk})"
-
+        return f'CreateVehicleComplaintDTO ({self.pk})'
 
 class TrafficHistoricalDataEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficHistoricalDataEntity"""
-
     """USAGE: Inherit in other apps - class User(TrafficHistoricalDataEntity): pass"""
 
-    locationId = models.ForeignKey(
-        "traffic_app.Location",
-        on_delete=models.CASCADE,
-        related_name="traffichistoricaldataentity_location_set",
-    )
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='traffichistoricaldataentity_location_set')
     date = models.DateTimeField()
     hour = models.IntegerField()
     dayOfWeek = models.IntegerField()
     month = models.IntegerField()
     vehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(
-        max_digits=6, decimal_places=2, default=decimal.Decimal("0")
-    )
-    densityLevel = models.CharField(max_length=20)
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, default=decimal.Decimal("0"))
+    densityLevel = models.CharField(max_length=20, choices=DENSITY_LEVELS_CHOICES)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
-    temperature = models.DecimalField(
-        max_digits=5, decimal_places=2, blank=True, null=True
-    )
+    temperature = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     isHoliday = models.BooleanField(default=False)
     isWeekend = models.BooleanField(default=False)
 
@@ -90,19 +75,13 @@ class TrafficHistoricalDataEntity(BaseModel):
         verbose_name_plural = "Abstract TrafficHistoricalDataEntitys"
 
     def __str__(self):
-        return f"TrafficHistoricalDataEntity ({self.pk})"
-
+        return f'TrafficHistoricalDataEntity ({self.pk})'
 
 class LocationTrafficPatternEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationTrafficPatternEntity"""
-
     """USAGE: Inherit in other apps - class User(LocationTrafficPatternEntity): pass"""
 
-    locationId = models.ForeignKey(
-        "traffic_app.Location",
-        on_delete=models.CASCADE,
-        related_name="locationtrafficpatternentity_location_set",
-    )
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='locationtrafficpatternentity_location_set')
     patternType = models.CharField(max_length=20)
     patternData = models.TextField()
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
@@ -115,12 +94,10 @@ class LocationTrafficPatternEntity(BaseModel):
         verbose_name_plural = "Abstract LocationTrafficPatternEntitys"
 
     def __str__(self):
-        return f"LocationTrafficPatternEntity ({self.pk})"
-
+        return f'LocationTrafficPatternEntity ({self.pk})'
 
 class LocationEntity(BaseModel):
     """Abstract DLL model from TypeScript interface LocationEntity"""
-
     """USAGE: Inherit in other apps - class User(LocationEntity): pass"""
 
     description = models.CharField(max_length=500)
@@ -137,12 +114,10 @@ class LocationEntity(BaseModel):
         verbose_name_plural = "Abstract LocationEntitys"
 
     def __str__(self):
-        return f"{self.description} ({self.pk})"
-
+        return f'{self.description} ({self.pk})'
 
 class CameraEntity(BaseModel):
     """Abstract DLL model from TypeScript interface CameraEntity"""
-
     """USAGE: Inherit in other apps - class User(CameraEntity): pass"""
 
     name = models.CharField(max_length=100)
@@ -150,28 +125,12 @@ class CameraEntity(BaseModel):
     model = models.CharField(max_length=50, blank=True, null=True)
     resolution = models.CharField(max_length=20, blank=True, null=True)
     fps = models.IntegerField(blank=True, null=True)
-    locationId = models.ForeignKey(
-        "traffic_app.Location",
-        on_delete=models.CASCADE,
-        related_name="cameraentity_location_set",
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=CAMERA_STATUS_CHOICES,
-        default=CAMERA_STATUS.ACTIVE,
-        db_column="status",
-        verbose_name="Camera Status",
-    )
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='cameraentity_location_set')
+    status = models.CharField(max_length=20, default='ACTIVE', choices=CAMERA_STATUS_CHOICES)
     lanes = models.IntegerField(default=2)
     coversBothDirections = models.BooleanField(default=False)
     currentVideoPath = models.CharField(max_length=500, blank=True, null=True)
-    currentAnalysisId = models.ForeignKey(
-        "traffic_app.TrafficAnalysis",
-        on_delete=models.CASCADE,
-        related_name="cameraentity_currentanalysis_set",
-        blank=True,
-        null=True,
-    )
+    currentAnalysisId = models.ForeignKey('traffic_app.TrafficAnalysis', on_delete=models.CASCADE, related_name='cameraentity_currentanalysis_set', blank=True, null=True)
     thumbnailPath = models.CharField(max_length=500, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
@@ -181,24 +140,14 @@ class CameraEntity(BaseModel):
         verbose_name_plural = "Abstract CameraEntitys"
 
     def __str__(self):
-        return f"{self.name} ({self.pk})"
-
+        return f'{self.name} ({self.pk})'
 
 class TrafficAnalysisEntity(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficAnalysisEntity"""
-
     """USAGE: Inherit in other apps - class User(TrafficAnalysisEntity): pass"""
 
-    cameraId = models.ForeignKey(
-        "traffic_app.Camera",
-        on_delete=models.CASCADE,
-        related_name="trafficanalysisentity_camera_set",
-    )
-    locationId = models.ForeignKey(
-        "traffic_app.Location",
-        on_delete=models.CASCADE,
-        related_name="trafficanalysisentity_location_set",
-    )
+    cameraId = models.ForeignKey('traffic_app.Camera', on_delete=models.CASCADE, related_name='trafficanalysisentity_camera_set')
+    locationId = models.ForeignKey('traffic_app.Location', on_delete=models.CASCADE, related_name='trafficanalysisentity_location_set')
     videoPath = models.CharField(max_length=500, blank=True, null=True)
     userId = models.IntegerField(blank=True, null=True)
     startedAt = models.DateTimeField()
@@ -209,26 +158,14 @@ class TrafficAnalysisEntity(BaseModel):
     totalVehicles = models.IntegerField(default=0)
     processingDuration = models.IntegerField(default=0)
     totalVehicleCount = models.IntegerField(default=0)
-    avgSpeed = models.DecimalField(
-        max_digits=6, decimal_places=2, blank=True, null=True
-    )
-    densityLevel = models.CharField(
-        max_length=10,
-        choices=DENSITY_LEVELS_CHOICES,
-        db_column="densityLevel",
-        verbose_name="Density Level",
-    )
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    densityLevel = models.CharField(max_length=10, choices=DENSITY_LEVELS_CHOICES)
     isPlaying = models.BooleanField(default=False)
     isPaused = models.BooleanField(default=False)
     currentTimestamp = models.IntegerField(default=0)
     weatherConditions = models.CharField(max_length=100, blank=True, null=True)
     analysisData = models.TextField(blank=True, null=True)
-    status = models.CharField(
-        max_length=20,
-        choices=ANALYSIS_STATUS_CHOICES,
-        db_column="status",
-        verbose_name="Analysis Status",
-    )
+    status = models.CharField(max_length=20, choices=ANALYSIS_STATUS_CHOICES)
     errorMessage = models.TextField(blank=True, null=True)
     carCount = models.IntegerField(default=0)
     truckCount = models.IntegerField(default=0)
@@ -245,39 +182,29 @@ class TrafficAnalysisEntity(BaseModel):
         verbose_name_plural = "Abstract TrafficAnalysisEntitys"
 
     def __str__(self):
-        return f"TrafficAnalysisEntity ({self.pk})"
-
+        return f'TrafficAnalysisEntity ({self.pk})'
 
 class VehicleEntity(BaseModelString):
     """Abstract DLL model from TypeScript interface VehicleEntity"""
-
     """USAGE: Inherit in other apps - class User(VehicleEntity): pass"""
 
-    trafficAnalysisId = models.ForeignKey(
-        "traffic_app.TrafficAnalysis",
-        on_delete=models.CASCADE,
-        related_name="vehicleentity_trafficanalysis_set",
-    )
-    vehicleType = models.CharField(max_length=20)
+    trafficAnalysisId = models.ForeignKey('traffic_app.TrafficAnalysis', on_delete=models.CASCADE, related_name='vehicleentity_trafficanalysis_set')
+    vehicleType = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
     confidence = models.DecimalField(max_digits=5, decimal_places=4)
     detectedPlate = models.CharField(max_length=20, blank=True, null=True)
-    plateConfidence = models.DecimalField(
-        max_digits=5, decimal_places=4, blank=True, null=True
-    )
+    plateConfidence = models.DecimalField(max_digits=5, decimal_places=4, blank=True, null=True)
     firstDetectedAt = models.DateTimeField()
     lastDetectedAt = models.DateTimeField()
-    trackingStatus = models.CharField(max_length=20)
-    avgSpeed = models.DecimalField(
-        max_digits=6, decimal_places=2, blank=True, null=True
-    )
-    direction = models.CharField(max_length=20, blank=True, null=True)
+    trackingStatus = models.CharField(max_length=20, choices=TRACKING_STATUS_CHOICES)
+    avgSpeed = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+    direction = models.CharField(max_length=20, blank=True, null=True, choices=TRAFFIC_DIRECTION_CHOICES)
     lane = models.IntegerField(blank=True, null=True)
     totalFrames = models.IntegerField(default=0)
     storedFrames = models.IntegerField(default=0)
     color = models.CharField(max_length=50, blank=True, null=True)
     brand = models.CharField(max_length=50, blank=True, null=True)
     model = models.CharField(max_length=50, blank=True, null=True)
-    plateProcessingStatus = models.CharField(max_length=20)
+    plateProcessingStatus = models.CharField(max_length=20, choices=PLATE_PROCESSING_STATUS_CHOICES)
     bestFrameForPlate = models.IntegerField(blank=True, null=True)
 
     class Meta:
@@ -286,19 +213,13 @@ class VehicleEntity(BaseModelString):
         verbose_name_plural = "Abstract VehicleEntitys"
 
     def __str__(self):
-        return f"VehicleEntity ({self.pk})"
-
+        return f'VehicleEntity ({self.pk})'
 
 class VehicleFrameEntity(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleFrameEntity"""
-
     """USAGE: Inherit in other apps - class User(VehicleFrameEntity): pass"""
 
-    vehicleId = models.ForeignKey(
-        "traffic_app.Vehicle",
-        on_delete=models.CASCADE,
-        related_name="vehicleframeentity_vehicle_set",
-    )
+    vehicleId = models.ForeignKey('traffic_app.Vehicle', on_delete=models.CASCADE, related_name='vehicleframeentity_vehicle_set')
     frameNumber = models.IntegerField()
     timestamp = models.DateTimeField()
     boundingBoxX = models.IntegerField()
@@ -316,12 +237,10 @@ class VehicleFrameEntity(BaseModel):
         verbose_name_plural = "Abstract VehicleFrameEntitys"
 
     def __str__(self):
-        return f"VehicleFrameEntity ({self.pk})"
-
+        return f'VehicleFrameEntity ({self.pk})'
 
 class CreateTrafficAnalysisDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateTrafficAnalysisDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateTrafficAnalysisDTO): pass"""
 
     cameraId = models.IntegerField()
@@ -336,12 +255,10 @@ class CreateTrafficAnalysisDTO(BaseModel):
         verbose_name_plural = "Abstract CreateTrafficAnalysisDTOs"
 
     def __str__(self):
-        return f"CreateTrafficAnalysisDTO ({self.pk})"
-
+        return f'CreateTrafficAnalysisDTO ({self.pk})'
 
 class UpdateTrafficAnalysisStatsDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UpdateTrafficAnalysisStatsDTO"""
-
     """USAGE: Inherit in other apps - class User(UpdateTrafficAnalysisStatsDTO): pass"""
 
     totalVehicleCount = models.IntegerField()
@@ -360,12 +277,10 @@ class UpdateTrafficAnalysisStatsDTO(BaseModel):
         verbose_name_plural = "Abstract UpdateTrafficAnalysisStatsDTOs"
 
     def __str__(self):
-        return f"UpdateTrafficAnalysisStatsDTO ({self.pk})"
-
+        return f'UpdateTrafficAnalysisStatsDTO ({self.pk})'
 
 class CreateVehicleDTO(BaseModelString):
     """Abstract DLL model from TypeScript interface CreateVehicleDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateVehicleDTO): pass"""
 
     trafficAnalysisId = models.IntegerField()
@@ -381,12 +296,10 @@ class CreateVehicleDTO(BaseModelString):
         verbose_name_plural = "Abstract CreateVehicleDTOs"
 
     def __str__(self):
-        return f"CreateVehicleDTO ({self.pk})"
-
+        return f'CreateVehicleDTO ({self.pk})'
 
 class CreateVehicleFrameDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateVehicleFrameDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateVehicleFrameDTO): pass"""
 
     vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -407,12 +320,10 @@ class CreateVehicleFrameDTO(BaseModel):
         verbose_name_plural = "Abstract CreateVehicleFrameDTOs"
 
     def __str__(self):
-        return f"CreateVehicleFrameDTO ({self.pk})"
-
+        return f'CreateVehicleFrameDTO ({self.pk})'
 
 class LocationCount(BaseModel):
     """Abstract DLL model from TypeScript interface LocationCount"""
-
     """USAGE: Inherit in other apps - class User(LocationCount): pass"""
 
     location = models.CharField(max_length=255)
@@ -424,12 +335,10 @@ class LocationCount(BaseModel):
         verbose_name_plural = "Abstract LocationCounts"
 
     def __str__(self):
-        return f"LocationCount ({self.pk})"
-
+        return f'LocationCount ({self.pk})'
 
 class TrafficAnalysisSearchQuery(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficAnalysisSearchQuery"""
-
     """USAGE: Inherit in other apps - class User(TrafficAnalysisSearchQuery): pass"""
 
     location = models.CharField(max_length=255, blank=True, null=True)
@@ -448,12 +357,10 @@ class TrafficAnalysisSearchQuery(BaseModel):
         verbose_name_plural = "Abstract TrafficAnalysisSearchQuerys"
 
     def __str__(self):
-        return f"TrafficAnalysisSearchQuery ({self.pk})"
-
+        return f'TrafficAnalysisSearchQuery ({self.pk})'
 
 class VehicleSearchQuery(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleSearchQuery"""
-
     """USAGE: Inherit in other apps - class User(VehicleSearchQuery): pass"""
 
     trafficAnalysisId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -472,20 +379,16 @@ class VehicleSearchQuery(BaseModel):
         verbose_name_plural = "Abstract VehicleSearchQuerys"
 
     def __str__(self):
-        return f"VehicleSearchQuery ({self.pk})"
-
+        return f'VehicleSearchQuery ({self.pk})'
 
 class TrafficStatsQuery(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficStatsQuery"""
-
     """USAGE: Inherit in other apps - class User(TrafficStatsQuery): pass"""
 
     location = models.CharField(max_length=255, blank=True, null=True)
     startDate = models.DateTimeField()
     endDate = models.DateTimeField()
-    groupBy = models.JSONField(
-        default=dict, help_text="Reference to GroupByDataKey interface"
-    )
+    groupBy = models.JSONField(default=dict, help_text='Reference to GroupByDataKey interface')
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -493,23 +396,16 @@ class TrafficStatsQuery(BaseModel):
         verbose_name_plural = "Abstract TrafficStatsQuerys"
 
     def __str__(self):
-        return f"TrafficStatsQuery ({self.pk})"
-
+        return f'TrafficStatsQuery ({self.pk})'
 
 class TrafficAnalysis(BaseModelString):
     """Abstract DLL model from TypeScript interface TrafficAnalysis"""
-
     """USAGE: Inherit in other apps - class User(TrafficAnalysis): pass"""
 
     location = models.CharField(max_length=255)
     videoPath = models.UUIDField(default=uuid.uuid4, editable=False)
     vehicleCount = models.IntegerField()
-    analysisData = models.JSONField(
-        default=dict,
-        help_text="Reference to TrafficData interface",
-        blank=True,
-        null=True,
-    )
+    analysisData = models.JSONField(default=dict, help_text='Reference to TrafficData interface', blank=True, null=True)
     status = models.CharField(max_length=20, choices=ANALYSIS_STATUS_CHOICES)
     plateDetections = models.JSONField(default=list)
 
@@ -519,12 +415,10 @@ class TrafficAnalysis(BaseModelString):
         verbose_name_plural = "Abstract TrafficAnalysiss"
 
     def __str__(self):
-        return f"TrafficAnalysis ({self.pk})"
-
+        return f'TrafficAnalysis ({self.pk})'
 
 class TrafficData(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficData"""
-
     """USAGE: Inherit in other apps - class User(TrafficData): pass"""
 
     totalVehicles = models.IntegerField()
@@ -540,12 +434,10 @@ class TrafficData(BaseModel):
         verbose_name_plural = "Abstract TrafficDatas"
 
     def __str__(self):
-        return f"TrafficData ({self.pk})"
-
+        return f'TrafficData ({self.pk})'
 
 class VehicleTypeCount(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleTypeCount"""
-
     """USAGE: Inherit in other apps - class User(VehicleTypeCount): pass"""
 
     type = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
@@ -557,19 +449,15 @@ class VehicleTypeCount(BaseModel):
         verbose_name_plural = "Abstract VehicleTypeCounts"
 
     def __str__(self):
-        return f"VehicleTypeCount ({self.pk})"
-
+        return f'VehicleTypeCount ({self.pk})'
 
 class VehicleDetection(BaseModelString):
     """Abstract DLL model from TypeScript interface VehicleDetection"""
-
     """USAGE: Inherit in other apps - class User(VehicleDetection): pass"""
 
     type = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
     confidence = models.IntegerField()
-    boundingBox = models.JSONField(
-        default=dict, help_text="Reference to BoundingBox interface"
-    )
+    boundingBox = models.JSONField(default=dict, help_text='Reference to BoundingBox interface')
     speed = models.IntegerField(blank=True, null=True)
     timestamp = models.DateTimeField()
 
@@ -579,12 +467,10 @@ class VehicleDetection(BaseModelString):
         verbose_name_plural = "Abstract VehicleDetections"
 
     def __str__(self):
-        return f"VehicleDetection ({self.pk})"
-
+        return f'VehicleDetection ({self.pk})'
 
 class TrafficPrediction(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficPrediction"""
-
     """USAGE: Inherit in other apps - class User(TrafficPrediction): pass"""
 
     timeSlot = models.CharField(max_length=255)
@@ -598,12 +484,10 @@ class TrafficPrediction(BaseModel):
         verbose_name_plural = "Abstract TrafficPredictions"
 
     def __str__(self):
-        return f"TrafficPrediction ({self.pk})"
-
+        return f'TrafficPrediction ({self.pk})'
 
 class CreateTrafficAnalysisDto(BaseModel):
     """Abstract DLL model from TypeScript interface CreateTrafficAnalysisDto"""
-
     """USAGE: Inherit in other apps - class User(CreateTrafficAnalysisDto): pass"""
 
     location = models.CharField(max_length=255)
@@ -618,12 +502,10 @@ class CreateTrafficAnalysisDto(BaseModel):
         verbose_name_plural = "Abstract CreateTrafficAnalysisDtos"
 
     def __str__(self):
-        return f"CreateTrafficAnalysisDto ({self.pk})"
-
+        return f'CreateTrafficAnalysisDto ({self.pk})'
 
 class TrafficQueryDto(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficQueryDto"""
-
     """USAGE: Inherit in other apps - class User(TrafficQueryDto): pass"""
 
     location = models.CharField(max_length=255, blank=True, null=True)
@@ -641,12 +523,10 @@ class TrafficQueryDto(BaseModel):
         verbose_name_plural = "Abstract TrafficQueryDtos"
 
     def __str__(self):
-        return f"TrafficQueryDto ({self.pk})"
-
+        return f'TrafficQueryDto ({self.pk})'
 
 class TrafficAnalysisDTO(BaseModelString):
     """Abstract DLL model from TypeScript interface TrafficAnalysisDTO"""
-
     """USAGE: Inherit in other apps - class User(TrafficAnalysisDTO): pass"""
 
     location = models.CharField(max_length=255)
@@ -666,12 +546,10 @@ class TrafficAnalysisDTO(BaseModelString):
         verbose_name_plural = "Abstract TrafficAnalysisDTOs"
 
     def __str__(self):
-        return f"TrafficAnalysisDTO ({self.pk})"
-
+        return f'TrafficAnalysisDTO ({self.pk})'
 
 class VehicleTypeBreakdownDTO(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleTypeBreakdownDTO"""
-
     """USAGE: Inherit in other apps - class User(VehicleTypeBreakdownDTO): pass"""
 
     type = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
@@ -684,12 +562,10 @@ class VehicleTypeBreakdownDTO(BaseModel):
         verbose_name_plural = "Abstract VehicleTypeBreakdownDTOs"
 
     def __str__(self):
-        return f"VehicleTypeBreakdownDTO ({self.pk})"
-
+        return f'VehicleTypeBreakdownDTO ({self.pk})'
 
 class VehicleDetectionResponseDTO(BaseModelString):
     """Abstract DLL model from TypeScript interface VehicleDetectionResponseDTO"""
-
     """USAGE: Inherit in other apps - class User(VehicleDetectionResponseDTO): pass"""
 
     vehicleType = models.CharField(max_length=20, choices=VEHICLE_TYPES_CHOICES)
@@ -717,12 +593,10 @@ class VehicleDetectionResponseDTO(BaseModelString):
         verbose_name_plural = "Abstract VehicleDetectionResponseDTOs"
 
     def __str__(self):
-        return f"VehicleDetectionResponseDTO ({self.pk})"
-
+        return f'VehicleDetectionResponseDTO ({self.pk})'
 
 class VehicleFrameResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleFrameResponseDTO"""
-
     """USAGE: Inherit in other apps - class User(VehicleFrameResponseDTO): pass"""
 
     frameNumber = models.IntegerField()
@@ -738,12 +612,10 @@ class VehicleFrameResponseDTO(BaseModel):
         verbose_name_plural = "Abstract VehicleFrameResponseDTOs"
 
     def __str__(self):
-        return f"VehicleFrameResponseDTO ({self.pk})"
-
+        return f'VehicleFrameResponseDTO ({self.pk})'
 
 class LocationStatsResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface LocationStatsResponseDTO"""
-
     """USAGE: Inherit in other apps - class User(LocationStatsResponseDTO): pass"""
 
     locationId = models.IntegerField()
@@ -757,12 +629,10 @@ class LocationStatsResponseDTO(BaseModel):
         verbose_name_plural = "Abstract LocationStatsResponseDTOs"
 
     def __str__(self):
-        return f"{self.description} ({self.pk})"
-
+        return f'{self.description} ({self.pk})'
 
 class HourlyTrafficDTO(BaseModel):
     """Abstract DLL model from TypeScript interface HourlyTrafficDTO"""
-
     """USAGE: Inherit in other apps - class User(HourlyTrafficDTO): pass"""
 
     hour = models.IntegerField()
@@ -776,12 +646,10 @@ class HourlyTrafficDTO(BaseModel):
         verbose_name_plural = "Abstract HourlyTrafficDTOs"
 
     def __str__(self):
-        return f"HourlyTrafficDTO ({self.pk})"
-
+        return f'HourlyTrafficDTO ({self.pk})'
 
 class CameraStatsResponseDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CameraStatsResponseDTO"""
-
     """USAGE: Inherit in other apps - class User(CameraStatsResponseDTO): pass"""
 
     name = models.CharField(max_length=255)
@@ -798,12 +666,10 @@ class CameraStatsResponseDTO(BaseModel):
         verbose_name_plural = "Abstract CameraStatsResponseDTOs"
 
     def __str__(self):
-        return f"{self.name} ({self.pk})"
-
+        return f'{self.name} ({self.pk})'
 
 class CreateTrafficAnalysisRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface CreateTrafficAnalysisRequestDTO"""
-
     """USAGE: Inherit in other apps - class User(CreateTrafficAnalysisRequestDTO): pass"""
 
     cameraId = models.IntegerField()
@@ -820,12 +686,10 @@ class CreateTrafficAnalysisRequestDTO(BaseModel):
         verbose_name_plural = "Abstract CreateTrafficAnalysisRequestDTOs"
 
     def __str__(self):
-        return f"CreateTrafficAnalysisRequestDTO ({self.pk})"
-
+        return f'CreateTrafficAnalysisRequestDTO ({self.pk})'
 
 class UpdateTrafficAnalysisRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface UpdateTrafficAnalysisRequestDTO"""
-
     """USAGE: Inherit in other apps - class User(UpdateTrafficAnalysisRequestDTO): pass"""
 
     status = models.CharField(max_length=20, choices=ANALYSIS_STATUS_CHOICES)
@@ -847,12 +711,10 @@ class UpdateTrafficAnalysisRequestDTO(BaseModel):
         verbose_name_plural = "Abstract UpdateTrafficAnalysisRequestDTOs"
 
     def __str__(self):
-        return f"UpdateTrafficAnalysisRequestDTO ({self.pk})"
-
+        return f'UpdateTrafficAnalysisRequestDTO ({self.pk})'
 
 class ReportVehicleDetectionRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface ReportVehicleDetectionRequestDTO"""
-
     """USAGE: Inherit in other apps - class User(ReportVehicleDetectionRequestDTO): pass"""
 
     trafficAnalysisId = models.IntegerField()
@@ -872,12 +734,10 @@ class ReportVehicleDetectionRequestDTO(BaseModel):
         verbose_name_plural = "Abstract ReportVehicleDetectionRequestDTOs"
 
     def __str__(self):
-        return f"ReportVehicleDetectionRequestDTO ({self.pk})"
-
+        return f'ReportVehicleDetectionRequestDTO ({self.pk})'
 
 class AddVehicleFrameRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface AddVehicleFrameRequestDTO"""
-
     """USAGE: Inherit in other apps - class User(AddVehicleFrameRequestDTO): pass"""
 
     vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -894,12 +754,10 @@ class AddVehicleFrameRequestDTO(BaseModel):
         verbose_name_plural = "Abstract AddVehicleFrameRequestDTOs"
 
     def __str__(self):
-        return f"AddVehicleFrameRequestDTO ({self.pk})"
-
+        return f'AddVehicleFrameRequestDTO ({self.pk})'
 
 class FinalizeVehicleTrackingRequestDTO(BaseModel):
     """Abstract DLL model from TypeScript interface FinalizeVehicleTrackingRequestDTO"""
-
     """USAGE: Inherit in other apps - class User(FinalizeVehicleTrackingRequestDTO): pass"""
 
     vehicleId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -918,12 +776,10 @@ class FinalizeVehicleTrackingRequestDTO(BaseModel):
         verbose_name_plural = "Abstract FinalizeVehicleTrackingRequestDTOs"
 
     def __str__(self):
-        return f"FinalizeVehicleTrackingRequestDTO ({self.pk})"
-
+        return f'FinalizeVehicleTrackingRequestDTO ({self.pk})'
 
 class TrafficAnalysisQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficAnalysisQueryDTO"""
-
     """USAGE: Inherit in other apps - class User(TrafficAnalysisQueryDTO): pass"""
 
     cameraId = models.IntegerField(blank=True, null=True)
@@ -947,12 +803,10 @@ class TrafficAnalysisQueryDTO(BaseModel):
         verbose_name_plural = "Abstract TrafficAnalysisQueryDTOs"
 
     def __str__(self):
-        return f"TrafficAnalysisQueryDTO ({self.pk})"
-
+        return f'TrafficAnalysisQueryDTO ({self.pk})'
 
 class VehicleSearchQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface VehicleSearchQueryDTO"""
-
     """USAGE: Inherit in other apps - class User(VehicleSearchQueryDTO): pass"""
 
     trafficAnalysisId = models.IntegerField(blank=True, null=True)
@@ -979,12 +833,10 @@ class VehicleSearchQueryDTO(BaseModel):
         verbose_name_plural = "Abstract VehicleSearchQueryDTOs"
 
     def __str__(self):
-        return f"VehicleSearchQueryDTO ({self.pk})"
-
+        return f'VehicleSearchQueryDTO ({self.pk})'
 
 class TrafficStatsQueryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface TrafficStatsQueryDTO"""
-
     """USAGE: Inherit in other apps - class User(TrafficStatsQueryDTO): pass"""
 
     startDate = models.DateTimeField()
@@ -1002,4 +854,4 @@ class TrafficStatsQueryDTO(BaseModel):
         verbose_name_plural = "Abstract TrafficStatsQueryDTOs"
 
     def __str__(self):
-        return f"TrafficStatsQueryDTO ({self.pk})"
+        return f'TrafficStatsQueryDTO ({self.pk})'

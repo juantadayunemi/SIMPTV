@@ -573,13 +573,80 @@ class TypeScriptEntityParser:
                 if default not in ["cuid()", "uuid()", "now()"]:
                     field_options["default"] = f"'{default}'"
 
-            return {
+            # ✨ DETECCIÓN AUTOMÁTICA DE CHOICES
+            # Si el tipo NO es un primitivo (string, number, boolean, Date, any, object)
+            # y tiene @db:varchar o @db:int, entonces es un ENUM/CHOICES
+            choices_import = None
+            is_primitive = ts_type.lower() in [
+                "string",
+                "number",
+                "boolean",
+                "date",
+                "any",
+                "object",
+            ]
+            is_custom_type = not is_primitive and ts_type[0].isupper()
+
+            if is_custom_type:
+                # Mapeo de tipos personalizados a sus CHOICES
+                type_to_choices = {
+                    "UserRoleType": "USER_ROLES_CHOICES",
+                    "PermissionType": "USER_ROLES_CHOICES",
+                    "VehicleTypeKey": "VEHICLE_TYPES_CHOICES",
+                    "VehicleType": "VEHICLE_TYPES_CHOICES",
+                    "AnalysisStatusKey": "ANALYSIS_STATUS_CHOICES",
+                    "AnalysisStatus": "ANALYSIS_STATUS_CHOICES",
+                    "CameraStatusKey": "CAMERA_STATUS_CHOICES",
+                    "CameraStatus": "CAMERA_STATUS_CHOICES",
+                    "DensityLevelKey": "DENSITY_LEVELS_CHOICES",
+                    "DensityLevel": "DENSITY_LEVELS_CHOICES",
+                    "NotificationTypeKey": "NOTIFICATION_TYPES_CHOICES",
+                    "NotificationType": "NOTIFICATION_TYPES_CHOICES",
+                    "AlertTypeKey": "ALERT_TYPE_CHOICES",
+                    "AlertType": "ALERT_TYPE_CHOICES",
+                    "PlateProcessingStatusKey": "PLATE_PROCESSING_STATUS_CHOICES",
+                    "PlateProcessingStatus": "PLATE_PROCESSING_STATUS_CHOICES",
+                    "TrackingStatusKey": "TRACKING_STATUS_CHOICES",
+                    "TrackingStatus": "TRACKING_STATUS_CHOICES",
+                    "TrafficDirectionKey": "TRAFFIC_DIRECTION_CHOICES",
+                    "TrafficDirection": "TRAFFIC_DIRECTION_CHOICES",
+                    "DataTypeKey": "DATA_TYPES_CHOICES",
+                    "GroupByDataKey": "GROUP_BY_DATA_CHOICES",
+                    "AnalysisPlaybackStatusKey": "ANALYSIS_PLAYBACK_STATUS_CHOICES",
+                }
+
+                # Buscar en el mapeo
+                if ts_type in type_to_choices:
+                    choices_import = type_to_choices[ts_type]
+                    field_options["choices"] = choices_import
+                else:
+                    # Si no está en el mapeo, intentar generar el nombre automáticamente
+                    # Ej: UserRoleType -> USER_ROLES_CHOICES
+                    # Ej: VehicleType -> VEHICLE_TYPE_CHOICES
+                    type_name = ts_type.replace("Type", "").replace("Key", "")
+                    # Convertir camelCase a UPPER_SNAKE_CASE
+                    import re
+
+                    snake_case = re.sub(r"(?<!^)(?=[A-Z])", "_", type_name).upper()
+                    choices_name = f"{snake_case}_CHOICES"
+
+                    # Advertencia para tipos no mapeados
+                    print(
+                        f"⚠️ Tipo personalizado detectado: {ts_type} → Asumiendo {choices_name}"
+                    )
+                    field_options["choices"] = choices_name
+                    choices_import = choices_name
+
+            result = {
                 "field_type": "CharField",
                 "options": field_options,
                 "import": "from django.db import models",
             }
 
-        # Handle @db:text
+            if choices_import:
+                result["choices_import"] = choices_import
+
+            return result  # Handle @db:text
         if annotations.get("db_type") == "text":
             field_options = {}
             if is_optional:
@@ -610,11 +677,54 @@ class TypeScriptEntityParser:
                 field_options["blank"] = True
                 field_options["null"] = True
 
-            return {
+            # ✨ DETECCIÓN AUTOMÁTICA DE CHOICES PARA ENUMS NUMÉRICOS
+            # Si el tipo NO es "number" primitivo y tiene @db:int, puede ser un enum numérico
+            choices_import = None
+            is_primitive = ts_type.lower() in [
+                "string",
+                "number",
+                "boolean",
+                "date",
+                "any",
+                "object",
+            ]
+            is_custom_type = not is_primitive and ts_type[0].isupper()
+
+            if is_custom_type:
+                # Mapeo de tipos personalizados numéricos a sus CHOICES
+                type_to_choices = {
+                    "StatusType": "STATUS_CHOICES",
+                    "PriorityType": "PRIORITY_CHOICES",
+                    # Agregar más según sea necesario
+                }
+
+                if ts_type in type_to_choices:
+                    choices_import = type_to_choices[ts_type]
+                    field_options["choices"] = choices_import
+                else:
+                    # Intentar generar el nombre automáticamente
+                    type_name = ts_type.replace("Type", "").replace("Key", "")
+                    import re
+
+                    snake_case = re.sub(r"(?<!^)(?=[A-Z])", "_", type_name).upper()
+                    choices_name = f"{snake_case}_CHOICES"
+
+                    print(
+                        f"⚠️ Tipo personalizado numérico detectado: {ts_type} → Asumiendo {choices_name}"
+                    )
+                    field_options["choices"] = choices_name
+                    choices_import = choices_name
+
+            result = {
                 "field_type": field_type,
                 "options": field_options,
                 "import": "from django.db import models",
             }
+
+            if choices_import:
+                result["choices_import"] = choices_import
+
+            return result
 
         # Handle @db:decimal(p,s)
         if annotations.get("db_type") == "decimal":
@@ -1165,51 +1275,30 @@ class DjangoModelGenerator:
             lines.append("import uuid")
         if needs_decimal_import:
             lines.append("import decimal")
-        lines.append("from ..constants import (")
 
-        # Add constants imports based on category
-        common_imports = [
-            "VEHICLE_TYPES_CHOICES",
-            "ANALYSIS_STATUS_CHOICES",
-            "DENSITY_LEVELS_CHOICES",
-        ]
+        # 🔥 DETECCIÓN AUTOMÁTICA DE CHOICES USADOS
+        # Escanear todos los campos de todas las interfaces para ver qué CHOICES se usan
+        choices_used = set()
+        for interface_info in interfaces.values():
+            for prop in interface_info.get("properties", {}).values():
+                django_field = prop.get("django_field", {})
+                choices_import = django_field.get("choices_import")
+                if choices_import:
+                    choices_used.add(choices_import)
+                # También revisar si hay choices en options
+                field_options = django_field.get("options", {})
+                if "choices" in field_options:
+                    choices_value = field_options["choices"]
+                    if isinstance(choices_value, str):
+                        choices_used.add(choices_value)
 
-        if category == "auth":
-            common_imports.append("USER_ROLES_CHOICES")
-        elif category == "notifications":
-            common_imports.append("NOTIFICATION_TYPES_CHOICES")
-        elif category in ["traffic", "plates"]:
-            common_imports.extend(
-                [
-                    "ALERT_TYPE_CHOICES",
-                    "PLATE_PROCESSING_STATUS_CHOICES",
-                    "TRACKING_STATUS_CHOICES",
-                    "TRAFFIC_DIRECTION_CHOICES",
-                ]
-            )
-        elif category == "predictions":
-            pass  # Solo usa las comunes
-        elif category == "common":
-            # Common necesita TODAS las constantes porque puede tener DTOs de cualquier categoría
-            common_imports.extend(
-                [
-                    "NOTIFICATION_TYPES_CHOICES",
-                    "USER_ROLES_CHOICES",
-                    "ALERT_TYPE_CHOICES",
-                    "PLATE_PROCESSING_STATUS_CHOICES",
-                    "TRACKING_STATUS_CHOICES",
-                    "TRAFFIC_DIRECTION_CHOICES",
-                ]
-            )
+        # Solo importar si hay CHOICES usados
+        if choices_used:
+            lines.append("from ..constants import (")
+            for choice_name in sorted(choices_used):
+                lines.append(f"    {choice_name},")
+            lines.append(")")
 
-        # Si es plates, también necesita notification types
-        if category == "plates":
-            common_imports.append("NOTIFICATION_TYPES_CHOICES")
-
-        for import_name in sorted(set(common_imports)):
-            lines.append(f"    {import_name},")
-
-        lines.append(")")
         lines.append("")
         lines.append("")
 
@@ -1266,11 +1355,13 @@ class DjangoModelGenerator:
             "traffic": [
                 "VEHICLE_TYPES",
                 "ANALYSIS_STATUS",
+                "CAMERA_STATUS",
                 "DENSITY_LEVELS",
                 "ALERT_TYPE",
                 "PLATE_PROCESSING_STATUS",
                 "TRACKING_STATUS",
                 "TRAFFIC_DIRECTION",
+                "ANALYSIS_PLAYBACK_STATUS",
             ],
             "notifications": ["NOTIFICATION_TYPES", "NotificationType"],
             "common": [
@@ -1350,11 +1441,13 @@ class DjangoModelGenerator:
             "traffic": [
                 "VEHICLE_TYPES",
                 "ANALYSIS_STATUS",
+                "CAMERA_STATUS",
                 "DENSITY_LEVELS",
                 "ALERT_TYPE",
                 "PLATE_PROCESSING_STATUS",
                 "TRACKING_STATUS",
                 "TRAFFIC_DIRECTION",
+                "ANALYSIS_PLAYBACK_STATUS",
             ],
             "notifications": ["NOTIFICATION_TYPES", "NotificationType"],
             "common": [
@@ -1652,8 +1745,9 @@ class TypeScriptTypesParser:
         """Extract const object definitions like USER_ROLES, PERMISSIONS"""
         constants = {}
 
-        # Pattern to match const objects like: export const USER_ROLES = { ... }
-        const_pattern = r"export\s+const\s+(\w+)\s*=\s*\{([^}]*)\}\s*as\s+const"
+        # Pattern to match const objects like: export const USER_ROLES = { ... } as const
+        # Mejorado para manejar objetos con 'as const' interno y comentarios
+        const_pattern = r"export\s+const\s+(\w+)\s*=\s*\{(.*?)\}\s*as\s+const\s*;"
 
         matches = re.finditer(const_pattern, content, re.DOTALL)
 
@@ -1676,12 +1770,13 @@ class TypeScriptTypesParser:
         """Parse the body of a const object to extract key-value pairs"""
         pairs = {}
 
-        # Clean up the body
-        body = re.sub(r"//.*?\n", "", body)  # Remove comments
-        body = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)
+        # Clean up the body - Remove comments first
+        body = re.sub(r"//.*?$", "", body, flags=re.MULTILINE)  # Remove inline comments
+        body = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)  # Remove block comments
 
-        # Pattern for key: 'value' pairs
-        pair_pattern = r"(\w+):\s*['\"]([^'\"]+)['\"]"
+        # Pattern for key: 'value' as const OR key: 'value' pairs
+        # Maneja ambos formatos: KEY: 'VALUE' as const, y KEY: 'VALUE'
+        pair_pattern = r"(\w+):\s*['\"]([^'\"]+)['\"](?:\s+as\s+const)?"
 
         matches = re.finditer(pair_pattern, body)
 

@@ -7,12 +7,8 @@ Auto-generated from TypeScript types
 from .common import (
     API_ENDPOINTS,
     API_ENDPOINTS_CHOICES,
-    DataTypeKey,
-    DataTypeKey_CHOICES,
     FILE_UPLOAD,
     FILE_UPLOAD_CHOICES,
-    GroupByDataKey,
-    GroupByDataKey_CHOICES,
     PAGINATION,
     PAGINATION_CHOICES,
     SYSTEM_LIMITS,
@@ -25,8 +21,6 @@ from .common import (
 from .notifications import (
     NOTIFICATION_TYPES,
     NOTIFICATION_TYPES_CHOICES,
-    NotificationType,
-    NotificationType_CHOICES,
 )
 
 # Roles Constants
@@ -34,6 +28,8 @@ from .roles import (
     PERMISSIONS,
     PERMISSIONS_CHOICES,
     ROLE_PERMISSIONS,
+    ROLE_PERMISSIONS_CHOICES,
+    ROLE_PERMISSIONS_DICT,
     USER_ROLES,
     USER_ROLES_CHOICES,
 )
@@ -42,6 +38,8 @@ from .roles import (
 from .traffic import (
     ALERT_TYPE,
     ALERT_TYPE_CHOICES,
+    ANALYSIS_PLAYBACK_STATUS,
+    ANALYSIS_PLAYBACK_STATUS_CHOICES,
     ANALYSIS_STATUS,
     ANALYSIS_STATUS_CHOICES,
     CAMERA_STATUS,
@@ -61,6 +59,8 @@ from .traffic import (
 __all__ = [
     "ALERT_TYPE",
     "ALERT_TYPE_CHOICES",
+    "ANALYSIS_PLAYBACK_STATUS",
+    "ANALYSIS_PLAYBACK_STATUS_CHOICES",
     "ANALYSIS_STATUS",
     "ANALYSIS_STATUS_CHOICES",
     "API_ENDPOINTS",
@@ -69,16 +69,10 @@ __all__ = [
     "CAMERA_STATUS_CHOICES",
     "DENSITY_LEVELS",
     "DENSITY_LEVELS_CHOICES",
-    "DataTypeKey",
-    "DataTypeKey_CHOICES",
     "FILE_UPLOAD",
     "FILE_UPLOAD_CHOICES",
-    "GroupByDataKey",
-    "GroupByDataKey_CHOICES",
     "NOTIFICATION_TYPES",
     "NOTIFICATION_TYPES_CHOICES",
-    "NotificationType",
-    "NotificationType_CHOICES",
     "PAGINATION",
     "PAGINATION_CHOICES",
     "PERMISSIONS",
@@ -86,6 +80,8 @@ __all__ = [
     "PLATE_PROCESSING_STATUS",
     "PLATE_PROCESSING_STATUS_CHOICES",
     "ROLE_PERMISSIONS",
+    "ROLE_PERMISSIONS_CHOICES",
+    "ROLE_PERMISSIONS_DICT",
     "SYSTEM_LIMITS",
     "SYSTEM_LIMITS_CHOICES",
     "TIME",

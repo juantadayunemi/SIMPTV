@@ -3,7 +3,7 @@
  * Objetos de transferencia de datos compartidos entre todos los módulos
  */
 
-import { NotificationTypeKey } from "../types/trafficTypes";
+import { NotificationTypeKey } from "../types/notificationTypes";
 
 // ============================================
 // API RESPONSE WRAPPER DTOs

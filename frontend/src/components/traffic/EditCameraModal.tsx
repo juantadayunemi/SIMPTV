@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera, MapPin, Settings } from 'lucide-react';
 import { trafficService, type Location } from '../../services/traffic.service';
-import { CameraEntity, StatusCameraKey } from '@traffic-analysis/shared';
+import { CameraEntity, CameraStatusKey, CAMERA_STATUS } from '@traffic-analysis/shared';
 
 interface EditCameraModalProps {
   isOpen: boolean;
@@ -168,7 +168,7 @@ const EditCameraModal: React.FC<EditCameraModalProps> = ({
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => handleChange('status', e.target.value as StatusCameraKey)}
+                onChange={(e) => handleChange('status', e.target.value as CameraStatusKey)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 required
               >

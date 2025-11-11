@@ -1,6 +1,6 @@
 import { DataTypeKey } from "../types/dataTypes";
-import { NotificationType } from "../types/notificationTypes";
-import { NotificationTypeKey } from "../types/trafficTypes";
+import { NotificationTypeKey } from "../types/notificationTypes";
+
 
 // ============= NOTIFICATION INTERFACES =============
 export interface NotificationPayload {
@@ -43,7 +43,7 @@ export interface WebSocketNotification {
 export interface NotificationTemplate {
   id: string;
   name: string;
-  type: NotificationType;
+  type: NotificationTypeKey;
   subject?: string;
   content: string;
   variables: TemplateVariable[];

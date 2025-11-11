@@ -95,12 +95,12 @@ export const Sidebar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // ← Esperar a que termine el logout
-      // Force navigation to login immediately
-      navigate('/login', { replace: true });
+      await logout();
+      // Forzar recarga completa para limpiar todo el estado
+      window.location.href = '/login';
     } catch (error) {
-      console.error('Logout error:', error);
-      // Fallback: force navigation to login
+      console.error('❌ Logout error:', error);
+      // Fallback: forzar recarga completa
       window.location.href = '/login';
     }
   };
@@ -126,33 +126,43 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1">
-        {navigationItems.map((item) => {
-          const isActive = location.pathname === item.href;
+        {navigationItems
+          .filter((item) => {
+            // Filtrar items según el rol del usuario
+            if (!user?.userRoles || user.userRoles.length === 0) {
+              console.warn('⚠️ Usuario sin roles:', user?.email);
+              return false;
+            }
+            const userRoles = user.userRoles.map(ur => ur.role);
+            return item.roles.some(role => userRoles.includes(role));
+          })
+          .map((item) => {
+            const isActive = location.pathname === item.href;
 
-          return (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              className={`
-                group flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 relative
-                ${isActive
-                  ? 'bg-primary-800 text-white'
-                  : 'text-white/80 hover:bg-primary-800/50 hover:text-white'
-                }
-              `}
-            >
-              {/* Barra indicadora izquierda redondeada */}
-              {isActive && (
-                <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-10 bg-white rounded-r-full"></div>
-              )}
-              
-              <span className="mr-3 text-current">
-                {item.icon}
-              </span>
-              <span>{item.name}</span>
-            </NavLink>
-          );
-        })}
+            return (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                className={`
+                  group flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 relative
+                  ${isActive
+                    ? 'bg-primary-800 text-white'
+                    : 'text-white/80 hover:bg-primary-800/50 hover:text-white'
+                  }
+                `}
+              >
+                {/* Barra indicadora izquierda redondeada */}
+                {isActive && (
+                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-10 bg-white rounded-r-full"></div>
+                )}
+                
+                <span className="mr-3 text-current">
+                  {item.icon}
+                </span>
+                <span>{item.name}</span>
+              </NavLink>
+            );
+          })}
       </nav>
 
       {/* Bottom Section - Admin & Logout */}

@@ -14,7 +14,6 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import TrafficAnalysisPage from './pages/traffic/TrafficAnalysisPage';
 import RealTimeAnalysisPage from './pages/traffic/RealTimeAnalysisPage';
 import CamerasPage from './pages/traffic/CamerasPage';
-import PlateDetectionPage from './pages/plates/PlateDetectionPage';
 import PredictionsPage from './pages/predictions/PredictionsPage';
 import VehicleReportsPage from './pages/vehicles/VehicleReportsPage';
 import VehicleComplaintDetailPage from './pages/vehicles/VehicleComplaintDetailPage';
@@ -39,19 +38,19 @@ import BottleneckPage from './pages/bottleneck/BottleneckPage';
 const App: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Lógica de redirección basada en la autenticación (limpia, sin console.log de tokens)
-  React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      const currentPath = window.location.pathname;
-      const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/confirm-email'];
-      const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
+  // Ya no necesitamos este useEffect - ProtectedRoute maneja la redirección
+  // React.useEffect(() => {
+  //   if (!isLoading && !isAuthenticated) {
+  //     const currentPath = window.location.pathname;
+  //     const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/confirm-email'];
+  //     const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
 
-      if (!isPublicRoute) {
-        console.log('⚠️ Usuario no autenticado, redirigiendo a login desde:', currentPath);
-        window.location.href = '/login';
-      }
-    }
-  }, [isAuthenticated, isLoading]);
+  //     if (!isPublicRoute) {
+  //       console.log('⚠️ Usuario no autenticado, redirigiendo a login desde:', currentPath);
+  //       window.location.href = '/login';
+  //     }
+  //   }
+  // }, [isAuthenticated, isLoading]);
 
   // Pantalla de carga global (usando el estilo de V2 con LoadingSpinner)
   if (isLoading) {
@@ -157,7 +156,14 @@ const App: React.FC = () => {
             <Route path="vehicles-reports" element={<VehicleReportsPage />} />
             <Route path="vehicles/complaints/:id" element={<VehicleComplaintDetailPage />} />
             <Route path="users" element={<UsersPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route 
+              path="settings" 
+              element={
+                <ProtectedRoute requiredRoles={['ADMIN']}>
+                  <SettingsPage />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>

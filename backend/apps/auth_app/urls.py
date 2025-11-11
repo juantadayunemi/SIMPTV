@@ -55,4 +55,25 @@ urlpatterns = [
     ),
     # Roles
     path("admin/roles/", admin_views.RoleListView.as_view(), name="admin-roles-list"),
+    # Permissions Management
+    path(
+        "admin/roles/<str:role>/permissions/",
+        admin_views.RolePermissionsView.as_view(),
+        name="admin-role-permissions",
+    ),
+    path(
+        "admin/users/<int:user_id>/permissions/",
+        admin_views.UserPermissionsView.as_view(),
+        name="admin-user-permissions",
+    ),
+    path(
+        "admin/users/<int:user_id>/permissions/override/",
+        admin_views.UserPermissionsView.as_view(),
+        name="admin-user-permissions-override",
+    ),
+    path(
+        "admin/users/<int:user_id>/permissions/override/<int:override_id>/",
+        admin_views.UserPermissionOverrideDeleteView.as_view(),
+        name="admin-user-permissions-override-delete",
+    ),
 ]

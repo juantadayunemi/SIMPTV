@@ -3,34 +3,6 @@ COMMON CONSTANTS
 Auto-generated from TypeScript types
 """
 
-class DataTypeKey:
-    """Constants from TypeScript DataTypeKey"""
-    STRING = "string"
-    NUMBER = "number"
-    DATE = "date"
-    BOOLEAN = "boolean"
-
-DataTypeKey_CHOICES = (
-    ("string", "String"),
-    ("number", "Number"),
-    ("date", "Date"),
-    ("boolean", "Boolean"),
-)
-
-class GroupByDataKey:
-    """Constants from TypeScript GroupByDataKey"""
-    HOUR = "hour"
-    DAY = "day"
-    WEEK = "week"
-    MONTH = "month"
-
-GroupByDataKey_CHOICES = (
-    ("hour", "Hour"),
-    ("day", "Day"),
-    ("week", "Week"),
-    ("month", "Month"),
-)
-
 class API_ENDPOINTS:
     """Constants from TypeScript API_ENDPOINTS"""
     LOGIN = "/auth/login"

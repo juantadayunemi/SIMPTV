@@ -124,21 +124,21 @@ class UserRole(UserRoleEntity):
 
     IMPORTANTE:
     - User.id = BigAutoField (número)
-    - UserRoleEntity.userId = UUIDField (texto) - NO USAR para FK
+    - UserRoleEntity ya tiene role con USER_ROLES_CHOICES definido
     - La FK debe apuntar a User.id (BigAutoField)
-    - NO heredar el userId UUID de la entidad abstracta
+    - ROLE_CHOICES se hereda automáticamente de UserRoleEntity
     """
 
     # Override: No usar el userId UUID heredado, usar FK a User.id
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="roles",
+        related_name="userRoles",  # Cambiado de "roles" a "userRoles" para consistencia con serializer
         db_column="user_id",  # Mapea a la columna user_id (desde FK)
     )
 
-    # Definir ROLE_CHOICES desde las constantes importadas
-    ROLE_CHOICES = USER_ROLES_CHOICES
+    # Override: assignedAt con valor por defecto automático
+    assignedAt = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "auth_user_roles"
@@ -234,3 +234,144 @@ class EmailConfirmationToken(models.Model):
     def mark_as_used(self):
         self.isUsed = True
         self.save()
+
+
+# ============================================================================
+# CUSTOM PERMISSIONS SYSTEM
+# ============================================================================
+
+
+class RolePermission(models.Model):
+    """
+    Custom permissions assigned to roles.
+    Allows dynamic permission management instead of static ROLE_PERMISSIONS_DICT.
+
+    Example:
+        - Role: OPERATOR, Permission: 'traffic:delete', isGranted: True
+        - This grants delete permission to all users with OPERATOR role
+    """
+
+    role = models.CharField(max_length=20, choices=USER_ROLES_CHOICES, db_column="role")
+    permission = models.CharField(
+        max_length=100,
+        db_column="permission",
+        help_text="Format: 'module:action' (e.g., 'traffic:create', 'users:delete')",
+    )
+    isGranted = models.BooleanField(
+        default=True,
+        db_column="isGranted",
+        help_text="True=grant permission, False=revoke permission",
+    )
+    grantedBy = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="granted_role_permissions",
+        db_column="grantedBy",
+    )
+    grantedAt = models.DateTimeField(auto_now_add=True, db_column="grantedAt")
+    expiresAt = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_column="expiresAt",
+        help_text="Optional: permission expires after this date",
+    )
+
+    class Meta:
+        db_table = "auth_role_permissions"
+        unique_together = [["role", "permission"]]
+        indexes = [
+            models.Index(fields=["role", "permission"]),
+            models.Index(fields=["expiresAt"]),
+        ]
+        ordering = ["role", "permission"]
+
+    def __str__(self):
+        status = "GRANTED" if self.isGranted else "REVOKED"
+        return f"{self.role} - {self.permission} ({status})"
+
+    def is_expired(self):
+        """Check if permission has expired"""
+        if not self.expiresAt:
+            return False
+        from django.utils import timezone
+
+        return timezone.now() > self.expiresAt
+
+    def is_active(self):
+        """Check if permission is currently active (granted and not expired)"""
+        return self.isGranted and not self.is_expired()
+
+
+class UserPermissionOverride(models.Model):
+    """
+    User-specific permission overrides.
+    Takes precedence over role-based permissions.
+
+    Example:
+        - User: john@example.com, Permission: 'traffic:delete', isGranted: True
+        - This grants delete permission to John even if his role doesn't have it
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="permission_overrides",
+        db_column="userId",
+    )
+    permission = models.CharField(
+        max_length=100,
+        db_column="permission",
+        help_text="Format: 'module:action' (e.g., 'traffic:create', 'users:delete')",
+    )
+    isGranted = models.BooleanField(
+        db_column="isGranted",
+        help_text="True=grant permission, False=revoke permission",
+    )
+    overrideReason = models.TextField(
+        null=True,
+        blank=True,
+        db_column="overrideReason",
+        help_text="Reason for granting/revoking this specific permission",
+    )
+    grantedBy = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="granted_user_permissions",
+        db_column="grantedBy",
+    )
+    grantedAt = models.DateTimeField(auto_now_add=True, db_column="grantedAt")
+    expiresAt = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_column="expiresAt",
+        help_text="Optional: override expires after this date",
+    )
+
+    class Meta:
+        db_table = "auth_user_permission_overrides"
+        unique_together = [["user", "permission"]]
+        indexes = [
+            models.Index(fields=["user", "permission"]),
+            models.Index(fields=["expiresAt"]),
+        ]
+        ordering = ["user", "permission"]
+
+    def __str__(self):
+        status = "GRANTED" if self.isGranted else "REVOKED"
+        return f"{self.user.email} - {self.permission} ({status})"
+
+    def is_expired(self):
+        """Check if override has expired"""
+        if not self.expiresAt:
+            return False
+        from django.utils import timezone
+
+        return timezone.now() > self.expiresAt
+
+    def is_active(self):
+        """Check if override is currently active (not expired)"""
+        return not self.is_expired()

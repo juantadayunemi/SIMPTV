@@ -57,7 +57,7 @@ export interface UserEntity {
 
 export interface UserRoleEntity {
   id: number; // @db:primary @db:identity @db:bigint - ID autoincremental
-  user: number; // @db:foreignKey auth_app.User @db:int - Foreign Key a auth_app.User.id (CASCADE delete)
+  user: number; // @db:foreignKey auth_app.User @db:bigint - Foreign Key a auth_app.User.id (CASCADE delete)
   role: UserRoleType; // @db:varchar(50) - Rol del usuario (ADMIN, OPERATOR, VIEWER)
   assignedBy?: string; // @db:varchar(255) - Usuario que asignó el rol (opcional)
   assignedAt: Date; // @db:datetime - Fecha de asignación del rol
@@ -68,6 +68,48 @@ export interface UserRoleEntity {
   // ÍNDICES EN TABLA:
   // - UNIQUE(user, role) - Un usuario no puede tener el mismo rol dos veces
   // - INDEX(user, isActive) - Para queries rápidas por usuario y rol activo
+}
+
+// ============= ROLE PERMISSION ENTITY =============
+
+export interface RolePermissionEntity {
+  id: number; // @db:primary @db:identity @db:bigint - ID autoincremental
+  role: UserRoleType; // @db:varchar(50) - Rol (ADMIN, OPERATOR, VIEWER, CUSTOM)
+  permission: string; // @db:varchar(100) - Permiso específico (ej: traffic:create, user:read)
+  isGranted: boolean; // @db:bit @default(true) - Si el permiso está concedido o revocado
+  grantedBy?: string; // @db:varchar(255) - Usuario que otorgó el permiso (opcional)
+  grantedAt: Date; // @db:datetime - Fecha de otorgamiento
+  expiresAt?: Date; // @db:datetime - Fecha de expiración del permiso (opcional)
+  createdAt: Date; // @db:datetime - Fecha de creación (auto_now_add)
+  updatedAt: Date; // @db:datetime - Fecha de última actualización (auto_now)
+  
+  // ÍNDICES EN TABLA:
+  // - UNIQUE(role, permission) - Un rol no puede tener el mismo permiso duplicado
+  // - INDEX(role, isGranted) - Para queries rápidas por rol y permisos activos
+}
+
+// ============= USER PERMISSION OVERRIDE ENTITY =============
+
+export interface UserPermissionOverrideEntity {
+  id: number; // @db:primary @db:identity @db:bigint - ID autoincremental
+  user: number; // @db:foreignKey auth_app.User @db:bigint - Foreign Key a auth_app.User.id (CASCADE delete)
+  permission: string; // @db:varchar(100) - Permiso específico a sobrescribir
+  isGranted: boolean; // @db:bit - Si se concede (true) o se revoca (false) el permiso
+  overrideReason?: string; // @db:text - Razón de la sobrescritura (opcional)
+  grantedBy: string; // @db:varchar(255) - Usuario que hizo la sobrescritura
+  grantedAt: Date; // @db:datetime - Fecha de sobrescritura
+  expiresAt?: Date; // @db:datetime - Fecha de expiración (opcional)
+  createdAt: Date; // @db:datetime - Fecha de creación (auto_now_add)
+  updatedAt: Date; // @db:datetime - Fecha de última actualización (auto_now)
+  
+  // ÍNDICES EN TABLA:
+  // - UNIQUE(user, permission) - Un usuario no puede tener el mismo permiso sobrescrito dos veces
+  // - INDEX(user, isGranted) - Para queries rápidas por usuario y permisos activos
+  
+  // LÓGICA DE PERMISOS:
+  // 1. Si existe UserPermissionOverride, se usa ese valor (isGranted)
+  // 2. Si no existe override, se usan los permisos del rol (RolePermission)
+  // 3. Si el rol no tiene RolePermission custom, se usan los permisos por defecto (ROLE_PERMISSIONS)
 }
 
 // ============= CUSTOMER ENTITY =============

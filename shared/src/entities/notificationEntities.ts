@@ -32,8 +32,6 @@
  * - API JSON: deviceName, isActive, createdAt (camelCase)
  */
 
-import { NotificationTypeKey } from "../types/trafficTypes";
-
 // ============= FCM DEVICE ENTITY =============
 // Almacena tokens de dispositivos registrados para enviar notificaciones push
 

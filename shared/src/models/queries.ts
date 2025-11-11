@@ -4,8 +4,9 @@
  */
 
 import { GroupByDataKey } from "../types/dataTypes";
+import { NotificationTypeKey } from "../types/notificationTypes";
 import { UserRoleType } from "../types/roleTypes";
-import { AnalysisStatusKey, DensityLevelKey, NotificationTypeKey, VehicleTypeKey } from "../types/trafficTypes";
+import { AnalysisStatusKey, DensityLevelKey,  VehicleTypeKey } from "../types/trafficTypes";
 
 
 // ============= AUTH QUERIES =============

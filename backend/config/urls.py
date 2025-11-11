@@ -145,8 +145,9 @@ def include_app_urls():
             # Add to URL patterns
             app_urls.append(path(f"api/{api_path}/", include(f"{app_config}.urls")))
 
-        except ImportError:
+        except ImportError as e:
             # App doesn't have urls.py, skip silently
+            print(f"⚠️ WARNING: Could not import {app_config}.urls: {e}")
             continue
 
     print("Final app_urls:", app_urls)

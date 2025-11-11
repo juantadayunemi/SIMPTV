@@ -3,7 +3,7 @@ from .models import User, UserRole
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .validators import validate_email_complete
-from apps.entities.constants.roles import ROLE_PERMISSIONS
+from apps.entities.constants import ROLE_PERMISSIONS_DICT
 from django.utils import timezone
 
 
@@ -69,7 +69,7 @@ class RegisterSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
-        """Create new user and assign default role"""
+        """Create new user and assign role based on existing users"""
         from django.contrib.auth.hashers import make_password
 
         # Remove confirmPassword from data
@@ -85,12 +85,30 @@ class RegisterSerializer(serializers.Serializer):
             isActive=False,
         )
 
-        # Assign default role VIEWER
+        # Determine role based on existing users
+        # 1. Si es el primer usuario → ADMIN
+        # 2. Si hay usuarios pero ninguno con email confirmado → ADMIN
+        # 3. En cualquier otro caso → VIEWER
+
+        total_users = User.objects.count()
+        confirmed_users = User.objects.filter(emailConfirmed=True).count()
+
+        if total_users == 1:
+            # Primer usuario del sistema
+            role = "ADMIN"
+        elif confirmed_users == 0:
+            # Hay usuarios pero ninguno confirmado
+            role = "ADMIN"
+        else:
+            # Ya hay usuarios confirmados
+            role = "VIEWER"
+
+        # Assign role
         try:
-            UserRole.objects.create(user=user, role="VIEWER", assignedAt=timezone.now())
+            UserRole.objects.create(user=user, role=role, assignedAt=timezone.now())
         except Exception as e:
             raise serializers.ValidationError(
-                f"Error al asignar el rol VIEWER: {str(e)}"
+                f"Error al asignar el rol {role}: {str(e)}"
             )
 
         return user
@@ -116,6 +134,7 @@ class UserSerializer(serializers.ModelSerializer):
     fullName = serializers.ReadOnlyField()
     profileImageUrl = serializers.SerializerMethodField()
     roles = serializers.SerializerMethodField()
+    userRoles = serializers.SerializerMethodField()  # Para compatibilidad con frontend
 
     class Meta:
         model = User
@@ -133,6 +152,7 @@ class UserSerializer(serializers.ModelSerializer):
             "createdAt",
             "updatedAt",
             "roles",
+            "userRoles",  # Campo adicional para Sidebar
         ]
         read_only_fields = [
             "id",
@@ -142,6 +162,7 @@ class UserSerializer(serializers.ModelSerializer):
             "updatedAt",
             "profileImageUrl",
             "roles",
+            "userRoles",
         ]
 
     def get_profileImageUrl(self, obj):
@@ -154,8 +175,8 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
     def get_roles(self, obj):
-        """Obtener roles del usuario con sus permisos"""
-        user_roles = obj.roles.all()
+        """Obtener roles del usuario con sus permisos (formato completo)"""
+        user_roles = obj.userRoles.all()
         roles_data = []
 
         for user_role in user_roles:
@@ -163,11 +184,21 @@ class UserSerializer(serializers.ModelSerializer):
                 {
                     "id": user_role.role,
                     "name": user_role.role,
-                    "permissions": ROLE_PERMISSIONS.get(user_role.role, []),
+                    "permissions": ROLE_PERMISSIONS_DICT.get(user_role.role, []),
                 }
             )
 
         return roles_data
+
+    def get_userRoles(self, obj):
+        """Obtener roles en formato simple para Sidebar: [{role: 'ADMIN'}, {role: 'OPERATOR'}]"""
+        user_roles = obj.userRoles.all()
+        roles_list = [{"role": ur.role} for ur in user_roles]
+
+        # 🔍 DEBUG: Log para ver qué roles se están devolviendo
+        print(f"👤 get_userRoles para user {obj.email}: {roles_list}")
+
+        return roles_list
 
 
 class EmailConfirmationSerializer(serializers.Serializer):

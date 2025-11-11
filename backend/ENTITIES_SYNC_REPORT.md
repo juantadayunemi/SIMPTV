@@ -1,5 +1,5 @@
 # 🔄 TRAFSMART ENTITIES SYNC REPORT
-**Generated:** 2025-11-04 15:51:17
+**Generated:** 2025-11-10 22:21:06
 
 ---
 
@@ -13,145 +13,13 @@
 
 ## 🆕 New Fields Added
 
-- **LocationTrafficPatternEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **LocationTrafficPatternEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **LocationTrafficPatternEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **CameraStatsResponseDTO.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **CameraStatsResponseDTO.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **TrafficHistoricalDataEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **TrafficHistoricalDataEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **PlateDetectionResponseDTO.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **VehicleComplaintEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **VehicleComplaintEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **VehicleFrameEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **VehicleFrameEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **DetectedPlateEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **DetectedPlateEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **UserQueryDto.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **UserSearchQuery.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **TrafficAnalysisEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **TrafficAnalysisEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **TrafficAnalysisEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **PredictionSourceEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **PredictionSourceEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **PredictionSourceEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **FCMDeviceEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **FCMDeviceEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **FCMDeviceEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **FCMDeviceEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **DetectedPlateImageEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **DetectedPlateImageEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **VehicleFrameResponseDTO.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **NotificationLogEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **CameraEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **CameraEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **CameraEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **CameraEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
 - **LocationEntity.createdAt**
   - TypeScript Type: `Date`
   - Django Field: `DateTimeField`
+
+- **LocationEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
 
 - **LocationEntity.updatedAt**
   - TypeScript Type: `Date`
@@ -161,59 +29,7 @@
   - TypeScript Type: `number`
   - Django Field: `BigAutoField`
 
-- **LocationEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **PlateAlertQueryDTO.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
 - **UpdateCloudUploadDTO.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **UserRoleEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **UserRoleEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **UserRoleEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **UserRoleEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **UserEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **UserEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **UserEntity.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
-
-- **UserEntity.isActive**
-  - TypeScript Type: `boolean`
-  - Django Field: `BooleanField`
-
-- **ComplaintEvidenceImageEntity.createdAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **ComplaintEvidenceImageEntity.updatedAt**
-  - TypeScript Type: `Date`
-  - Django Field: `DateTimeField`
-
-- **ComplaintEvidenceImageEntity.id**
   - TypeScript Type: `number`
   - Django Field: `BigAutoField`
 
@@ -229,15 +45,39 @@
   - TypeScript Type: `number`
   - Django Field: `BigAutoField`
 
+- **UserRoleEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **UserRoleEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **UserRoleEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **UserRoleEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
 - **UpdatePlateAlertRequestDTO.isActive**
   - TypeScript Type: `boolean`
   - Django Field: `BooleanField`
 
-- **UpdateComplaintNotificationDTO.id**
-  - TypeScript Type: `number`
-  - Django Field: `BigAutoField`
+- **FCMDeviceEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
 
-- **PlateAlertResponseDTO.id**
+- **FCMDeviceEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **FCMDeviceEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **FCMDeviceEntity.id**
   - TypeScript Type: `number`
   - Django Field: `BigAutoField`
 
@@ -245,35 +85,195 @@
   - TypeScript Type: `number`
   - Django Field: `BigAutoField`
 
+- **PlateDetectionResponseDTO.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **UserSearchQuery.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **UserQueryDto.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **TrafficHistoricalDataEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **TrafficHistoricalDataEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **DetectedPlateImageEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **DetectedPlateImageEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **VehicleComplaintEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **VehicleComplaintEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **CameraEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **CameraEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **CameraEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **CameraEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **CameraStatsResponseDTO.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **CameraStatsResponseDTO.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **PredictionSourceEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **PredictionSourceEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **PredictionSourceEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **DetectedPlateEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **DetectedPlateEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **LocationTrafficPatternEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **LocationTrafficPatternEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **LocationTrafficPatternEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **NotificationLogEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **UserEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **UserEntity.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **UserEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **UserEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **VehicleFrameEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **VehicleFrameEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **PlateAlertResponseDTO.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **PlateAlertQueryDTO.isActive**
+  - TypeScript Type: `boolean`
+  - Django Field: `BooleanField`
+
+- **UpdateComplaintNotificationDTO.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **VehicleFrameResponseDTO.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **ComplaintEvidenceImageEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **ComplaintEvidenceImageEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **ComplaintEvidenceImageEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
+- **TrafficAnalysisEntity.createdAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **TrafficAnalysisEntity.updatedAt**
+  - TypeScript Type: `Date`
+  - Django Field: `DateTimeField`
+
+- **TrafficAnalysisEntity.id**
+  - TypeScript Type: `number`
+  - Django Field: `BigAutoField`
+
 ## 🆕 New Models Created
 
-- **PlateDetection**
-- **RealTimePredictionEntity**
-- **RealtimeNotificationDTO**
-- **PlateDetectionDTO**
+- **PlateAnalysis**
+- **NotificationTemplate**
+- **CreateVehicleDTO**
+- **ModelTrainingJobEntity**
+- **PredictiveAnalysis**
 - **UserInfoDTO**
+- **NotificationDTO**
+- **VehicleEntity**
+- **UserDTO**
 - **TrafficPredictionEntity**
-- **BatchPredictionEntity**
 - **Permission**
+- **VehicleDetectionResponseDTO**
+- **PredictionModelEntity**
+- **WeatherDataEntity**
+- **PlateDetectionDTO**
+- **RealTimePredictionEntity**
+- **PlateDetection**
+- **EventDataEntity**
+- **BatchPredictionEntity**
 - **TrafficAnalysisDTO**
 - **PredictionAccuracyEntity**
-- **NotificationDTO**
+- **RealtimeNotificationDTO**
 - **CustomerEntity**
-- **PlateAnalysis**
-- **ModelTrainingJobEntity**
-- **VehicleEntity**
-- **FileUploadResponseDTO**
-- **NotificationPayload**
-- **EventDataEntity**
-- **NotificationTemplate**
-- **VehicleDetection**
-- **WeatherDataEntity**
 - **TrafficAnalysis**
-- **VehicleDetectionResponseDTO**
-- **CreateVehicleDTO**
-- **UserDTO**
-- **PredictiveAnalysis**
-- **PredictionModelEntity**
+- **FileUploadResponseDTO**
+- **VehicleDetection**
+- **NotificationPayload**
 
 ---
 

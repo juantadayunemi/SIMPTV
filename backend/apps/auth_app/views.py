@@ -353,6 +353,15 @@ class LoginView(APIView):
             user.lastLogin = timezone.now()
             user.save(update_fields=["lastLogin"])
 
+            # Serializar usuario con contexto
+            user_serializer = UserSerializer(user, context={"request": request})
+            user_data = user_serializer.data
+
+            # 🔍 DEBUG: Log para ver los datos del usuario
+            print(
+                f"✅ LOGIN SUCCESS [{email}]: userRoles={user_data['userRoles'] if 'userRoles' in user_data else 'NO FIELD'}"
+            )
+
             return Response(
                 {
                     "access_token": str(access_token),
@@ -360,7 +369,7 @@ class LoginView(APIView):
                     "token_type": "Bearer",
                     "expires_in_hours": token_expired_hours,
                     "expires_at": timezone.now() + timedelta(hours=token_expired_hours),
-                    "user": UserSerializer(user).data,
+                    "user": user_data,
                 },
                 status=status.HTTP_200_OK,
             )

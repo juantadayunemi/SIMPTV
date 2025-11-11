@@ -1,18 +1,19 @@
  
- export const DataTypeKey = {
-   STRING: 'string',
-   NUMBER: 'number',
-   DATE: 'date',
-   BOOLEAN: 'boolean',
+export const DATA_TYPES = {
+  STRING: 'string' as const,
+  NUMBER: 'number' as const,
+  DATE: 'date' as const,
+  BOOLEAN: 'boolean' as const,
 } as const;
 
-// to group by
-  export const GroupByDataKey = {
-   HOUR: 'hour' as const,
-   DAY: 'day' as const,
-   WEEK: 'week' as const,
-   MONTH: 'month' as const,
- } as const;
+export type DataTypeKey = typeof DATA_TYPES[keyof typeof DATA_TYPES];
 
-  export type GroupByDataKey = typeof GroupByDataKey[keyof typeof GroupByDataKey];
-  export type DataTypeKey = typeof DataTypeKey[keyof typeof DataTypeKey];
+// to group by
+export const GROUP_BY_DATA = {
+  HOUR: 'hour' as const,
+  DAY: 'day' as const,
+  WEEK: 'week' as const,
+  MONTH: 'month' as const,
+} as const;
+
+export type GroupByDataKey = typeof GROUP_BY_DATA[keyof typeof GROUP_BY_DATA];

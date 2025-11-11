@@ -11,6 +11,14 @@ from apps.entities.models.traffic import (
     VehicleEntity,
     VehicleFrameEntity,
 )
+from apps.entities.constants import (
+    ANALYSIS_STATUS_CHOICES,
+    CAMERA_STATUS,
+    CAMERA_STATUS_CHOICES,
+    DENSITY_LEVELS_CHOICES,
+    DENSITY_LEVELS,
+    ANALYSIS_STATUS,
+)
 
 
 class Location(LocationEntity):
@@ -44,7 +52,6 @@ class Camera(CameraEntity):
     NO agregues campos redundantes. Solo sobrescribe ForeignKey para usar instancia concreta.
     """
 
-   
     # Sobrescribir locationId para usar modelo concreto Location
     locationId = models.ForeignKey(
         Location,
@@ -53,7 +60,7 @@ class Camera(CameraEntity):
         db_column="locationId",
         verbose_name="Location",
     )
-    
+
     # Video asignado actualmente a esta cámara
     currentVideoPath = models.CharField(
         max_length=500,
@@ -61,9 +68,9 @@ class Camera(CameraEntity):
         null=True,
         db_column="currentVideoPath",
         verbose_name="Current Video Path",
-        help_text="Ruta del video actualmente asignado a esta cámara"
+        help_text="Ruta del video actualmente asignado a esta cámara",
     )
-    
+
     # Thumbnail del video (primer frame)
     thumbnailPath = models.CharField(
         max_length=500,
@@ -71,21 +78,27 @@ class Camera(CameraEntity):
         null=True,
         db_column="thumbnailPath",
         verbose_name="Video Thumbnail",
-        help_text="Ruta del thumbnail (primer frame del video)"
+        help_text="Ruta del thumbnail (primer frame del video)",
     )
-    
+
     # Análisis activo de esta cámara
     currentAnalysisId = models.ForeignKey(
-        'TrafficAnalysis',
+        "TrafficAnalysis",
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
         related_name="active_camera",
         db_column="currentAnalysisId",
         verbose_name="Current Analysis",
-        help_text="Análisis activo asociado a esta cámara"
+        help_text="Análisis activo asociado a esta cámara",
     )
-    
+
+    status = models.CharField(
+        max_length=20,
+        choices=CAMERA_STATUS_CHOICES,
+        default=CAMERA_STATUS.ACTIVE,
+    )
+
     class Meta:
         db_table = "traffic_cameras"
         verbose_name = "Camera"
@@ -129,7 +142,15 @@ class TrafficAnalysis(TrafficAnalysisEntity):
         db_column="locationId",
         verbose_name="Location",
     )
-   
+
+    densityLevel = models.CharField(
+        max_length=10, default=DENSITY_LEVELS.MEDIUM, choices=DENSITY_LEVELS_CHOICES
+    )
+
+    status = models.CharField(
+        max_length=20, default=ANALYSIS_STATUS.PENDING, choices=ANALYSIS_STATUS_CHOICES
+    )
+
     class Meta:
         db_table = "traffic_analyses"
         verbose_name = "Traffic Analysis"
@@ -213,5 +234,3 @@ class VehicleFrame(VehicleFrameEntity):
 
     def __str__(self):
         return f"Frame {self.frameNumber} - Vehicle {self.vehicleId.id[:8]}... (Quality: {self.frameQuality:.2f})"
-
-
