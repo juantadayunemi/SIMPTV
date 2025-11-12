@@ -5,7 +5,8 @@ export * from './models/queries';
 export * from './models/trafficModels';
 export * from './models/plateModels';
 export * from './models/notificatiosModels';   
-export * from './models/authModels';   
+export * from './models/authModels';
+export * from './models/streamingModels';   
 
 //----- TIPOS -----
 export * from './types/roleTypes';
@@ -15,6 +16,7 @@ export * from './types/dataTypes';
 
 // ----- ENTIDADES -----
 export * from './entities/indexEntities';
+export * from './entities/streamingEntities';
 
 // ----- SCHEMAS -----
 export * from './schemas/auth.schemas';

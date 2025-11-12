@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Camera, MapPin, Wifi, WifiOff, Settings, Plus } from 'lucide-react';
 import { trafficService, type TrafficAnalysis } from '../../services/traffic.service';
 import { getWebSocketService } from '../../services/websocket.service';
@@ -37,6 +38,7 @@ interface DetectionBuffer {
 }
 
 const CamerasPage: React.FC = () => {
+  const navigate = useNavigate();
   const [cameras, setCameras] = useState<CameraUIEntity[]>([]);
   const [liveAnalysis, setLiveAnalysis] = useState<Record<number, LiveAnalysisData>>({});
   const [currentDetections, setCurrentDetections] = useState<Record<number, Detection[]>>({});
@@ -189,7 +191,8 @@ const CamerasPage: React.FC = () => {
   };
 
   const handleConnectCamera = (camera: CameraEntity) => {
-    alert(`Conectar Cámara física para: ${camera.name}\n(Por implementar)`);
+    // Redirigir a la página de streaming con el ID de la cámara
+    navigate(`/monitoring/live?cameraId=${camera.id}`);
   };
 
   // 🔥 SINCRONIZACIÓN MEJORADA CON BUFFER INICIAL

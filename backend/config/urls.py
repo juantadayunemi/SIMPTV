@@ -52,6 +52,7 @@ def get_available_endpoints():
                 "notifications_app": "notifications",
                 "predictions_app": "predictions",
                 "users_app": "users",
+                "streaming": "streaming",  # Live monitoring app
             }
 
             api_key = api_path_mapping.get(app_name, app_name.replace("_app", ""))
@@ -125,6 +126,7 @@ def include_app_urls():
         "notifications_app": "notifications",
         "predictions_app": "predictions",
         "users_app": "users",
+        "streaming": "streaming",  # Live monitoring app
     }
 
     for app_config in local_apps:
@@ -145,8 +147,12 @@ def include_app_urls():
             # Add to URL patterns
             app_urls.append(path(f"api/{api_path}/", include(f"{app_config}.urls")))
 
-        except ImportError:
+        except ImportError as e:
             # App doesn't have urls.py, skip silently
+            print(f"ImportError for {app_config}: {e}")
+            continue
+        except Exception as e:
+            print(f"Error loading {app_config}.urls: {type(e).__name__}: {e}")
             continue
 
     print("Final app_urls:", app_urls)

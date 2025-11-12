@@ -62,7 +62,13 @@ class PlateDetectionService:
     def _create_directories(self):
         """Crear carpetas necesarias si no existen"""
         try:
-            base_media = Path(settings.MEDIA_ROOT)
+            # ✅ Asegurar que siempre use la ruta correcta dentro de media/
+            if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
+                base_media = Path(settings.MEDIA_ROOT)
+            else:
+                # Fallback: usar BASE_DIR/media si MEDIA_ROOT no existe (S3 activado)
+                base_media = Path(settings.BASE_DIR) / 'media'
+            
             (base_media / 'ROI YOLO').mkdir(parents=True, exist_ok=True)
             (base_media / 'Placas').mkdir(parents=True, exist_ok=True)
             (base_media / 'datos').mkdir(parents=True, exist_ok=True)
@@ -706,15 +712,22 @@ class PlateDetectionService:
             analysis_id_str = str(analysis_id)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             
+            # ✅ Asegurar que siempre use la ruta correcta dentro de media/
+            if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
+                base_media_path = settings.MEDIA_ROOT
+            else:
+                # Fallback: usar BASE_DIR/media si MEDIA_ROOT no existe (S3 activado)
+                base_media_path = os.path.join(settings.BASE_DIR, 'media')
+            
             # Crear directorios
             roi_yolo_dir = os.path.join(
-                settings.MEDIA_ROOT,
+                base_media_path,
                 'ROI YOLO',
                 f'{video_name}_analysis_{analysis_id_str}'
             )
             
             placas_dir = os.path.join(
-                settings.MEDIA_ROOT,
+                base_media_path,
                 'Placas',
                 f'{video_name}_analysis_{analysis_id_str}'
             )
@@ -857,7 +870,14 @@ class PlateDetectionService:
         Cada análisis tiene su propio JSON para evitar mezclas entre procesamientos
         """
         try:
-            datos_folder = os.path.join(settings.MEDIA_ROOT, 'datos')
+            # ✅ Asegurar que siempre use la ruta correcta dentro de media/
+            if hasattr(settings, 'MEDIA_ROOT') and settings.MEDIA_ROOT:
+                base_media_path = settings.MEDIA_ROOT
+            else:
+                # Fallback: usar BASE_DIR/media si MEDIA_ROOT no existe
+                base_media_path = os.path.join(settings.BASE_DIR, 'media')
+            
+            datos_folder = os.path.join(base_media_path, 'datos')
             Path(datos_folder).mkdir(parents=True, exist_ok=True)
             
             # ✅ JSON único por análisis (no se mezclan datos de diferentes procesamientos)

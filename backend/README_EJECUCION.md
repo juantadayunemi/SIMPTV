@@ -32,7 +32,12 @@ cd s:\Construccion\TrafiSmart\backend; python manage.py makemigrations
 -----------------------------------------------
 Ejecutar CELERY
 
- cd s:\Construccion\TrafiSmart\backend; .\venv\Scripts\python.exe -m celery -A config worker --loglevel=info --pool=solo
+ cd s:\Construccion\TrafiSmart\backend; 
+ 
+ .\venv\Scripts\python.exe -m celery -A config worker --loglevel=info --pool=solo
+
+
+ cd S:\Construccion\TrafiSmart\backend; .\venv\Scripts\python.exe -m daphne -b 0.0.0.0 -p 8001 config.asgi:application
  ------------------------------------------------------------
 **Nota**: El script `setup_python311.ps1` hace todo automáticamente:
 - Detecta Python 3.11

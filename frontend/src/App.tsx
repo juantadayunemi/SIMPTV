@@ -22,6 +22,7 @@ import NotificationsPage from './pages/notifications/NotificationsPage';
 import HistoryTrafficPage from './pages/historyTraffic/historyPage'; // Agregado de V1
 import ProfilePage from './pages/profile/ProfilePage';
 import { CameraLiveAnalysisPage } from './pages/traffic/CameraLiveAnalysisPage'; // Ruta dinámica de V2
+import { LiveMonitoring } from './pages/monitoring/LiveMonitoring'; // Live Monitoring Page
 
 // Components
 import Layout from './components/layout/Layout';
@@ -154,6 +155,9 @@ const App: React.FC = () => {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            
+            {/* Live Monitoring Routes */}
+            <Route path="monitoring/live" element={<LiveMonitoring />} />
           </Route>
 
           {/* Fallback Route */}
