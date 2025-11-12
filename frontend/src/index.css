@@ -16,3 +16,16 @@
 @layer utilities {
   /* Custom utility classes can go here */
 }
+@keyframes ring {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(15deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(5deg); }
+  60% { transform: rotate(-5deg); }
+  75% { transform: rotate(2deg); }
+  100% { transform: rotate(0); }
+}
+
+.animate-ring {
+  animation: ring 0.8s ease-in-out;
+}

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ForecastData } from "../types/forecast";
+import { Forecast } from "../types/forecast";
 import { useToast } from "../ui/ToastContainer";
 import DocumentMagnifyingGlassIcon from "@heroicons/react/24/outline/DocumentMagnifyingGlassIcon";
 
 interface ForecastChartProps {
-  data: ForecastData | null;
+  data: Forecast[] | null;
   selectedDate: string;
 }
 
@@ -81,7 +81,7 @@ export default function ForecastChart({
         .toString()
         .padStart(2, "0")}`;
     } catch {
-      toast.error("Error al formatear la hora");
+      console.error("Error al formatear la hora");
       return "";
     }
   };
@@ -96,7 +96,7 @@ export default function ForecastChart({
       const minutes = date.getMinutes().toString().padStart(2, "0");
       return `${day}/${month}/${year} ${hours}:${minutes}`;
     } catch {
-      toast.error("Error al formatear la fecha y hora");
+      console.error("Error al formatear la fecha y hora");
       return "";
     }
   };
@@ -124,7 +124,7 @@ export default function ForecastChart({
         setTooltip(null);
       }
     } catch {
-      toast.error("Error al manejar el movimiento del ratón");
+      console.error("Error al manejar el movimiento del ratón");
     }
   };
 

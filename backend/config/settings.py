@@ -428,6 +428,15 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup-test-fcm-devices": {
         "task": "apps.notifications_app.tasks.cleanup_test_fcm_devices",
         "schedule": crontab(hour="4", minute="0"),  # Diariamente 4:00 AM
+        "schedule": crontab(minute="*/10"),
+    },
+    "remove-old-forecast-models": {
+        "task": "apps.predictions_app.tasks.remove_old_forecast_models",
+        "schedule": 30 * 60,  # cada 30 minutos
+    },
+    "run-all-bottleneck-schedulers": {
+        "task": "apps.predictions_app.tasks.run_all_bottleneck_schedulers",
+        "schedule": crontab(hour=11, minute=30),
     },
 }
 
@@ -539,3 +548,4 @@ try:
 except Exception as e:
     print(f"⚠️ Firebase Admin SDK no pudo inicializarse: {e}")
     print("   Las notificaciones push no estarán disponibles")
+FORECAST_MODELS_PATH = "forecast_models"

@@ -14,7 +14,7 @@ export const TrafficTable = ({ location, camera, date, data }: TrafficTableProps
   const timeSlots = generateTimeSlots();
 
   const getDataForTime = (time: string): BottleneckData | null => {
-    return data.find(item => item.ds === time) || null;
+    return data.find(item => item.ds.slice(11, 16) === time) || null;
   };
 
   return (

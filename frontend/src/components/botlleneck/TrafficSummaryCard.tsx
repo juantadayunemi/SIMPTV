@@ -37,7 +37,7 @@ export const TrafficSummaryCard = ({
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-1">
-            Pronóstico para {date} a las {data.ds}
+            Pronóstico para {date} a las { data?.ds.slice(11, 16)}
           </h3>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
@@ -64,7 +64,7 @@ export const TrafficSummaryCard = ({
           <div
             className={`text-3xl font-semibold ${getStatusColor(data?.level)}`}
           >
-            {data?.ds}
+            {data?.ds.slice(11, 16)}
           </div>
           <div className="text-sm text-gray-600 mt-1">Hora</div>
         </div>

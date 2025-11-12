@@ -98,18 +98,17 @@ from .plates import (
 
 # Predictions Models
 from .predictions import (
-    PredictionModelEntity,
-    ModelTrainingJobEntity,
-    TrafficPredictionEntity,
-    BatchPredictionEntity,
-    PredictionAccuracyEntity,
-    RealTimePredictionEntity,
-    PredictionSourceEntity,
+    PredictionModelEntity
 )
 
 # Notifications Models
 from .notifications import (
     NotificationLogEntity,
+    NotificationEntity,
+    NotificationSettingsEntity,
+    NotificationBottleNeckEntity,
+    NotificationBottleNeckLogEntity,
+    NotificationTaskEntity,
     NotificationPayload,
     EmailNotification,
     WhatsAppNotification,
@@ -246,13 +245,12 @@ __all__ = [
     "PlateQueryDto",
     "PlateDetectionDTO",
     "PredictionModelEntity",
-    "ModelTrainingJobEntity",
-    "TrafficPredictionEntity",
-    "BatchPredictionEntity",
-    "PredictionAccuracyEntity",
-    "RealTimePredictionEntity",
-    "PredictionSourceEntity",
-    "NotificationLogEntity",
+     "NotificationLogEntity",
+    "NotificationEntity",
+    "NotificationSettingsEntity",
+    "NotificationBottleNeckEntity",
+    "NotificationBottleNeckLogEntity",
+    "NotificationTaskEntity",
     "NotificationPayload",
     "EmailNotification",
     "WhatsAppNotification",

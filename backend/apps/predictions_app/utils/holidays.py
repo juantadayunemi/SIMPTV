@@ -1,6 +1,7 @@
 import holidays as pyholidays
 import pandas as pd
 import translators as ts
+from functools import lru_cache
 
 YEAR_RANGE = range(2025, 2027)
 

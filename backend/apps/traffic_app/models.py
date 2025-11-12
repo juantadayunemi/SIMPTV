@@ -197,6 +197,7 @@ class Vehicle(VehicleEntity):
         indexes = [
             models.Index(fields=["trafficAnalysisId", "vehicleType"]),
             models.Index(fields=["trackingStatus"]),
+            models.Index(fields=["firstDetectedAt"]),
         ]
 
     def __str__(self):

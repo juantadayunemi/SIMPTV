@@ -70,3 +70,17 @@ export interface NotificationLogEntity {
   // - INDEX(user, notificationType) - Para queries: "notificaciones de tipo X para usuario Y"
   // - INDEX(sentAt) - Para queries: "notificaciones enviadas entre fechas"
 }
+
+export interface NotificationSettingsEntity {
+  id: number;
+  userId: string;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  webNotificationsEnabled: boolean;
+  trafficAlertsEnabled: boolean;
+  plateDetectionEnabled: boolean;
+  systemAlertsEnabled: boolean;
+  updatedAt: Date;
+}
+
+

@@ -1,4 +1,10 @@
 export interface ForecastData {
+  traffic: ForecastDataTraffic;
+  speed: ForecastDataSpeed;
+  level: LevelTrafficData;
+}
+
+export interface ForecastDataTraffic {
   yhat: number;
   trend: number;
   seasonality: number;
