@@ -64,7 +64,6 @@ class ROLE_PERMISSIONS:
 
 ROLE_PERMISSIONS_CHOICES = ()
 
-# Dictionary mapping roles to their permissions
 ROLE_PERMISSIONS_DICT = {
     "ADMIN": [
         "traffic:create",
@@ -94,4 +93,39 @@ ROLE_PERMISSIONS_DICT = {
         "notifications:manage",
     ],
     "VIEWER": ["traffic:read", "plate:read", "user:read"],
+}
+
+ROLE_PERMISSIONS_DICT = {
+    "ADMIN": [
+        "traffic:create",
+        "traffic:read",
+        "traffic:update",
+        "traffic:delete",
+        "plate:create",
+        "plate:read",
+        "plate:update",
+        "plate:delete",
+        "user:create",
+        "user:read",
+        "user:update",
+        "user:delete",
+        "system:admin",
+        "settings:manage",
+        "notifications:manage",
+    ],
+    "OPERATOR": [
+        "traffic:create",
+        "traffic:read",
+        "traffic:update",
+        "plate:create",
+        "plate:read",
+        "plate:update",
+        "user:read",
+        "notifications:manage",
+    ],
+    "VIEWER": [
+        "traffic:read",
+        "plate:read",
+        "user:read",
+    ],
 }

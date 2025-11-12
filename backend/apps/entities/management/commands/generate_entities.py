@@ -1163,21 +1163,33 @@ class DjangoModelGenerator:
         )
         lines.append('    """')
         lines.append("")
-        lines.append("    createdAt = models.DateTimeField(")
+        # Use DB-provided timestamp when possible (SQL Server GETDATE())
+        # The generator will produce a BaseModelDefault that prefers the database
+        # timestamp by querying GETDATE() at save time when creating a record.
         lines.append(
-            '        auto_now_add=True, verbose_name="Created At", db_column="createdAt"'
+            '    createdAt = models.DateTimeField(auto_now_add=True, verbose_name="Created At", db_column="createdAt")'
         )
-        lines.append("    )")
-        lines.append("    updatedAt = models.DateTimeField(")
         lines.append(
-            '        auto_now=True, verbose_name="Updated At", db_column="updatedAt"'
+            '    updatedAt = models.DateTimeField(auto_now=True, verbose_name="Updated At", db_column="updatedAt")'
         )
-        lines.append("    )")
-        lines.append("    isActive = models.BooleanField(")
         lines.append(
-            '        default=True, verbose_name="Is Active", db_column="isActive"'
+            '    isActive = models.BooleanField(default=True, verbose_name="Is Active", db_column="isActive")'
         )
-        lines.append("    )")
+
+        # Override save() and rely on DB defaults (e.g. GETUTCDATE()) to populate
+        # createdAt. The generator should not emit per-save SELECT GETDATE()
+        # calls because they cause an extra DB round-trip per object.
+        lines.append("")
+        lines.append("    def save(self, *args, **kwargs):")
+        lines.append('        """')
+        lines.append(
+            "        Rely on the database to populate `createdAt` via a DEFAULT constraint (e.g. GETUTCDATE())."
+        )
+        lines.append(
+            "        If you need the DB-assigned `createdAt` immediately after saving, call `instance.refresh_from_db()`."
+        )
+        lines.append('        """')
+        lines.append("        super().save(*args, **kwargs)")
         lines.append("")
         lines.append("    class Meta:")
         lines.append("        abstract = True")
@@ -1405,23 +1417,47 @@ class DjangoModelGenerator:
         lines.append("")
 
         for const_name, const_info in constants.items():
-            # Generate the constant class
-            lines.append(f"class {const_name}:")
-            lines.append(f'    """Constants from TypeScript {const_name}"""')
+            # Special handling for ROLE_PERMISSIONS (dict structure)
+            if const_info.get("is_dict") and const_name == "ROLE_PERMISSIONS":
+                # Generate empty class for compatibility
+                lines.append(f"class {const_name}:")
+                lines.append(f'    """Constants from TypeScript {const_name}"""')
+                lines.append("")
 
-            # Add individual constants
-            for key, value in const_info["values"].items():
-                lines.append(f'    {key} = "{value}"')
+                # Generate choices tuple (empty for ROLE_PERMISSIONS)
+                choices_name = f"{const_name}_CHOICES"
+                lines.append(f"{choices_name} = (")
+                lines.append(")")
+                lines.append("")
 
-            lines.append("")
+                # Generate the actual dictionary mapping
+                dict_mapping = const_info.get("dict_mapping", {})
+                lines.append(f"{const_name}_DICT = {{")
+                for role, perms in dict_mapping.items():
+                    lines.append(f'    "{role}": [')
+                    for perm in perms:
+                        lines.append(f'        "{perm}",')
+                    lines.append("    ],")
+                lines.append("}")
+                lines.append("")
+            else:
+                # Generate the constant class
+                lines.append(f"class {const_name}:")
+                lines.append(f'    """Constants from TypeScript {const_name}"""')
 
-            # Generate choices tuple
-            choices_name = f"{const_name}_CHOICES"
-            lines.append(f"{choices_name} = (")
-            for choice_tuple in const_info["django_choices"]:
-                lines.append(f'    ("{choice_tuple[0]}", "{choice_tuple[1]}"),')
-            lines.append(")")
-            lines.append("")
+                # Add individual constants
+                for key, value in const_info["values"].items():
+                    lines.append(f'    {key} = "{value}"')
+
+                lines.append("")
+
+                # Generate choices tuple
+                choices_name = f"{const_name}_CHOICES"
+                lines.append(f"{choices_name} = (")
+                for choice_tuple in const_info["django_choices"]:
+                    lines.append(f'    ("{choice_tuple[0]}", "{choice_tuple[1]}"),')
+                lines.append(")")
+                lines.append("")
 
         return "\n".join(lines)
 
@@ -1742,7 +1778,7 @@ class TypeScriptTypesParser:
             return {}
 
     def _extract_constants(self, content: str) -> Dict[str, Dict]:
-        """Extract const object definitions like USER_ROLES, PERMISSIONS"""
+        """Extract const object definitions like USER_ROLES, PERMISSIONS, ROLE_PERMISSIONS"""
         constants = {}
 
         # Pattern to match const objects like: export const USER_ROLES = { ... } as const
@@ -1755,14 +1791,26 @@ class TypeScriptTypesParser:
             const_name = match.group(1)
             const_body = match.group(2)
 
-            # Parse key-value pairs within the const
-            pairs = self._parse_const_body(const_body)
+            # Special handling for ROLE_PERMISSIONS (nested structure with arrays)
+            if const_name == "ROLE_PERMISSIONS":
+                constants[const_name] = {
+                    "name": const_name,
+                    "values": {},  # No se usa para este caso
+                    "django_choices": [],  # No se usa para este caso
+                    "is_dict": True,
+                    "dict_mapping": self._parse_role_permissions(const_body, content),
+                }
+            else:
+                # Parse key-value pairs within the const
+                pairs = self._parse_const_body(const_body)
 
-            constants[const_name] = {
-                "name": const_name,
-                "values": pairs,
-                "django_choices": self._convert_to_django_choices(pairs, const_name),
-            }
+                constants[const_name] = {
+                    "name": const_name,
+                    "values": pairs,
+                    "django_choices": self._convert_to_django_choices(
+                        pairs, const_name
+                    ),
+                }
 
         return constants
 
@@ -1799,6 +1847,79 @@ class TypeScriptTypesParser:
             choices.append((value, label))
 
         return choices
+
+    def _parse_role_permissions(
+        self, body: str, full_content: str
+    ) -> Dict[str, List[str]]:
+        """
+        Parse ROLE_PERMISSIONS structure from TypeScript:
+        {
+          [USER_ROLES.ADMIN]: [PERMISSIONS.TRAFFIC_CREATE, ...],
+          [USER_ROLES.OPERATOR]: [...],
+        }
+
+        Returns dict mapping role strings to permission strings:
+        {
+            "ADMIN": ["traffic:create", "traffic:read", ...],
+            "OPERATOR": [...],
+        }
+        """
+        result = {}
+
+        # Extract USER_ROLES and PERMISSIONS values first
+        user_roles_values = {}
+        permissions_values = {}
+
+        # Parse USER_ROLES values
+        user_roles_match = re.search(
+            r"export\s+const\s+USER_ROLES\s*=\s*\{(.*?)\}\s*as\s+const",
+            full_content,
+            re.DOTALL,
+        )
+        if user_roles_match:
+            roles_body = user_roles_match.group(1)
+            role_pairs = re.findall(r"(\w+):\s*['\"]([^'\"]+)['\"]", roles_body)
+            for key, value in role_pairs:
+                user_roles_values[f"USER_ROLES.{key}"] = value
+
+        # Parse PERMISSIONS values
+        permissions_match = re.search(
+            r"export\s+const\s+PERMISSIONS\s*=\s*\{(.*?)\}\s*as\s+const",
+            full_content,
+            re.DOTALL,
+        )
+        if permissions_match:
+            perms_body = permissions_match.group(1)
+            perm_pairs = re.findall(r"(\w+):\s*['\"]([^'\"]+)['\"]", perms_body)
+            for key, value in perm_pairs:
+                permissions_values[f"PERMISSIONS.{key}"] = value
+
+        # Now parse ROLE_PERMISSIONS structure
+        # Pattern: [USER_ROLES.ROLE]: [ PERMISSIONS.X, PERMISSIONS.Y, ... ]
+        role_pattern = r"\[(USER_ROLES\.\w+)\]:\s*\[([\s\S]*?)\]"
+        role_matches = re.finditer(role_pattern, body)
+
+        for role_match in role_matches:
+            role_ref = role_match.group(1)  # e.g., "USER_ROLES.ADMIN"
+            perms_list_str = role_match.group(
+                2
+            )  # e.g., "PERMISSIONS.X,\n    PERMISSIONS.Y"
+
+            # Get actual role value
+            role_value = user_roles_values.get(role_ref, role_ref)
+
+            # Extract permission references
+            perm_refs = re.findall(r"(PERMISSIONS\.\w+)", perms_list_str)
+
+            # Convert to actual permission values
+            perms = []
+            for perm_ref in perm_refs:
+                perm_value = permissions_values.get(perm_ref, perm_ref)
+                perms.append(perm_value)
+
+            result[role_value] = perms
+
+        return result
 
     def _extract_types(self, content: str) -> Dict[str, Dict]:
         """Extract type definitions"""

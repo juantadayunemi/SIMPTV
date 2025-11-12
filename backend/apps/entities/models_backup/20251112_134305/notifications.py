@@ -6,37 +6,6 @@ from ..constants import (
 )
 
 
-class NotificationData(BaseModel):
-    """Abstract DLL model from TypeScript interface NotificationData"""
-    """USAGE: Inherit in other apps - class User(NotificationData): pass"""
-
-    type = models.CharField(max_length=255, blank=True, null=True)
-    plate_number = models.CharField(max_length=255, blank=True, null=True)
-    owner_name = models.CharField(max_length=255, blank=True, null=True)
-    complaints_count = models.CharField(max_length=255, blank=True, null=True)
-    severity = models.CharField(max_length=255)
-    case_number = models.CharField(max_length=255, blank=True, null=True)
-    location = models.CharField(max_length=255, blank=True, null=True)
-    time = models.CharField(max_length=255, blank=True, null=True)
-    is_grouped = models.CharField(max_length=255, blank=True, null=True)
-    detection_count = models.CharField(max_length=255, blank=True, null=True)
-    time_window_minutes = models.CharField(max_length=255, blank=True, null=True)
-    locations = models.CharField(max_length=255, blank=True, null=True)
-    detected_plate_id = models.IntegerField(blank=True, null=True)
-    complaintDetails = models.TextField(blank=True, null=True)
-    ownerName = models.CharField(max_length=255)
-    ownerIdNumber = models.UUIDField(default=uuid.uuid4, editable=False)
-    ownerAddress = models.CharField(max_length=255)
-    caseNumber = models.CharField(max_length=255)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract NotificationData"
-        verbose_name_plural = "Abstract NotificationDatas"
-
-    def __str__(self):
-        return f'NotificationData ({self.pk})'
-
 class NotificationLogEntity(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationLogEntity"""
     """USAGE: Inherit in other apps - class User(NotificationLogEntity): pass"""
@@ -45,7 +14,7 @@ class NotificationLogEntity(BaseModel):
     notificationType = models.CharField(max_length=50, default='SYSTEM_ALERT', choices=NOTIFICATION_TYPES_CHOICES)
     title = models.CharField(max_length=200)
     body = models.TextField()
-    data = models.JSONField(default=dict, help_text='Reference to NotificationData interface', blank=True, null=True)
+    data = models.JSONField(default=dict, blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps

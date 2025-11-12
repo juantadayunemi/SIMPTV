@@ -21,15 +21,31 @@ class BaseModelDefault(models.Model):
     - updatedAt: Django lo maneja automáticamente con auto_now=True
     """
 
-    createdAt = models.DateTimeField(auto_now_add=True, verbose_name="Created At", db_column="createdAt")
+    createdAt = models.DateTimeField(blank=True, null=True, db_column="createdAt")
     updatedAt = models.DateTimeField(auto_now=True, verbose_name="Updated At", db_column="updatedAt")
     isActive = models.BooleanField(default=True, verbose_name="Is Active", db_column="isActive")
 
     def save(self, *args, **kwargs):
         """
-        Rely on the database to populate `createdAt` via a DEFAULT constraint (e.g. GETUTCDATE()).
-        If you need the DB-assigned `createdAt` immediately after saving, call `instance.refresh_from_db()`.
+        Ensure createdAt is populated using the database server time (GETDATE) when available.
         """
+        from django.db import connection
+        from django.utils import timezone
+
+        # If new instance and createdAt not provided, try to fetch DB server time
+        if not getattr(self, 'createdAt', None):
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT GETDATE()')
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        self.createdAt = row[0]
+                    else:
+                        self.createdAt = timezone.now()
+            except Exception:
+                # Fallback to Django timezone if DB call fails or not SQL Server
+                self.createdAt = timezone.now()
+
         super().save(*args, **kwargs)
 
     class Meta:

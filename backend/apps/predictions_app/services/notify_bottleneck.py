@@ -4,7 +4,7 @@ from django.utils import timezone
 from apps.traffic_app.models import Camera, Location
 from django.shortcuts import get_object_or_404
 
-from apps.predictions_app.models import (
+from apps.notifications_app.models import (
     NotificationBottleNeck,
     NotificationBottleNeckLog,
     NotificationTask,

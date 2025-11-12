@@ -6,6 +6,9 @@ Auto-generated from TypeScript types
 class NOTIFICATION_TYPES:
     """Constants from TypeScript NOTIFICATION_TYPES"""
     TRAFFIC_ALERT = "TRAFFIC_ALERT"
+    TRAFFIC_VIOLATION = "TRAFFIC_VIOLATION"
+    STOLEN_VEHICLE = "STOLEN_VEHICLE"
+    VEHICLE_COMPLAINT = "VEHICLE_COMPLAINT"
     PLATE_DETECTION = "PLATE_DETECTION"
     SYSTEM_ALERT = "SYSTEM_ALERT"
     USER_ACTION = "USER_ACTION"
@@ -14,6 +17,9 @@ class NOTIFICATION_TYPES:
 
 NOTIFICATION_TYPES_CHOICES = (
     ("TRAFFIC_ALERT", "Traffic Alert"),
+    ("TRAFFIC_VIOLATION", "Traffic Violation"),
+    ("STOLEN_VEHICLE", "Stolen Vehicle"),
+    ("VEHICLE_COMPLAINT", "Vehicle Complaint"),
     ("PLATE_DETECTION", "Plate Detection"),
     ("SYSTEM_ALERT", "System Alert"),
     ("USER_ACTION", "User Action"),

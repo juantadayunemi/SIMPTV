@@ -1,9 +1,9 @@
 from celery import chain, shared_task
-from apps.predictions_app.models import (
+from apps.notifications_app.models import (
     NotificationBottleNeck,
-    NotificationTask,
-    PredictionSource,
+    NotificationTask
 )
+
 from django.db import connection
 from django.utils import timezone
 from datetime import datetime, timedelta

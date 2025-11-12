@@ -112,7 +112,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         # Filtro por tipo de notificación
         notification_type = self.request.query_params.get("type", None)
         if notification_type:
-            queryset = queryset.filter(notification_type=notification_type)
+            queryset = queryset.filter(notificationType=notification_type)
 
         return queryset
 

@@ -20,10 +20,12 @@ from django.db.models import Q, Count, Prefetch
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
+
+from apps.entities.constants.roles import ROLE_PERMISSIONS_DICT
 from .models import User, UserRole, RolePermission, UserPermissionOverride
 from .serializers import UserSerializer
 from .permissions import IsAdminUser, get_user_permissions
-from apps.entities.constants import USER_ROLES_CHOICES, ROLE_PERMISSIONS_DICT
+from apps.entities.constants import USER_ROLES_CHOICES
 
 # ============================================================================
 # USER MANAGEMENT VIEWS

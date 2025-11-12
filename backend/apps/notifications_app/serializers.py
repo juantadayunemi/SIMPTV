@@ -351,7 +351,8 @@ class VehicleComplaintDetectionDetailSerializer(serializers.ModelSerializer):
                         "description": location.description,
                         "city": location.city,
                         "province": location.province,
-                        "address": location.address,
+                        "country": location.country,
+                        "notes": location.notes,
                     }
             return None
         except Exception as e:

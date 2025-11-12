@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 import uuid
 
 
@@ -21,16 +22,15 @@ class BaseModelDefault(models.Model):
     - updatedAt: Django lo maneja automáticamente con auto_now=True
     """
 
-    createdAt = models.DateTimeField(auto_now_add=True, verbose_name="Created At", db_column="createdAt")
-    updatedAt = models.DateTimeField(auto_now=True, verbose_name="Updated At", db_column="updatedAt")
-    isActive = models.BooleanField(default=True, verbose_name="Is Active", db_column="isActive")
-
-    def save(self, *args, **kwargs):
-        """
-        Rely on the database to populate `createdAt` via a DEFAULT constraint (e.g. GETUTCDATE()).
-        If you need the DB-assigned `createdAt` immediately after saving, call `instance.refresh_from_db()`.
-        """
-        super().save(*args, **kwargs)
+    createdAt = models.DateTimeField(
+        auto_now_add=True, verbose_name="Created At", db_column="createdAt"
+    )
+    updatedAt = models.DateTimeField(
+        auto_now=True, verbose_name="Updated At", db_column="updatedAt"
+    )
+    isActive = models.BooleanField(
+        default=True, verbose_name="Is Active", db_column="isActive"
+    )
 
     class Meta:
         abstract = True

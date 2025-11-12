@@ -73,6 +73,7 @@ interface NotificationLog {
   } | null;
 }
 
+
 interface PaginatedResponse {
   count: number;
   next: string | null;

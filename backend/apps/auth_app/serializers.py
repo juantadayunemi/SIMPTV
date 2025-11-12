@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .validators import validate_email_complete
 from apps.entities.constants import ROLE_PERMISSIONS_DICT
+
 from django.utils import timezone
 
 

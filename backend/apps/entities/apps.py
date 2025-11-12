@@ -3,7 +3,8 @@ from django.apps import AppConfig
 
 class EntitiesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "entities"
+    # Must match the import path used in INSTALLED_APPS
+    name = "apps.entities"
     verbose_name = "Shared Models Library"
     verbose_name_plural = "Shared Models Library"
 

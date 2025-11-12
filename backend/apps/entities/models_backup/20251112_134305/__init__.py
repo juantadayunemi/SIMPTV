@@ -111,7 +111,6 @@ from .predictions import (
 
 # Notifications Models
 from .notifications import (
-    NotificationData,
     NotificationLogEntity,
     NotificationSettingsEntity,
     NotificationBottleNeckEntity,
@@ -261,7 +260,6 @@ __all__ = [
     "PredictionAccuracyEntity",
     "RealTimePredictionEntity",
     "PredictionSourceEntity",
-    "NotificationData",
     "NotificationLogEntity",
     "NotificationSettingsEntity",
     "NotificationBottleNeckEntity",

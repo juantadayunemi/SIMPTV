@@ -16,7 +16,7 @@ from apps.predictions_app.services.prediction_service import (
 from apps.traffic_app.models import Camera, Location, Vehicle
 from apps.predictions_app.history_filter import HistoryTrafficFilter
 from apps.predictions_app.serializers import NotificationBottleNeckSerializer
-from apps.predictions_app.models import NotificationBottleNeck, NotificationTask
+from apps.notifications_app.models import NotificationBottleNeck, NotificationTask
 from rest_framework.decorators import action
 
 from apps.auth_app.models import User
