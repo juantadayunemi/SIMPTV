@@ -116,6 +116,83 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset
 
+    @action(detail=True, methods=["get"])
+    def complaint_details(self, request, pk=None):
+        """
+        Obtener detalles completos de una denuncia vehicular desde una notificación.
+        GET /api/notifications/notifications/{id}/complaint_details/
+        """
+        try:
+            notification = self.get_object()
+
+            # Verificar que la notificación tenga detected_plate_id
+            detected_plate_id = notification.data.get("detected_plate_id")
+            if not detected_plate_id:
+                return Response(
+                    {
+                        "error": "Esta notificación no tiene información de placa detectada"
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Obtener VehicleComplaintDetection
+            try:
+                complaint_detection = VehicleComplaintDetection.objects.select_related(
+                    "detectedPlateId"
+                ).get(detectedPlateId_id=detected_plate_id)
+            except VehicleComplaintDetection.DoesNotExist:
+                return Response(
+                    {"error": "No se encontró la detección de denuncia"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            # Obtener todas las denuncias asociadas
+            complaints = VehicleComplaint.objects.filter(
+                detectionId=complaint_detection
+            ).order_by("-createdAt")
+
+            # Serializar datos
+            detection_data = {
+                "id": complaint_detection.id,
+                "ownerName": complaint_detection.ownerName,
+                "ownerIdNumber": complaint_detection.ownerIdNumber,
+                "ownerAddress": complaint_detection.ownerAddress,
+                "caseNumber": complaint_detection.caseNumber,
+                "severity": complaint_detection.severity,
+            }
+
+            complaints_data = [
+                {
+                    "id": complaint.id,
+                    "complaintText": complaint.complaintText,
+                    "complaintType": complaint.complaintType,
+                    "complaintDate": complaint.complaintDate,
+                    "severity": complaint.severity,
+                    "sequenceNumber": complaint.sequenceNumber,
+                    "createdAt": complaint.createdAt,
+                }
+                for complaint in complaints
+            ]
+
+            return Response(
+                {
+                    "success": True,
+                    "detection": detection_data,
+                    "complaints": complaints_data,
+                    "complaintsCount": len(complaints_data),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(
+                f"❌ Error obteniendo detalles de denuncia: {e}", exc_info=True
+            )
+            return Response(
+                {"error": f"Error al obtener detalles: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     @action(detail=False, methods=["post"])
     def send_test(self, request):
         """Send test notification to user's devices."""

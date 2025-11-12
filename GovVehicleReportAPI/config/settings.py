@@ -7,6 +7,8 @@ SECRET_KEY = os.environ.get("DJV_SECRET", "unsafe-secret-for-dev")
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

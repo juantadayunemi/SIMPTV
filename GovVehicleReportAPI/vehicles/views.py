@@ -16,7 +16,11 @@ def get_vehicle(request):
             {"found": False, "message": "Placa no encontrada"}, status=404
         )
 
-    denuncias = [d.denuncia for d in vehicle.denuncias.all()] # type: ignore
+    # Return list of denuncias as objects with text and severidad (stored as uppercase in DB)
+    denuncias = [
+        {"denuncia": d.denuncia, "severidad": getattr(d, "severidad", "MEDIUM")}
+        for d in vehicle.denuncias.all()
+    ]  # type: ignore
 
     response = {
         "placa": vehicle.placa,

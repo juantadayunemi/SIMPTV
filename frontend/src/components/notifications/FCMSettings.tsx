@@ -112,7 +112,7 @@ export const FCMSettings: React.FC = () => {
             )}
           </div>
 
-          {permission === 'granted' && (
+          {/* {permission === 'granted' && (
             <div className="flex items-center justify-between pt-4 border-t">
               <div>
                 <p className="font-medium">Probar notificaciones</p>
@@ -130,7 +130,9 @@ export const FCMSettings: React.FC = () => {
                 {isLoading ? 'Enviando...' : 'Probar'}
               </Button>
             </div>
-          )}
+          )} */}
+
+
         </CardContent>
       </Card>
 

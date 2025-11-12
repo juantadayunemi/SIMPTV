@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { complaintsService, VehicleComplaintDetection, ComplaintStats, SeverityLevel } from '../../services/complaints.service';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Car, Truck, Bike, Bus, HelpCircle } from 'lucide-react';
 
 export const VehicleReportsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,6 +86,31 @@ export const VehicleReportsPage: React.FC = () => {
         return 'Baja';
       default:
         return 'Desconocida';
+    }
+  };
+
+  const getVehicleIcon = (vehicleType: string | null) => {
+    const iconClass = "w-7 h-7";
+    switch (vehicleType?.toUpperCase()) {
+      case 'CAR':
+      case 'AUTOMÓVIL':
+      case 'AUTO':
+        return <Car className={`${iconClass} text-blue-600`} />;
+      case 'TRUCK':
+      case 'CAMIÓN':
+        return <Truck className={`${iconClass} text-orange-600`} />;
+      case 'MOTORCYCLE':
+      case 'MOTOCICLETA':
+      case 'MOTO':
+        return <Bike className={`${iconClass} text-green-600`} />;
+      case 'BUS':
+      case 'AUTOBÚS':
+        return <Bus className={`${iconClass} text-purple-600`} />;
+      case 'BICYCLE':
+      case 'BICICLETA':
+        return <Bike className={`${iconClass} text-teal-600`} />;
+      default:
+        return <HelpCircle className={`${iconClass} text-gray-400`} />;
     }
   };
 
@@ -294,8 +319,11 @@ export const VehicleReportsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                       {complaint.plateNumber || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {complaint.vehicleType}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {getVehicleIcon(complaint.vehicleType)}
+                        <span className="text-sm text-gray-900">{complaint.vehicleType}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {complaint.ownerName}

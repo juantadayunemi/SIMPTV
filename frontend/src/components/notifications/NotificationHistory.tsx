@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Bell,
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  Search,
-  Calendar,
-  Filter,
-  ChevronDown,
-  ChevronUp,
-  X,
+   Bell,
+    AlertTriangle,
+    AlertCircle,
+    Info,
+    Search,
+    Calendar,
+    Filter,
+    ChevronDown,
+    ChevronUp,
+    X,
+    Car,
+    CheckCircle,
+    AlertOctagon,
+    Siren,
+    
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/Button';
 import { api } from '../../services/api';
+
 
 interface NotificationData {
   type?: string;
@@ -29,6 +34,28 @@ interface NotificationData {
   detection_count?: string;
   time_window_minutes?: string;
   locations?: string;
+  detected_plate_id?: number;
+  // Datos cacheados de la denuncia (se obtienen al expandir)
+  complaintDetails?: {
+    detection: {
+      id: number;
+      ownerName: string;
+      ownerIdNumber: string;
+      ownerAddress: string;
+      caseNumber: string;
+      severity: string;
+    };
+    complaints: Array<{
+      id: number;
+      complaintText: string;
+      complaintType: string | null;
+      complaintDate: string | null;
+      severity: string;
+      sequenceNumber: number;
+      createdAt: string;
+    }>;
+    complaintsCount: number;
+  };
 }
 
 interface NotificationLog {
@@ -54,18 +81,45 @@ interface PaginatedResponse {
 }
 
 const SEVERITY_CONFIG = {
-  NONE: { emoji: '✅', label: 'Ninguna', color: 'bg-gray-100 text-gray-800', borderColor: 'border-gray-300' },
-  LOW: { emoji: '⚠️', label: 'Baja', color: 'bg-blue-100 text-blue-800', borderColor: 'border-blue-300' },
-  MEDIUM: { emoji: '🚨', label: 'Media', color: 'bg-yellow-100 text-yellow-800', borderColor: 'border-yellow-300' },
-  HIGH: { emoji: '🔴', label: 'Alta', color: 'bg-orange-100 text-orange-800', borderColor: 'border-orange-300' },
-  CRITICAL: { emoji: '🆘', label: 'Crítica', color: 'bg-red-100 text-red-800', borderColor: 'border-red-300' },
+  NONE: {
+    icon: <CheckCircle className="w-4 h-4 text-gray-600" />,
+    label: 'Ninguna',
+    color: 'bg-gray-100 text-gray-800',
+    borderColor: 'border-gray-300',
+  },
+  LOW: {
+    icon: <AlertTriangle className="w-4 h-4 text-blue-700" />,
+    label: 'Baja',
+    color: 'bg-blue-100 text-blue-800',
+    borderColor: 'border-blue-300',
+  },
+  MEDIUM: {
+    icon: <Siren className="w-4 h-4 text-yellow-600" />,
+    label: 'Media',
+    color: 'bg-yellow-100 text-yellow-800',
+    borderColor: 'border-yellow-300',
+  },
+  HIGH: {
+    icon: <AlertOctagon className="w-4 h-4 text-orange-600" />,
+    label: 'Alta',
+    color: 'bg-orange-100 text-orange-800',
+    borderColor: 'border-orange-300',
+  },
+  CRITICAL: {
+    icon: <Siren className="w-4 h-4 text-red-700" />,
+    label: 'Crítica',
+    color: 'bg-red-100 text-red-800',
+    borderColor: 'border-red-300',
+  },
 };
+
 
 export const NotificationHistory: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState<number | null>(null);
   
   // Filtros
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,7 +195,7 @@ export const NotificationHistory: React.FC = () => {
     const config = SEVERITY_CONFIG[severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.NONE;
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${config.color}`}>
-        <span>{config.emoji}</span>
+        {config.icon}
         <span>{config.label}</span>
       </span>
     );
@@ -179,8 +233,61 @@ export const NotificationHistory: React.FC = () => {
     }
   };
 
-  const toggleExpand = (id: number) => {
-    setExpandedId(expandedId === id ? null : id);
+  const toggleExpand = async (id: number) => {
+    if (expandedId === id) {
+      // Si ya está expandido, colapsarlo
+      setExpandedId(null);
+      return;
+    }
+    
+    // Expandir
+    setExpandedId(id);
+    
+    // Buscar la notificación
+    const notification = notifications.find(n => n.id === id);
+    if (!notification) return;
+    
+    // Si ya tiene los detalles cacheados, no hacer nada
+    if (notification.data?.complaintDetails) {
+      console.log('✅ Detalles ya cacheados, usando cache');
+      return;
+    }
+    
+    // Si tiene detected_plate_id, cargar los detalles
+    if (notification.data?.detected_plate_id) {
+      try {
+        setLoadingDetails(id);
+        console.log(`🔍 Cargando detalles de denuncia para notificación ${id}...`);
+        
+        const response = await api.get(`/api/notifications/notifications/${id}/complaint_details/`);
+        
+        if (response.data.success) {
+          console.log('✅ Detalles de denuncia obtenidos:', response.data);
+          
+          // Actualizar la notificación con los detalles cacheados
+          setNotifications(prev => prev.map(n => {
+            if (n.id === id) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  complaintDetails: {
+                    detection: response.data.detection,
+                    complaints: response.data.complaints,
+                    complaintsCount: response.data.complaintsCount,
+                  }
+                }
+              };
+            }
+            return n;
+          }));
+        }
+      } catch (err: any) {
+        console.error('❌ Error cargando detalles de denuncia:', err);
+      } finally {
+        setLoadingDetails(null);
+      }
+    }
   };
 
   if (loading && notifications.length === 0) {
@@ -282,11 +389,11 @@ export const NotificationHistory: React.FC = () => {
                 className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Todas las severidades</option>
-                <option value="NONE">✅ Ninguna</option>
-                <option value="LOW">⚠️ Baja</option>
-                <option value="MEDIUM">🚨 Media</option>
-                <option value="HIGH">🔴 Alta</option>
-                <option value="CRITICAL">🆘 Crítica</option>
+                <option value="NONE">Ninguna</option>
+                <option value="LOW">Baja</option>
+                <option value="MEDIUM">Media</option>
+                <option value="HIGH">Alta</option>
+                <option value="CRITICAL">Crítica</option>
               </select>
 
               {/* Filtro por tipo */}
@@ -337,8 +444,10 @@ export const NotificationHistory: React.FC = () => {
             {notifications.map((notification) => {
               const isExpanded = expandedId === notification.id;
               const severity = notification.data?.severity || 'NONE';
-              const isGrouped = notification.data?.is_grouped === 'true' || notification.data?.is_grouped === true;
+              const isGrouped = notification.data?.is_grouped === 'true';
               const severityConfig = SEVERITY_CONFIG[severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.NONE;
+              const hasComplaintDetails = !!notification.data?.complaintDetails;
+              const isLoadingDetails = loadingDetails === notification.id;
 
               return (
                 <div
@@ -356,7 +465,7 @@ export const NotificationHistory: React.FC = () => {
                           <img
                             src={`http://localhost:8000/media/${notification.vehicle_image.path}`}
                             alt="Vehículo detectado"
-                            className="w-24 h-24 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
+                            className="w-32 h-auto object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
                             onError={(e) => {
                               // Si falla la carga, ocultar la imagen
                               e.currentTarget.style.display = 'none';
@@ -397,8 +506,9 @@ export const NotificationHistory: React.FC = () => {
                               {formatDate(notification.sent_at)}
                             </span>
                             {notification.data?.plate_number && (
-                              <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
-                                🚗 {notification.data.plate_number}
+                            <span className="inline-flex items-center font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                                <Car className="w-6 h-6 mr-1 text-gray-600" />
+                                {notification.data.plate_number}
                               </span>
                             )}
                             {isGrouped && notification.data?.detection_count && (
@@ -418,71 +528,120 @@ export const NotificationHistory: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Detalles expandidos */}
-                    {isExpanded && notification.data && (
-                      <div className="mt-4 pt-4 border-t space-y-2">
-                        <h4 className="font-semibold text-sm text-gray-700 mb-2">Detalles:</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                          {notification.data.plate_number && (
-                            <div>
-                              <span className="text-gray-600">Placa:</span>{' '}
-                              <span className="font-mono font-semibold">{notification.data.plate_number}</span>
-                            </div>
-                          )}
-                          {notification.data.owner_name && (
-                            <div>
-                              <span className="text-gray-600">Propietario:</span>{' '}
-                              <span className="font-medium">{notification.data.owner_name}</span>
-                            </div>
-                          )}
-                          {notification.data.complaints_count && (
-                            <div>
-                              <span className="text-gray-600">Denuncias:</span>{' '}
-                              <span className="font-semibold text-red-600">{notification.data.complaints_count}</span>
-                            </div>
-                          )}
-                          {notification.data.case_number && (
-                            <div>
-                              <span className="text-gray-600">Expediente:</span>{' '}
-                              <span className="font-mono">{notification.data.case_number}</span>
-                            </div>
-                          )}
-                          {notification.data.location && (
-                            <div>
-                              <span className="text-gray-600">Ubicación:</span>{' '}
-                              <span>{notification.data.location}</span>
-                            </div>
-                          )}
-                          {notification.data.time && (
-                            <div>
-                              <span className="text-gray-600">Hora detección:</span>{' '}
-                              <span>{new Date(notification.data.time).toLocaleString('es-ES')}</span>
-                            </div>
-                          )}
-                          {isGrouped && (
-                            <>
-                              {notification.data.detection_count && (
-                                <div>
-                                  <span className="text-gray-600">Detecciones:</span>{' '}
-                                  <span className="font-semibold text-purple-600">
-                                    {notification.data.detection_count} veces
-                                  </span>
+                    {/* Detalles expandidos - Layout compacto en 2 columnas (imagen izquierda, detalles derecha) */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+                          {/* Columna Izquierda: Imagen del vehículo (resaltada) - 60% del ancho */}
+                          <div className="lg:col-span-2">
+                            {notification.vehicle_image && (
+                              <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 shadow-sm h-full flex flex-col">
+                                <h4 className="font-semibold text-sm text-gray-700 mb-2 px-1">📸 Imagen del Vehículo</h4>
+                                <div className="flex-1 flex items-center justify-center p-1">
+                                  <img
+                                    src={`http://localhost:8000/media/${notification.vehicle_image.path}`}
+                                    alt="Vehículo detectado"
+                                    className="w-full h-auto object-contain rounded-lg border border-gray-200"
+                                    style={{ maxHeight: '360px' }}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
                                 </div>
-                              )}
-                              {notification.data.time_window_minutes && (
-                                <div>
-                                  <span className="text-gray-600">Ventana de tiempo:</span>{' '}
-                                  <span>{notification.data.time_window_minutes} minutos</span>
+                                <div className="mt-2 text-xs text-gray-500 px-1">
+                                  Capturada: {new Date(notification.vehicle_image.captured_at).toLocaleString('es-ES')}
                                 </div>
-                              )}
-                              {notification.data.locations && (
-                                <div className="md:col-span-2">
-                                  <span className="text-gray-600">Ubicaciones:</span>{' '}
-                                  <span>{notification.data.locations}</span>
+                              </div>
+                            )}
+
+                            {/* Información General (compacta) */}
+                            {notification.data && (
+                              <div className="mt-3 bg-gray-50 rounded-lg p-2 text-sm">
+                                <div className="grid grid-cols-2 gap-2">
+                                  {notification.data.plate_number && (
+                                    <div>
+                                      <div className="text-xs text-gray-600">Placa</div>
+                                      <div className="font-mono font-semibold">{notification.data.plate_number}</div>
+                                    </div>
+                                  )}
+                                  {notification.data.owner_name && (
+                                    <div>
+                                      <div className="text-xs text-gray-600">Propietario</div>
+                                      <div className="font-medium">{notification.data.owner_name}</div>
+                                    </div>
+                                  )}
+                                  {notification.data.case_number && (
+                                    <div>
+                                      <div className="text-xs text-gray-600">Expediente</div>
+                                      <div className="font-mono">{notification.data.case_number}</div>
+                                    </div>
+                                  )}
+                                  {notification.data.complaints_count && (
+                                    <div>
+                                      <div className="text-xs text-gray-600">Denuncias</div>
+                                      <div className="font-semibold text-red-600">{notification.data.complaints_count}</div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </>
-                          )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Columna Derecha: Detalles de la denuncia - 40% del ancho */}
+                          <div className="lg:col-span-2 space-y-3">
+                            {isLoadingDetails && (
+                              <div className="flex items-center justify-center py-8 bg-gray-50 rounded-lg">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                                <span className="text-sm text-gray-600">Cargando detalles...</span>
+                              </div>
+                            )}
+
+                            {hasComplaintDetails && notification.data?.complaintDetails && (
+                              <>
+                                {/* Información del propietario */}
+                                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                  <h4 className="font-semibold text-sm text-gray-700 mb-2">👤 Datos del Propietario</h4>
+                                  <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                      <div className="text-xs text-gray-600">Nombre</div>
+                                      <div className="font-medium">{notification.data.complaintDetails.detection.ownerName}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-gray-600">Cédula/RUC</div>
+                                      <div className="font-mono">{notification.data.complaintDetails.detection.ownerIdNumber}</div>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <div className="text-xs text-gray-600">Dirección</div>
+                                      <div className="text-sm">{notification.data.complaintDetails.detection.ownerAddress}</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Detalle de las denuncias/deudas */}
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-sm text-gray-700">📋 Detalle de Denuncias ({notification.data.complaintDetails.complaintsCount})</h4>
+                                  <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                    {notification.data.complaintDetails.complaints.map((complaint) => (
+                                      <div key={complaint.id} className="bg-red-50 p-3 rounded-lg border-l-4 border-red-400">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-sm font-bold text-red-800">Denuncia #{complaint.sequenceNumber}</span>
+                                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${SEVERITY_CONFIG[complaint.severity as keyof typeof SEVERITY_CONFIG]?.color || 'bg-gray-100'}`}>
+                                            {SEVERITY_CONFIG[complaint.severity as keyof typeof SEVERITY_CONFIG]?.icon || <AlertTriangle className="w-3 h-3" />}
+                                            <span>{SEVERITY_CONFIG[complaint.severity as keyof typeof SEVERITY_CONFIG]?.label || complaint.severity}</span>
+                                          </span>
+                                        </div>
+                                        <div className="text-sm text-gray-800 whitespace-pre-wrap">{complaint.complaintText}</div>
+                                        <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          {new Date(complaint.createdAt).toLocaleString('es-ES')}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}

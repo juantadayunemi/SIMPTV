@@ -18,6 +18,20 @@ class Denuncia(models.Model):
     )
     denuncia = models.TextField()
 
-    def __str__(self):
-        return f"{self.placa.pk}: {self.denuncia[:40]}" 
+    # Store severity in uppercase in DB and return them as-is via API
+    SEVERITY_LOW = "LOW"
+    SEVERITY_MEDIUM = "MEDIUM"
+    SEVERITY_HIGH = "HIGH"
+    SEVERITY_CHOICES = [
+        (SEVERITY_LOW, "LOW"),
+        (SEVERITY_MEDIUM, "MEDIUM"),
+        (SEVERITY_HIGH, "HIGH"),
+    ]
 
+    # severidad: priority/severity saved in uppercase. Default 'MEDIUM' for existing rows.
+    severidad = models.CharField(
+        max_length=16, choices=SEVERITY_CHOICES, default=SEVERITY_MEDIUM
+    )
+
+    def __str__(self):
+        return f"{self.placa.pk} [{self.severidad}]: {self.denuncia[:40]}"
