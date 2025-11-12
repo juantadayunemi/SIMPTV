@@ -27,12 +27,11 @@ def analyze_video_async(self, analysis_id, video_path):
     🔥 Analiza video con actualizaciones en tiempo real vía WebSocket
     """
     import cv2
-    from ultralytics import YOLO
+    from ultralytics.models.yolo import YOLO
     from apps.traffic_app.models import TrafficAnalysis, Vehicle, VehicleFrame
     from apps.plates_app.models import DetectedPlate
     from apps.plates_app.services import (
         save_detected_plate_to_db,
-        save_complaint_detection_to_db,
     )
 
     # Capa de canales para WebSocket - mensajería con el frontend
@@ -167,12 +166,11 @@ def analyze_video_async(self, analysis_id, video_path):
         )  # {track_id: {'bbox': [x,y,w,h], 'type': str, 'frames_missing': int}}
         MAX_FRAMES_MISSING = 5  # Máximo frames sin detectar antes de eliminar track
         IOU_THRESHOLD_TRACKING = 0.3  # IoU mínimo para asociar detección con track
-        SKIP_FRAMES = 3  # Procesar cada 3 frames
-        IMGSZ = 480  # Resolución de entrada [616x346 para 16:9, 608x352 para 16:9, 384x216 para pruebas rápidas]
+        SKIP_FRAMES = 2 # Procesar cada 3 frames
+        IMGSZ = 576  # Resolución de entrada [16:9] (480, 576, 720 )
         CONF_THRESHOLD = 0.5  # Umbral de confianza
         IOU_THRESHOLD = 0.45  # IoU para NMS
-        USE_HALF_PRECISION = False  # ✅ CAMBIAR DE OFF A False
-        MIN_FRAMES_TO_SAVE = 10  # Mínimo de frames para guardar vehículo
+        MIN_FRAMES_TO_SAVE = 5  # Mínimo de frames para guardar vehículo
 
         def calculate_iou(box1, box2):
             """Calcular IoU entre dos bounding boxes [x, y, w, h]"""
@@ -308,6 +306,23 @@ def analyze_video_async(self, analysis_id, video_path):
                 device=0,
                 half=False,
             )
+
+            # 🔍 LOG CRÍTICO: Dimensiones del frame analizado
+            if frame_count == 3:  # Solo en frame 3 para no saturar
+                logger.info(f"=" * 80)
+                logger.info(f"🔍 [DIMENSIONES] Diagnóstico de escalado:")
+                logger.info(f"📹 Video original: {width}x{height}")
+                logger.info(f"🎯 YOLO IMGSZ configurado: {IMGSZ}")
+                if results[0].orig_shape is not None:
+                    logger.info(f"📐 Frame original shape: {results[0].orig_shape}")
+                if hasattr(results[0], "boxes") and results[0].boxes is not None:
+                    logger.info(
+                        f"📦 Shape después de YOLO: {results[0].boxes.data.shape if len(results[0].boxes) > 0 else 'sin detecciones'}"
+                    )
+                logger.info(
+                    f"⚠️ Las coordenadas bbox estarán en escala del frame original ({width}x{height})"
+                )
+                logger.info(f"=" * 80)
 
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
@@ -502,6 +517,19 @@ def analyze_video_async(self, analysis_id, video_path):
                     frame_detections if len(frame_detections) > 0 else []
                 )
 
+                # 🔍 LOG: Primera detección para debug de coordenadas
+                if frame_count == 3 and len(payload_detections) > 0:
+                    det_sample = payload_detections[0]
+                    logger.info(
+                        f"🎯 [COORDENADAS] Muestra de detección enviada al frontend:"
+                    )
+                    logger.info(f"   - bbox: {det_sample['bbox']}")
+                    logger.info(f"   - frame_width (implícito): {width}")
+                    logger.info(f"   - frame_height (implícito): {height}")
+                    logger.info(
+                        f"   ⚠️ Frontend debe escalar desde {width}x{height} a su tamaño de video"
+                    )
+
                 send_ws(
                     "frame_processed",
                     {
@@ -509,6 +537,8 @@ def analyze_video_async(self, analysis_id, video_path):
                         "timestamp": timestamp_seconds,
                         "detections": payload_detections,
                         "total_vehicles": len(tracked_vehicles),
+                        "frame_width": width,  # ✅ ENVIAR DIMENSIONES ORIGINALES
+                        "frame_height": height,  # ✅ PARA QUE FRONTEND ESCALE CORRECTAMENTE
                     },
                 )
 
@@ -626,6 +656,27 @@ def analyze_video_async(self, analysis_id, video_path):
 
                                 # 🔥 NUEVA LÓGICA: GUARDAR EN DB INMEDIATAMENTE (SIN VEHICLE)
                                 try:
+                                    logger.info(f"=" * 100)
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] Intentando guardar placa: {plate_data.get('plate_number')}"
+                                    )
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] vehicle_id (track_id): {vehicle_id} (tipo: {type(vehicle_id)})"
+                                    )
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] vehicle_type: {vehicle_data['type']}"
+                                    )
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] analysis_id: {analysis_id}"
+                                    )
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] tracked_vehicles tiene {len(tracked_vehicles)} vehículos"
+                                    )
+                                    logger.info(
+                                        f"🔍 [PLATE SAVE] Vehicle existe en DB? NO (se guarda después del loop)"
+                                    )
+                                    logger.info(f"=" * 100)
+
                                     detected_plate = save_detected_plate_to_db(
                                         plate_data=plate_data,
                                         analysis=analysis,
@@ -643,6 +694,13 @@ def analyze_video_async(self, analysis_id, video_path):
                                             "detected_plate_id": detected_plate.id,
                                             "track_id": vehicle_id,  # ← Guardar track_id para log
                                         }
+
+                                        logger.info(
+                                            f"✅ [PENDING] Guardado en pending: track_id={vehicle_id}, plate_id={detected_plate.id}"
+                                        )
+                                        logger.info(
+                                            f"✅ [PENDING] plate_detections_pending keys actuales: {list(plate_detections_pending.keys())}"
+                                        )
 
                                         # 🔥 CONSULTAR API DE DENUNCIAS INMEDIATAMENTE (FIRE-AND-FORGET)
                                         check_vehicle_complaint_async.delay(  # type: ignore[attr-defined]
@@ -696,6 +754,36 @@ def analyze_video_async(self, analysis_id, video_path):
         logger.info(
             f"📋 [DEBUG] Placas pendientes de actualizar FK: {sorted(list(plate_detections_pending.keys()))}"
         )
+        logger.info(
+            f"📋 [DEBUG] tracked_vehicles keys: {sorted(list(tracked_vehicles.keys()))}"
+        )
+        logger.info(
+            f"📋 [DEBUG] ¿Coinciden? {set(plate_detections_pending.keys()).issubset(set(tracked_vehicles.keys()))}"
+        )
+
+        # 🔍 LOG ESPECIAL PARA GP3Z47
+        gp3z47_track_ids = [
+            tid
+            for tid, data in plate_detections_pending.items()
+            if data.get("plate_data", {}).get("plate_number") == "GP3Z47"
+        ]
+        if gp3z47_track_ids:
+            logger.info(
+                f"🎯 [GP3Z47 DEBUG] Placa GP3Z47 encontrada en pending con track_id(s): {gp3z47_track_ids}"
+            )
+            for tid in gp3z47_track_ids:
+                if tid in tracked_vehicles:
+                    logger.info(
+                        f"🎯 [GP3Z47 DEBUG] track_id={tid} EXISTE en tracked_vehicles"
+                    )
+                    logger.info(
+                        f"🎯 [GP3Z47 DEBUG] Datos: {tracked_vehicles[tid]['type']}, frames={tracked_vehicles[tid]['count']}, speed={tracked_vehicles[tid].get('speed_kmh', 0)}"
+                    )
+                else:
+                    logger.warning(
+                        f"⚠️ [GP3Z47 DEBUG] track_id={tid} NO EXISTE en tracked_vehicles!"
+                    )
+
         send_ws(
             "log_message",
             {
@@ -708,14 +796,30 @@ def analyze_video_async(self, analysis_id, video_path):
         saved_vehicles = 0
 
         for track_id, vdata in tracked_vehicles.items():
+            # 🔍 LOG ESPECIAL PARA GP3Z47
+            is_gp3z47 = track_id in gp3z47_track_ids if gp3z47_track_ids else False
+            if is_gp3z47:
+                logger.info(f"🎯 [GP3Z47 SAVE] Procesando track_id={track_id}")
+                logger.info(
+                    f"🎯 [GP3Z47 SAVE] Frames: {vdata['count']}, Speed: {vdata.get('speed_kmh', 0):.1f} km/h"
+                )
+
             # Solo guardar vehículos con suficientes frames
             if vdata["count"] < MIN_FRAMES_TO_SAVE:
+                if is_gp3z47:
+                    logger.warning(
+                        f"⚠️ [GP3Z47 SAVE] SALTADO por pocos frames ({vdata['count']} < {MIN_FRAMES_TO_SAVE})"
+                    )
                 logger.info(
                     f"⏭️ Saltando vehículo {track_id}: muy lento ({vdata.get('speed_kmh', 0):.1f} km/h) con {vdata['count']} frames"
                 )
                 continue
 
             if vdata.get("speed_kmh", 0) < 5.0:
+                if is_gp3z47:
+                    logger.warning(
+                        f"⚠️ [GP3Z47 SAVE] SALTADO por velocidad baja ({vdata.get('speed_kmh', 0):.1f} km/h < 5.0)"
+                    )
                 logger.info(
                     f"⏭️ Saltando vehículo {track_id}: detenido ({vdata.get('speed_kmh', 0):.1f} km/h)"
                 )
@@ -759,7 +863,7 @@ def analyze_video_async(self, analysis_id, video_path):
                 vehicle = Vehicle.objects.create(
                     id=vehicle_id,
                     trafficAnalysisId=analysis,
-                    vehicleType=vdata["type"],
+                    vehicleType=vdata["type"].upper(),
                     confidence=round(avg_confidence, 4),
                     firstDetectedAt=first_frame_time,
                     lastDetectedAt=last_frame_time,
@@ -798,30 +902,75 @@ def analyze_video_async(self, analysis_id, video_path):
                 # 🔥 ACTUALIZAR FK DE PLACA SI YA FUE GUARDADA
                 if track_id in plate_detections_pending:
                     try:
+                        logger.info(f"=" * 100)
+                        logger.info(
+                            f"🔄 [FK UPDATE] Iniciando actualización de FK para track_id={track_id}"
+                        )
+
                         pending_data = plate_detections_pending[track_id]
                         detected_plate_id = pending_data.get("detected_plate_id")
 
+                        logger.info(f"🔄 [FK UPDATE] Datos pending: {pending_data}")
+                        logger.info(
+                            f"🔄 [FK UPDATE] detected_plate_id: {detected_plate_id}"
+                        )
+                        logger.info(f"🔄 [FK UPDATE] vehicle.id (UUID): {vehicle.id}")
+                        logger.info(
+                            f"🔄 [FK UPDATE] vehicle.vehicleType: {vehicle.vehicleType}"
+                        )
+
                         if detected_plate_id:
-                            # Actualizar DetectedPlate con Vehicle FK
-                            updated_count = DetectedPlate.objects.filter(
+                            # Verificar que la placa existe antes de actualizar
+                            plate_exists = DetectedPlate.objects.filter(
                                 id=detected_plate_id
-                            ).update(vehicleId=vehicle)
+                            ).exists()
                             logger.info(
-                                f"✅ DetectedPlate ID={detected_plate_id} actualizada con Vehicle FK: {vehicle.id} (track_id={track_id}, updated={updated_count})"
+                                f"🔄 [FK UPDATE] DetectedPlate existe? {plate_exists}"
                             )
+
+                            if plate_exists:
+                                # Actualizar DetectedPlate con Vehicle FK
+                                updated_count = DetectedPlate.objects.filter(
+                                    id=detected_plate_id
+                                ).update(vehicleId=vehicle)
+
+                                logger.info(
+                                    f"✅ [FK UPDATE] DetectedPlate ID={detected_plate_id} actualizada con Vehicle FK: {vehicle.id} (track_id={track_id}, updated={updated_count})"
+                                )
+
+                                # Verificar que realmente se actualizó
+                                updated_plate = DetectedPlate.objects.get(
+                                    id=detected_plate_id
+                                )
+                                logger.info(
+                                    f"✅ [FK UPDATE] Verificación: vehicleId_id={updated_plate.vehicleId_id}"
+                                )
+                            else:
+                                logger.error(
+                                    f"❌ [FK UPDATE] DetectedPlate ID={detected_plate_id} NO EXISTE en la base de datos!"
+                                )
                         else:
                             logger.warning(
-                                f"⚠️ No se encontró detected_plate_id para track_id={track_id}"
+                                f"⚠️ [FK UPDATE] No se encontró detected_plate_id para track_id={track_id}"
                             )
+
+                        logger.info(f"=" * 100)
 
                     except Exception as e:
                         logger.error(
-                            f"❌ Error actualizando FK de placa para track_id={track_id}, vehicle_id={vehicle.id}: {e}"
+                            f"❌ [FK UPDATE] Error actualizando FK de placa para track_id={track_id}, vehicle_id={vehicle.id}: {e}",
+                            exc_info=True,
                         )
                 else:
                     # 🔍 DEBUG: Ver si el vehículo tenía placa pero no está en pending
-                    logger.debug(
-                        f"🔍 Vehicle track_id={track_id} NO está en plate_detections_pending (puede no tener placa detectada)"
+                    logger.info(
+                        f"ℹ️ [FK UPDATE] Vehicle track_id={track_id} NO está en plate_detections_pending (puede no tener placa detectada)"
+                    )
+                    logger.info(
+                        f"ℹ️ [FK UPDATE] plate_detections_pending keys: {list(plate_detections_pending.keys())}"
+                    )
+                    logger.info(
+                        f"ℹ️ [FK UPDATE] tracked_vehicles keys: {list(tracked_vehicles.keys())}"
                     )
 
                 saved_vehicles += 1

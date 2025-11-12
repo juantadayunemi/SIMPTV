@@ -32,7 +32,6 @@ def analyze_video_async(self, analysis_id, video_path):
     from apps.plates_app.models import DetectedPlate
     from apps.plates_app.services import (
         save_detected_plate_to_db,
-        save_complaint_detection_to_db,
     )
 
     # Capa de canales para WebSocket - mensajería con el frontend
@@ -165,10 +164,10 @@ def analyze_video_async(self, analysis_id, video_path):
         active_tracks = (
             {}
         )  # {track_id: {'bbox': [x,y,w,h], 'type': str, 'frames_missing': int}}
-        MAX_FRAMES_MISSING = 5  # Máximo frames sin detectar antes de eliminar track
+        MAX_FRAMES_MISSING = 10  # Máximo frames sin detectar antes de eliminar track
         IOU_THRESHOLD_TRACKING = 0.3  # IoU mínimo para asociar detección con track
-        SKIP_FRAMES = 3  # Procesar cada 3 frames
-        IMGSZ = 480  # Resolución de entrada [616x346 para 16:9, 608x352 para 16:9, 384x216 para pruebas rápidas]
+        SKIP_FRAMES = 3 # Procesar cada 3 frames
+        IMGSZ = 576  # Resolución de entrada [16:9] (480, 576, 720 )
         CONF_THRESHOLD = 0.5  # Umbral de confianza
         IOU_THRESHOLD = 0.45  # IoU para NMS
         MIN_FRAMES_TO_SAVE = 5  # Mínimo de frames para guardar vehículo

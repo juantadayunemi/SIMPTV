@@ -672,7 +672,9 @@ def analyze_video_endpoint(request):
             logger.info(
                 f"✅ Cámara actualizada: ID={camera.id}, Video={video_path}, Analysis={analysis.id}"
             )
-
+        
+        # Lanzar tarea de Celery
+        
         task = analyze_video_async.delay(analysis.id, full_video_path)
 
         logger.info(f"✅ Celery task iniciado: {task.id}")

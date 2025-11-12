@@ -40,6 +40,8 @@ class Location(LocationEntity):
         return f"{self.description} ({self.city}, {self.country})"
 
 
+
+# Herencia de CameraEntity para definir modelo concreto Camera
 class Camera(CameraEntity):
     """
     Cámara de vigilancia de tráfico instalada en una ubicación específica.
@@ -52,7 +54,7 @@ class Camera(CameraEntity):
     NO agregues campos redundantes. Solo sobrescribe ForeignKey para usar instancia concreta.
     """
 
-    # Sobrescribir locationId para usar modelo concreto Location
+    # Polimorfismo locationId para usar modelo concreto Location
     locationId = models.ForeignKey(
         Location,
         on_delete=models.CASCADE,
