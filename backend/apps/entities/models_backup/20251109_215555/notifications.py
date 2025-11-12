@@ -11,7 +11,6 @@ from ..constants import (
 
 class NotificationEntity(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationEntity"""
-
     """USAGE: Inherit in other apps - class User(NotificationEntity): pass"""
 
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
@@ -28,12 +27,10 @@ class NotificationEntity(BaseModel):
         verbose_name_plural = "Abstract NotificationEntitys"
 
     def __str__(self):
-        return f"{self.title} ({self.pk})"
-
+        return f'{self.title} ({self.pk})'
 
 class NotificationSettingsEntity(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSettingsEntity"""
-
     """USAGE: Inherit in other apps - class User(NotificationSettingsEntity): pass"""
 
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -50,87 +47,10 @@ class NotificationSettingsEntity(BaseModel):
         verbose_name_plural = "Abstract NotificationSettingsEntitys"
 
     def __str__(self):
-        return f"NotificationSettingsEntity ({self.pk})"
-
-
-class NotificationBottleNeckEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface NotificationBottleNeckEntity"""
-
-    """USAGE: Inherit in other apps - class User(NotificationBottleNeckEntity): pass"""
-
-    userId = models.ForeignKey(
-        "auth_app.User",
-        on_delete=models.CASCADE,
-        related_name="notification_userid_user_set",  #Editar manualmente genera mismo un related_name repetido
-    )
-    locationId = models.ForeignKey(
-        "traffic_app.Location",
-        on_delete=models.CASCADE,
-        related_name="notification_locationid_location_set", #Editar manualmente genera mismo un related_name repetido
-    )
-    cameraId = models.ForeignKey(
-        "traffic_app.Camera",
-        on_delete=models.CASCADE,
-        related_name="notification_cameraid_camera_set", #Editar manualmente genera mismo un related_name repetido
-    )
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract NotificationBottleNeckEntity"
-        verbose_name_plural = "Abstract NotificationBottleNeckEntitys" 
-
-    def __str__(self):
-        return f"NotificationBottleNeckEntity ({self.pk})"
-
-
-class NotificationBottleNeckLogEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface NotificationBottleNeckLogEntity"""
-
-    """USAGE: Inherit in other apps - class User(NotificationBottleNeckLogEntity): pass"""
-
-    notificationBottleNeckId = models.ForeignKey(
-        "NotificationBottleNeck",
-        on_delete=models.CASCADE,
-        related_name="notificationbottleneckid_notificationbottleneck_set", 
-    )
-    sentAt = models.DateTimeField()
-    message = models.TextField()
-    wasSuccessful = models.BooleanField(default=True)
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract NotificationBottleNeckLogEntity"
-        verbose_name_plural = "Abstract NotificationBottleNeckLogEntitys"
-
-    def __str__(self):
-        return f"NotificationBottleNeckLogEntity ({self.pk})"
-
-
-class NotificationTaskEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface NotificationTaskEntity"""
-
-    """USAGE: Inherit in other apps - class User(NotificationTaskEntity): pass"""
-
-    notificationBottleNeckId = models.ForeignKey(
-        "NotificationBottleNeck",
-        on_delete=models.CASCADE,
-        related_name="notificationbottleneckid_notificationbottlenecktask_set", #Editar manualmente genera mismo un related_name repetido
-    )
-    taskId = models.CharField(max_length=255)
-    scheduleFor = models.DateTimeField()
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract NotificationTaskEntity"
-        verbose_name_plural = "Abstract NotificationTaskEntitys"
-
-    def __str__(self):
-        return f"NotificationTaskEntity ({self.pk})"
-
+        return f'NotificationSettingsEntity ({self.pk})'
 
 class NotificationPayload(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationPayload"""
-
     """USAGE: Inherit in other apps - class User(NotificationPayload): pass"""
 
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
@@ -146,12 +66,10 @@ class NotificationPayload(BaseModel):
         verbose_name_plural = "Abstract NotificationPayloads"
 
     def __str__(self):
-        return f"{self.title} ({self.pk})"
-
+        return f'{self.title} ({self.pk})'
 
 class EmailNotification(BaseModel):
     """Abstract DLL model from TypeScript interface EmailNotification"""
-
     """USAGE: Inherit in other apps - class User(EmailNotification): pass"""
 
     to = models.JSONField(default=list)
@@ -161,12 +79,7 @@ class EmailNotification(BaseModel):
     htmlContent = models.CharField(max_length=255)
     textContent = models.CharField(max_length=255, blank=True, null=True)
     templateId = models.UUIDField(default=uuid.uuid4, editable=False)
-    templateData = models.JSONField(
-        default=dict,
-        help_text="Reference to Record<string, any> interface",
-        blank=True,
-        null=True,
-    )
+    templateData = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
@@ -174,12 +87,10 @@ class EmailNotification(BaseModel):
         verbose_name_plural = "Abstract EmailNotifications"
 
     def __str__(self):
-        return f"EmailNotification ({self.pk})"
-
+        return f'EmailNotification ({self.pk})'
 
 class WhatsAppNotification(BaseModel):
     """Abstract DLL model from TypeScript interface WhatsAppNotification"""
-
     """USAGE: Inherit in other apps - class User(WhatsAppNotification): pass"""
 
     to = models.CharField(max_length=255)
@@ -194,12 +105,10 @@ class WhatsAppNotification(BaseModel):
         verbose_name_plural = "Abstract WhatsAppNotifications"
 
     def __str__(self):
-        return f"WhatsAppNotification ({self.pk})"
-
+        return f'WhatsAppNotification ({self.pk})'
 
 class WebSocketNotification(BaseModel):
     """Abstract DLL model from TypeScript interface WebSocketNotification"""
-
     """USAGE: Inherit in other apps - class User(WebSocketNotification): pass"""
 
     event = models.CharField(max_length=255)
@@ -213,12 +122,10 @@ class WebSocketNotification(BaseModel):
         verbose_name_plural = "Abstract WebSocketNotifications"
 
     def __str__(self):
-        return f"WebSocketNotification ({self.pk})"
-
+        return f'WebSocketNotification ({self.pk})'
 
 class NotificationSettings(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSettings"""
-
     """USAGE: Inherit in other apps - class User(NotificationSettings): pass"""
 
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -235,12 +142,10 @@ class NotificationSettings(BaseModel):
         verbose_name_plural = "Abstract NotificationSettingss"
 
     def __str__(self):
-        return f"NotificationSettings ({self.pk})"
-
+        return f'NotificationSettings ({self.pk})'
 
 class NotificationSearchQuery(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSearchQuery"""
-
     """USAGE: Inherit in other apps - class User(NotificationSearchQuery): pass"""
 
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -257,12 +162,10 @@ class NotificationSearchQuery(BaseModel):
         verbose_name_plural = "Abstract NotificationSearchQuerys"
 
     def __str__(self):
-        return f"NotificationSearchQuery ({self.pk})"
-
+        return f'NotificationSearchQuery ({self.pk})'
 
 class RealtimeNotificationDTO(BaseModel):
     """Abstract DLL model from TypeScript interface RealtimeNotificationDTO"""
-
     """USAGE: Inherit in other apps - class User(RealtimeNotificationDTO): pass"""
 
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
@@ -270,12 +173,7 @@ class RealtimeNotificationDTO(BaseModel):
     message = models.CharField(max_length=255)
     priority = models.TextField()
     actionUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(
-        default=dict,
-        help_text="Reference to Record<string, any> interface",
-        blank=True,
-        null=True,
-    )
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:
@@ -284,12 +182,10 @@ class RealtimeNotificationDTO(BaseModel):
         verbose_name_plural = "Abstract RealtimeNotificationDTOs"
 
     def __str__(self):
-        return f"{self.title} ({self.pk})"
-
+        return f'{self.title} ({self.pk})'
 
 class NotificationDTO(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationDTO"""
-
     """USAGE: Inherit in other apps - class User(NotificationDTO): pass"""
 
     type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES_CHOICES)
@@ -299,12 +195,7 @@ class NotificationDTO(BaseModel):
     isRead = models.BooleanField(default=False)
     readAt = models.DateTimeField(blank=True, null=True)
     actionUrl = models.CharField(max_length=255, blank=True, null=True)
-    metadata = models.JSONField(
-        default=dict,
-        help_text="Reference to Record<string, any> interface",
-        blank=True,
-        null=True,
-    )
+    metadata = models.JSONField(default=dict, help_text='Reference to Record<string, any> interface', blank=True, null=True)
     userId = models.UUIDField(default=uuid.uuid4, editable=False)
 
     class Meta:
@@ -313,12 +204,10 @@ class NotificationDTO(BaseModel):
         verbose_name_plural = "Abstract NotificationDTOs"
 
     def __str__(self):
-        return f"{self.title} ({self.pk})"
-
+        return f'{self.title} ({self.pk})'
 
 class NotificationSummaryDTO(BaseModel):
     """Abstract DLL model from TypeScript interface NotificationSummaryDTO"""
-
     """USAGE: Inherit in other apps - class User(NotificationSummaryDTO): pass"""
 
     total = models.IntegerField()
@@ -333,12 +222,10 @@ class NotificationSummaryDTO(BaseModel):
         verbose_name_plural = "Abstract NotificationSummaryDTOs"
 
     def __str__(self):
-        return f"NotificationSummaryDTO ({self.pk})"
-
+        return f'NotificationSummaryDTO ({self.pk})'
 
 class MarkNotificationsReadDTO(BaseModel):
     """Abstract DLL model from TypeScript interface MarkNotificationsReadDTO"""
-
     """USAGE: Inherit in other apps - class User(MarkNotificationsReadDTO): pass"""
 
     notificationIds = models.JSONField(default=list)
@@ -350,4 +237,4 @@ class MarkNotificationsReadDTO(BaseModel):
         verbose_name_plural = "Abstract MarkNotificationsReadDTOs"
 
     def __str__(self):
-        return f"MarkNotificationsReadDTO ({self.pk})"
+        return f'MarkNotificationsReadDTO ({self.pk})'

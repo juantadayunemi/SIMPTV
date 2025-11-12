@@ -61,23 +61,23 @@ class NotificationBottleNeckEntity(BaseModel):
     userId = models.ForeignKey(
         "auth_app.User",
         on_delete=models.CASCADE,
-        related_name="notification_userid_user_set",  #Editar manualmente genera mismo un related_name repetido
+        related_name="notification_userid_user_set",
     )
     locationId = models.ForeignKey(
         "traffic_app.Location",
         on_delete=models.CASCADE,
-        related_name="notification_locationid_location_set", #Editar manualmente genera mismo un related_name repetido
+        related_name="notification_locationid_location_set",
     )
     cameraId = models.ForeignKey(
         "traffic_app.Camera",
         on_delete=models.CASCADE,
-        related_name="notification_cameraid_camera_set", #Editar manualmente genera mismo un related_name repetido
+        related_name="notification_cameraid_camera_set",
     )
 
     class Meta:
         abstract = True  # DLL model - inherit in other apps
         verbose_name = "Abstract NotificationBottleNeckEntity"
-        verbose_name_plural = "Abstract NotificationBottleNeckEntitys" 
+        verbose_name_plural = "Abstract NotificationBottleNeckEntitys"
 
     def __str__(self):
         return f"NotificationBottleNeckEntity ({self.pk})"
@@ -91,7 +91,7 @@ class NotificationBottleNeckLogEntity(BaseModel):
     notificationBottleNeckId = models.ForeignKey(
         "NotificationBottleNeck",
         on_delete=models.CASCADE,
-        related_name="notificationbottleneckid_notificationbottleneck_set", 
+        related_name="notificationbottleneckid_notificationbottleneck_set",
     )
     sentAt = models.DateTimeField()
     message = models.TextField()
@@ -104,28 +104,6 @@ class NotificationBottleNeckLogEntity(BaseModel):
 
     def __str__(self):
         return f"NotificationBottleNeckLogEntity ({self.pk})"
-
-
-class NotificationTaskEntity(BaseModel):
-    """Abstract DLL model from TypeScript interface NotificationTaskEntity"""
-
-    """USAGE: Inherit in other apps - class User(NotificationTaskEntity): pass"""
-
-    notificationBottleNeckId = models.ForeignKey(
-        "NotificationBottleNeck",
-        on_delete=models.CASCADE,
-        related_name="notificationbottleneckid_notificationbottlenecktask_set", #Editar manualmente genera mismo un related_name repetido
-    )
-    taskId = models.CharField(max_length=255)
-    scheduleFor = models.DateTimeField()
-
-    class Meta:
-        abstract = True  # DLL model - inherit in other apps
-        verbose_name = "Abstract NotificationTaskEntity"
-        verbose_name_plural = "Abstract NotificationTaskEntitys"
-
-    def __str__(self):
-        return f"NotificationTaskEntity ({self.pk})"
 
 
 class NotificationPayload(BaseModel):

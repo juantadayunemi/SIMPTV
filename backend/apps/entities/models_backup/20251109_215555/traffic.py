@@ -92,8 +92,8 @@ class CameraEntity(BaseModel):
     currentVideoPath = models.CharField(max_length=500, blank=True, null=True)
     currentAnalysisId = models.ForeignKey('TrafficAnalysis', on_delete=models.CASCADE, related_name='currentanalysisid_currentanalysis_set', blank=True, null=True)
     thumbnailPath = models.CharField(max_length=500, blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
 
+    notes = models.TextField(blank=True, null=True)
     class Meta:
         abstract = True  # DLL model - inherit in other apps
         verbose_name = "Abstract CameraEntity"

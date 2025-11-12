@@ -228,3 +228,32 @@ export interface PredictionSourceEntity {
   avgSpeed: number; // @db:decimal(6,2) @default(0) - Velocidad promedio en km/h
   isActive: boolean; // @default(true) - Si la fuente está activa
 }
+
+
+export interface NotificationBottleNeckEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  userId: string; // @db:foreignKey auth_app.User @db:varchar(50) - FK al usuario que recibe la notificación
+  locationId: number; // @db:foreignKey traffic_app.Location @db:int - FK a Location (ubicación de la cámara)
+  cameraId: number; // @db:foreignKey traffic_app.Camera @db:int - FK a Camera (cámara específica)
+  isActive: boolean; // @default(true) - Si la notificación está activa
+  createdAt: Date; // @db:datetime - Fecha de creación
+  updatedAt: Date; // @db:datetime - Fecha de actualización
+}
+
+export interface NotificationBottleNeckLogEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  notificationBottleNeckId: number; // @db:foreignKey NotificationBottleNeck @db:int - FK a NotificationBottleNeck
+  sentAt: Date; // @db:datetime - Fecha/hora de envío
+  message: string; // @db:text - Mensaje enviado
+  createdAt: Date; // @db:datetime - Fecha de creación
+  wasSuccessful: boolean; // @default(true) - Si el envío fue exitoso
+}
+
+export interface NotificationTaskEntity {
+  id: number; // @db:primary @db:identity - ID autoincremental
+  notificationBottleNeckId: number; // @db:foreignKey NotificationBottleNeck @db:int - FK a NotificationBottleNeck
+  taskId: string; // @db:varchar(255) - ID de la tarea programada (scheduler task ID) unique
+  scheduleFor: Date; // @db:datetime - Fecha/hora programada para la notificación
+  createdAt: Date; // @db:datetime - Fecha de creación
+  isActive: boolean; // @default(true) - Si la tarea está activa
+}

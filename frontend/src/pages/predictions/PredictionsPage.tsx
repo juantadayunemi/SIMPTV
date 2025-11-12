@@ -12,7 +12,7 @@ import {
   LevelTrafficData,
 } from "../../types/forecast";
 import { trafficService } from "../../services/traffic.service";
-import { getAllForecast } from "../../services/prediction.service";
+import { getAllForecast, getForecastChangePercent, getForecastTraffic} from "../../services/prediction.service";
 import { Location } from "../../types/forecast";
 import { useToast } from "../../components/ui/ToastContainer";
 //import { getNextDate } from "../../utils/dateUtils";
@@ -70,10 +70,13 @@ export default function PredictionPage() {
 
   const loadLocationData = async () => {
     try {
+      setIsLoading(true);
       const data = await trafficService.getLocations();
       setLocations(data);
     } catch (error) {
       toast.error("Error al cargar las ubicaciones");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -164,7 +167,7 @@ export default function PredictionPage() {
         return;
       }
       const [hour, minute] = selectedTime.split(":");
-      const resp = await getAllForecast(
+      const resp = await getForecastChangePercent(
         selectedLocation,
         selectedCamera,
         selectedDate,
@@ -172,7 +175,8 @@ export default function PredictionPage() {
         minute,
         period
       );
-      setForecastChangePercent(resp?.traffic?.variation_forecast_metrics);
+      console.log(resp);
+      setForecastChangePercent(resp);
       toast.success("Periodo de comparación actualizado.");
     } catch (error) {
       toast.error("Error loading forecast data:", error);

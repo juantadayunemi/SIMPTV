@@ -27,7 +27,7 @@ export const getStatusBgColor = (status: string): string => {
 };
 
 export const filterDataByTime = (data: BottleneckData[], time: string): BottleneckData | undefined => {
-  return data.find(item => item.ds === time);
+  return data.find(item => item.ds.slice(11, 16) === time);
 };
 
 export const generateTimeSlots = (): string[] => {
@@ -38,5 +38,6 @@ export const generateTimeSlots = (): string[] => {
       slots.push(timeString);
     }
   }
+  console.log('Generated Time Slots:', slots);
   return slots;
 };

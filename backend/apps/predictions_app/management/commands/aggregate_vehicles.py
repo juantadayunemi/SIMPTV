@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from backend.apps.predictions_app.tasks.tasks_aggregate_vehicles import aggregate_prediction_data
+from apps.predictions_app.tasks import aggregate_prediction_data
 
 """
 Comando para ejecutar la tarea de agregación manualmente:

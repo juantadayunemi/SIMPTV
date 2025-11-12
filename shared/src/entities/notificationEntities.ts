@@ -30,3 +30,5 @@ export interface NotificationSettingsEntity {
   systemAlertsEnabled: boolean;
   updatedAt: Date;
 }
+
+

@@ -1,5 +1,5 @@
 import api from "./api";
-import { ForecastData,ForecastDataTraffic,ForecastDataSpeed, LevelTrafficData } from '../types/forecast';
+import { ForecastData,ForecastDataTraffic,ForecastDataSpeed, LevelTrafficData, ChangePercent } from '../types/forecast';
 
 export const getAllForecast = async (
   locationId: string,
@@ -16,7 +16,7 @@ export const getAllForecast = async (
 }
 
 
-export const getForecast = async (
+export const getForecastTraffic = async (
   locationId: string,
   selectedCamera: string,
   date: string,
@@ -58,3 +58,16 @@ export const getLevelTraffic = async (
   return resp.data
 }
 
+export const getForecastChangePercent = async (
+  locationId: string,
+  selectedCamera: string,
+  date: string,
+  hour: string,
+  minute: string,
+  selectedPeriod: 'daily' | 'monthly' | 'yearly'
+):Promise<ChangePercent>=>{
+  const resp = await api.get(
+    `/api/predictions/forecast-change-percentage/?locationId=${locationId}&cameraId=${selectedCamera}&date=${date}&hour=${hour}&minute=${minute}&periodsType=${selectedPeriod}`
+);
+  return resp.data
+}

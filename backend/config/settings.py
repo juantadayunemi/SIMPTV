@@ -422,6 +422,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.predictions_app.tasks.remove_old_forecast_models",
         "schedule": 30 * 60,  # cada 30 minutos
     },
+    "run-all-bottleneck-schedulers": {
+        "task": "apps.predictions_app.tasks.run_all_bottleneck_schedulers",
+        "schedule": crontab(hour=11, minute=30),
+    },
 }
 
 

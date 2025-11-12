@@ -6,7 +6,11 @@ import { TrafficSummaryCard } from "../../components/botlleneck/TrafficSummaryCa
 import { TrafficTable } from "../../components/botlleneck/TrafficTable";
 import { getNextDate, getLocalDateString } from "../../utils/dateUtils";
 import { filterDataByTime } from "../../utils/trafficUtils";
-import { getBottleneckData } from "../../services/bottleneck.service";
+import {
+  getBottleneckData,
+  getNotificationBottleneck,
+  NotificationBottleneck,
+} from "../../services/bottleneck.service";
 import { trafficService } from "../../services/traffic.service";
 import { useToast } from "../../components/ui/ToastContainer";
 import { BottleneckData } from "@/types/bottlenecl";
@@ -16,6 +20,7 @@ import MessageHome from "@/components/botlleneck/MessageHome";
 import { LoadingContainer } from "@/components/ui/LoadingContainer";
 import { useLocation, useNavigate } from "react-router-dom";
 import Modal from "@/components/ui/Modal";
+import { NotificationsBottleneck } from "@/components/botlleneck/NotificationsBottleneck";
 
 export default function BottleneckPage() {
   const [bottleneckData, setBottleneckData] = useState<BottleneckData[]>([]);
@@ -27,6 +32,7 @@ export default function BottleneckPage() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [isNotificationActive, setIsNotificationActive] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const toast = useToast();
   const locationPage = useLocation();
@@ -36,6 +42,36 @@ export default function BottleneckPage() {
     loadLocationData();
     loadCameraData();
   }, []);
+
+  useEffect(() => {
+    const fetchNotificationStatus = async () => {
+      if (selectedLocation && selectedCamera) {
+        console.log("Llamar si tiene notificación activa");
+        try {
+          setIsLoading(true);
+          const resp = await getNotificationBottleneck(
+            selectedLocation,
+            selectedCamera
+          );
+
+          console.log("Respuesta de notificación:", resp);
+          if (resp.results && resp.results.length > 0) {
+            console.log("is_notification_active:", resp.results[0].isActive);
+            setIsNotificationActive(resp.results[0].isActive);
+          } else {
+            setIsNotificationActive(false);
+          }
+        } catch (error) {
+          console.error("Error fetching notification status:", error);
+          setIsNotificationActive(false);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchNotificationStatus();
+  }, [selectedLocation, selectedCamera]);
 
   useEffect(() => {
     const state = locationPage.state as any;
@@ -68,14 +104,6 @@ export default function BottleneckPage() {
             hour,
             minute
           );
-          console.log(
-            "Embotellamiento: ",
-            state.locationId,
-            state.cameraId,
-            state.date,
-            hour,
-            minute
-          );
 
           // Limpiar el state para evitar recargas
           window.history.replaceState({}, document.title);
@@ -93,12 +121,16 @@ export default function BottleneckPage() {
 
   const loadLocationData = async () => {
     try {
+      setIsLoading(true);
       const data = await trafficService.getLocations();
+
       console.log(">>>", data);
       setLocations(data);
       //setLocation(data.length > 0 ? data[0].id : 0);
     } catch (error) {
       toast.error("Error al cargar las ubicaciones");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -135,7 +167,7 @@ export default function BottleneckPage() {
         hour,
         minute
       );
-
+      console.log("Datos de embotellamiento>>>", data);
       const hasOutOfRange = data.some(
         (row) =>
           row.yhat_count < 0 ||
@@ -149,11 +181,12 @@ export default function BottleneckPage() {
       }
 
       setBottleneckData(data);
+
       if (data && data.length > 0) {
         toast.success("Datos cargados con éxito.");
       }
     } catch (err: any) {
-      toast.error("Error al cargar los datos de cuello de botella");
+      toast.error("Error al cargar los datos del embotellamiento.");
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +218,7 @@ export default function BottleneckPage() {
   };
 
   const handleDateChange = (value: string) => {
-    const today = new Date()
+    const today = new Date();
     const todayString = getLocalDateString(today);
     if (value < todayString) {
       toast.warning("La fecha seleccionada no puede ser anterior a hoy.");
@@ -231,9 +264,34 @@ export default function BottleneckPage() {
     }
   };
 
-    const handleCloseReliable = () => {
+  const handleCloseReliable = () => {
     setIsOpen(false);
     navigate("/predictions");
+  };
+  const handleToggleNotification = async () => {
+    if (!isNotificationActive) {
+      toast.success(
+        "Empezarás a recibir notificaciones para esta ubicación y cámara."
+      );
+    } else {
+      toast.info(
+        "Desactivaste las notificaciones para esta ubicación y cámara."
+      );
+    }
+    try {
+      setIsLoading(true);
+      const resp = await NotificationBottleneck(
+        selectedLocation,
+        selectedCamera
+      );
+      setIsNotificationActive(!isNotificationActive);
+      // sessionStorage.setItem("isNotificationActive", (!isNotificationActive).toString());
+      console.log("Notificación respuesta>>>", resp);
+    } catch (error) {
+      toast.error("Error al actualizar la notificación.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const canShowQuickButtons = selectedLocation && selectedCamera;
@@ -255,13 +313,21 @@ export default function BottleneckPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 relative">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
             Pronósticos de Tráfico
           </h2>
           <p className="text-sm text-gray-500 mb-4 sm:mb-6">
             Predicciones basadas en el análisis histórico
           </p>
+          {canShowQuickButtons && (
+            <div className="absolute top-4 right-4">
+              <NotificationsBottleneck
+                handleToggleNotification={handleToggleNotification}
+                isNotificationActive={isNotificationActive}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
             <Modal
