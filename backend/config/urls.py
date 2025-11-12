@@ -52,6 +52,7 @@ def get_available_endpoints():
                 "notifications_app": "notifications",
                 "predictions_app": "predictions",
                 "users_app": "users",
+                "streaming": "streaming",  # Live monitoring app
             }
 
             api_key = api_path_mapping.get(app_name, app_name.replace("_app", ""))
@@ -125,6 +126,7 @@ def include_app_urls():
         "notifications_app": "notifications",
         "predictions_app": "predictions",
         "users_app": "users",
+        "streaming": "streaming",  # Live monitoring app
     }
 
     for app_config in local_apps:
@@ -143,6 +145,10 @@ def include_app_urls():
         except ImportError as e:
             # App doesn't have urls.py, skip silently
             print(f"⚠️ WARNING: Could not import {app_config}.urls: {e}")
+            print(f"ImportError for {app_config}: {e}")
+            continue
+        except Exception as e:
+            print(f"Error loading {app_config}.urls: {type(e).__name__}: {e}")
             continue
     return app_urls
 

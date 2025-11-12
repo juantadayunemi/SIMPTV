@@ -73,7 +73,6 @@ LOCAL_APPS = [
     "apps.traffic_app",  # Traffic Analysis API
     "apps.plates_app",  # Plates API
     "apps.notifications_app",  # Notifications
-    "apps.streaming",  # Live Monitoring & AWS S3
     # "apps.external_apis",  # External APIs
 ]
 
@@ -129,8 +128,8 @@ else:
         "default": {
             "ENGINE": "mssql",  # Correcto: usa mssql-django
             "NAME": config("DB_NAME", default="UrbiaDb"),
-            "USER": config("DB_USER", default="usr_develop"),
-            "PASSWORD": config("DB_PASSWORD", default="1234567890"),
+            "USER": config("DB_USER", default="jsofuseradmin"),
+            "PASSWORD": config("DB_PASSWORD", default="xxxxxxxxx"),
             "HOST": config("DB_HOST", default="."),
             "PORT": config("DB_PORT", default="1433"),
             "OPTIONS": {
@@ -449,7 +448,7 @@ CELERY_BEAT_SCHEDULE = {
     "aggregate-prediction-data": {
         "task": "apps.predictions_app.tasks.aggregate_prediction_data",
         # "schedule": 10 * 60,  # cada 10 minutos
-        "schedule": crontab(minute="*/1"),
+        "schedule": crontab(minute="*/10"),  # 00,10,20,30,40,50
     },
     # Limpieza de dispositivos FCM inactivos (cada semana, domingos a las 3 AM)
     "cleanup-inactive-fcm-devices": {
@@ -461,20 +460,6 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup-test-fcm-devices": {
         "task": "apps.notifications_app.tasks.cleanup_test_fcm_devices",
         "schedule": crontab(hour="4", minute="0"),  # Diariamente 4:00 AM
-        "schedule": crontab(minute="*/10"),
-    },
-    "remove-old-forecast-models": {
-        "task": "apps.predictions_app.tasks.remove_old_forecast_models",
-        "schedule": 30 * 60,  # cada 30 minutos
-    },
-    "run-all-bottleneck-schedulers": {
-        "task": "apps.predictions_app.tasks.run_all_bottleneck_schedulers",
-        "schedule": crontab(hour=11, minute=30),
-    },
-    # Limpieza de usuarios no verificados (cada 5 minutos)
-    "cleanup-unverified-users": {
-        "task": "apps.auth_app.tasks.cleanup_unverified_users_task",
-        "schedule": crontab(minute="*/5"),  # Cada 5 minutos
     },
 }
 
@@ -523,8 +508,7 @@ MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024  # 2GB in bytes
 SUPPORTED_VIDEO_FORMATS = [".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv"]
 
 # YOLO Model Configuration
-YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov8n.pt"  # Nano model (fast) - Para traffic_app
-YOLO_STREAMING_MODEL_PATH = BASE_DIR / "models" / "yolov8nplus.pt"  # Modelo personalizado (juguetes/Hot Wheels) - Para streaming
+YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov8n.pt"  # Nano model (fast)
 YOLO_CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence for detection
 YOLO_IOU_THRESHOLD = 0.45  # IoU threshold for NMS
 
@@ -543,34 +527,9 @@ OCR_GPU = config("OCR_GPU", default=False, cast=bool)  # Use GPU if available
 STREAM_RECONNECT_ATTEMPTS = 3
 STREAM_TIMEOUT = 10  # seconds
 
-# ==============================================================================
-# LIVE STREAMING DATA STORAGE (SEPARATE FROM VIDEO ANALYSIS)
-# ==============================================================================
-
-# Streaming detection data (JSON files) - SEPARATE from analysis
-STREAMING_DATA_DIR = BASE_DIR / "media" / "datos streaming"
-
-# Streaming vehicle images with detected plates - SEPARATE from analysis
-STREAMING_PLACAS_DIR = BASE_DIR / "media" / "Placas Streaming"
-
-# Streaming vehicle images without plates (rejected) - SEPARATE from analysis
-STREAMING_ROI_DIR = BASE_DIR / "media" / "ROI YOLO Streaming"
-
 # Frontend URL for email links
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5174")
 LOGO_URL = os.getenv("LOGO_URL", "https://via.placeholder.com/80")
-
-# ==============================================================================
-# PLATE DETECTION CONFIGURATION
-# ==============================================================================
-# Habilitar/deshabilitar detección de placas durante análisis de video
-ENABLE_PLATE_DETECTION = config("ENABLE_PLATE_DETECTION", default=False, cast=bool)
-
-# Roboflow API Configuration (opcional - mejora precisión con IA)
-ROBOFLOW_API_KEY = config("ROBOFLOW_API_KEY", default=None)
-ROBOFLOW_PLATE_MODEL = config(
-    "ROBOFLOW_PLATE_MODEL", default="license-plate-recognition-rxg4e/4"
-)
 
 # ============================================================================
 # CUSTOM USER MODEL CONFIGURATION
@@ -600,7 +559,6 @@ try:
 except Exception as e:
     print(f"⚠️ Firebase Admin SDK no pudo inicializarse: {e}")
     print("   Las notificaciones push no estarán disponibles")
-FORECAST_MODELS_PATH = "forecast_models"
 
 # ============================================================================
 # DETECCIÓN DE PLACAS VEHICULARES (FASE 1)
@@ -612,25 +570,3 @@ PLATE_DETECTION_METHOD = config('PLATE_DETECTION_METHOD', default='haarcascade')
 # Roboflow API para detección de placas con IA (mejor que Haarcascade)
 ROBOFLOW_API_KEY = config('ROBOFLOW_API_KEY', default=None)
 ROBOFLOW_PLATE_MODEL = config('ROBOFLOW_PLATE_MODEL', default='license-plate-recognition-rxg4e/4')
-
-# ============================================================================
-# AWS S3 LIVE MONITORING CONFIGURATION
-# ============================================================================
-# Configuración para grabaciones de monitoreo en tiempo real
-AWS_LIVE_MONITORING_ACCESS_KEY_ID = config('AWS_LIVE_MONITORING_ACCESS_KEY_ID', default=None)
-AWS_LIVE_MONITORING_SECRET_ACCESS_KEY = config('AWS_LIVE_MONITORING_SECRET_ACCESS_KEY', default=None)
-AWS_LIVE_MONITORING_BUCKET_NAME = config('AWS_LIVE_MONITORING_BUCKET_NAME', default='trafismart-live-monitoring')
-AWS_LIVE_MONITORING_REGION_NAME = config('AWS_LIVE_MONITORING_REGION_NAME', default='us-east-1')
-
-# Configuración de streaming en tiempo real
-STREAMING_FPS = config('STREAMING_FPS', default=30, cast=int)
-STREAMING_JPEG_QUALITY = config('STREAMING_JPEG_QUALITY', default=85, cast=int)
-RECORDING_SEGMENT_MINUTES = config('RECORDING_SEGMENT_MINUTES', default=60, cast=int)
-
-# Redis para Django Channels (WebSocket)
-REDIS_HOST = config('REDIS_HOST', default='127.0.0.1')
-REDIS_PORT = config('REDIS_PORT', default=6379, cast=int)
-
-# Directorio temporal para grabaciones antes de subir a S3
-TEMP_RECORDINGS_DIR = BASE_DIR / 'temp_recordings'
-TEMP_RECORDINGS_DIR.mkdir(exist_ok=True)

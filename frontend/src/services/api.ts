@@ -30,9 +30,9 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    // ⚠️ NO intentar refresh en estos casos:
-    // 1. Endpoints de autenticación (login/register)
-    // 2. Endpoint de logout
+    // Do NOT attempt token refresh for these cases:
+    // 1. Authentication endpoints (login/register)
+    // 2. Logout endpoint
     const isAuthEndpoint = original.url?.includes('/api/auth/login') || 
                           original.url?.includes('/api/auth/register') ||
                           original.url?.includes('/api/auth/logout');

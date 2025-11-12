@@ -39,9 +39,18 @@ def generate_video_thumbnail(video_path: str, output_path: Optional[str] = None)
             return None
         
         # Generar nombre de salida si no se proporcionó
+        from django.conf import settings
+        relative_path = None
+        
         if not output_path:
             base_name = os.path.splitext(os.path.basename(video_path))[0]
-            output_path = f"media/thumbnails/{base_name}_thumb.jpg"
+            # Ruta relativa dentro de MEDIA_ROOT (para guardar en BD)
+            relative_path = f"thumbnails/{base_name}_thumb.jpg"
+            # Ruta completa para guardar archivo
+            output_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+        else:
+            # Si se proporcionó output_path completo, calcular relativo
+            relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
         
         # Crear directorio si no existe
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -51,7 +60,8 @@ def generate_video_thumbnail(video_path: str, output_path: Optional[str] = None)
         
         if success:
             print(f"✅ Thumbnail generado: {output_path}")
-            return output_path
+            # Retornar ruta relativa para Django (sin MEDIA_ROOT)
+            return relative_path
         else:
             print(f"❌ Error al guardar thumbnail")
             return None

@@ -9,7 +9,7 @@ import numpy as np
 from typing import Dict, List, Optional, Callable, Tuple
 from pathlib import Path
 from datetime import datetime
-from ultralytics import YOLO
+from ultralytics.yolo.engine.model import YOLO
 import torch
 from django.conf import settings
 
@@ -460,4 +460,125 @@ class VideoProcessor:
                 "bicycle": 0,
                 "other": 0,
             },
+        }
+        
+
+    @staticmethod
+    def process_frame_detection(
+        frame: np.ndarray,
+        confidence_threshold: float = 0.25,
+        classes: Optional[List[str]] = None
+    ) -> Dict:
+        """
+        Método estático para procesar un frame individual con detección YOLO
+        Usado para live monitoring sin tracking
+        
+        Args:
+            frame: Frame BGR de OpenCV
+            confidence_threshold: Umbral de confianza (default: 0.25)
+            classes: Lista de clases a detectar (default: todas las clases YOLO)
+        
+        Returns:
+            Dict con {
+                'detections': List[Dict],
+                'annotated_frame': np.ndarray
+            }
+        """
+        # Cargar modelo (se cachea automáticamente)
+        model_path = str(settings.YOLO_MODEL_PATH)
+        model = YOLO(model_path)
+        
+        # Definir clases permitidas - SOLO VEHÍCULOS
+        vehicle_classes = {
+            2: "car",
+            3: "motorcycle", 
+            5: "bus",
+            7: "truck",
+            1: "bicycle"
+        }
+        
+        # Ejecutar detección
+        results = model(frame, conf=confidence_threshold, verbose=False)
+        
+        detections = []
+        annotated_frame = frame.copy()
+        
+        # Colores por tipo de vehículo
+        colors = {
+            "car": (0, 255, 0),      # Verde
+            "truck": (0, 0, 255),    # Rojo
+            "motorcycle": (255, 0, 0), # Azul
+            "bus": (255, 255, 0),    # Cyan
+            "bicycle": (255, 0, 255), # Magenta
+        }
+        
+        for result in results:
+            boxes = result.boxes
+            
+            for box in boxes:
+                class_id = int(box.cls[0])
+                
+                # Filtrar por clases permitidas
+                if class_id in vehicle_classes:
+                    class_name = vehicle_classes[class_id]
+                    
+                    # Filtrar por lista de clases si se especificó
+                    if classes and class_name not in classes:
+                        continue
+                    
+                    # Obtener bounding box
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    confidence = float(box.conf[0])
+                    
+                    # Agregar detección
+                    detections.append({
+                        'class': class_name,
+                        'confidence': confidence,
+                        'bbox': [int(x1), int(y1), int(x2), int(y2)]
+                    })
+                    
+                    # Dibujar en el frame
+                    color = colors.get(class_name, (128, 128, 128))
+                    
+                    # Bounding box
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(x1), int(y1)),
+                        (int(x2), int(y2)),
+                        color,
+                        2
+                    )
+                    
+                    # Label con fondo
+                    label = f"{class_name} {confidence:.2f}"
+                    label_size, _ = cv2.getTextSize(
+                        label,
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        2
+                    )
+                    
+                    # Fondo del label
+                    cv2.rectangle(
+                        annotated_frame,
+                        (int(x1), int(y1) - label_size[1] - 10),
+                        (int(x1) + label_size[0], int(y1)),
+                        color,
+                        -1
+                    )
+                    
+                    # Texto del label
+                    cv2.putText(
+                        annotated_frame,
+                        label,
+                        (int(x1), int(y1) - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (255, 255, 255),
+                        2
+                    )
+        
+        return {
+            'detections': detections,
+            'annotated_frame': annotated_frame
         }

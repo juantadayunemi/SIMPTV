@@ -1,5 +1,11 @@
+import os
 import holidays as pyholidays
 import pandas as pd
+
+# Configurar región por defecto ANTES de importar translators
+# Esto evita que intente conectarse a Internet para detectar la región
+os.environ["translators_default_region"] = "EN"
+
 import translators as ts
 from functools import lru_cache
 

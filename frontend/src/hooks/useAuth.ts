@@ -54,7 +54,7 @@ export const useAuth = () => {
         error: null,
       });
     } catch (error) {
-      console.error('❌ Auth check failed:', error);
+      console.error('Auth check failed:', error);
       authService.logout();
       setState({
         user: null,

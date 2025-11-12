@@ -257,3 +257,4 @@ def get_frame_quality_analyzer():
             min_box_area=5000  # Área mínima 5000px²
         )
     return _frame_analyzer_instance
+

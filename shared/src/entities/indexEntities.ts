@@ -17,3 +17,6 @@ export * from './notificationEntities';
 
 // ============= PREDICTION ENTITIES =============
 export * from './predictionEntities';
+
+// ============= STREAMING ENTITIES =============
+export * from './streamingEntities';
