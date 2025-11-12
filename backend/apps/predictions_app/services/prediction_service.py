@@ -272,23 +272,7 @@ def get_bottleneck_traffic(params):
             }
         )
 
-        datos = [
-            {
-                "ds": "2025-11-11 22:50:00",
-                "yhat_count": 18.555146343120015,
-                "yhat_speed": 73.52243285129268,
-                "IC": 0.19,
-                "level": "Embotellamiento",
-            },
-            {
-                "ds": "2025-11-11 23:10:00",
-                "yhat_count": 22.531889345204668,
-                "yhat_speed": 72.3796040614809,
-                "IC": 0.26,
-                "level": "Embotellamiento",
-            },
-        ]
-    return datos
+    return results
 
 
 def get_level_prediction(params):
