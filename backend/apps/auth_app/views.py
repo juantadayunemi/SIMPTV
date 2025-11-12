@@ -180,10 +180,12 @@ class ConfirmEmailView(APIView):
                 user = token.user
                 user.emailConfirmed = True
                 user.isActive = True
-                user.save()
+                user.save(update_fields=["emailConfirmed", "isActive", "updatedAt"])
 
                 # Mark token as used
                 token.mark_as_used()
+
+                print(f"✅ Email confirmado exitosamente: {user.email}")
 
                 # Send welcome email
                 try:
@@ -312,11 +314,23 @@ class LoginView(APIView):
                 )
 
             if not user.emailConfirmed:
+                # Reenviar email de confirmación automáticamente
+                try:
+                    token = generate_confirmation_token(user)
+                    email_sent = send_confirmation_email(user, token)
+                    print(
+                        f"ℹ️ Login intento sin confirmar [{user.email}]: Email reenviado={email_sent}"
+                    )
+                except Exception as e:
+                    print(f"⚠️ Error reenviando email [{user.email}]: {str(e)}")
+                    email_sent = False
+
                 return Response(
                     {
-                        "error": "Tu cuenta aún no ha sido activada. Por favor revisa tu correo para confirmarla.",
+                        "error": "Tu cuenta aún no ha sido activada. Hemos enviado un nuevo enlace de confirmación a tu correo.",
                         "emailConfirmed": False,
                         "email": user.email,
+                        "emailSent": email_sent,
                         "code": "EMAIL_NOT_CONFIRMED",
                     },
                     status=status.HTTP_403_FORBIDDEN,
@@ -484,13 +498,24 @@ class ResetPasswordView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                # Update user password
+                # Update user password and confirm email
                 user = token.user
                 user.passwordHash = make_password(new_password)
-                user.save()
+                user.emailConfirmed = True  # Confirmar email al resetear contraseña
+                user.isActive = True  # Asegurar que la cuenta esté activa
+                user.save(
+                    update_fields=[
+                        "passwordHash",
+                        "emailConfirmed",
+                        "isActive",
+                        "updatedAt",
+                    ]
+                )
 
                 # Mark token as used
                 token.mark_as_used()
+
+                print(f"✅ Contraseña reseteada y email confirmado: {user.email}")
 
                 return Response(
                     {

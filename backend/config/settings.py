@@ -438,6 +438,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.predictions_app.tasks.run_all_bottleneck_schedulers",
         "schedule": crontab(hour=11, minute=30),
     },
+    # Limpieza de usuarios no verificados (cada 5 minutos)
+    "cleanup-unverified-users": {
+        "task": "apps.auth_app.tasks.cleanup_unverified_users_task",
+        "schedule": crontab(minute="*/5"),  # Cada 5 minutos
+    },
 }
 
 
