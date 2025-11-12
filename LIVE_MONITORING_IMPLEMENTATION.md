@@ -1,75 +1,75 @@
-# 🎥 SISTEMA DE MONITOREO EN VIVO - IMPLEMENTACIÓN COMPLETA
+﻿# ­ƒÄÑ SISTEMA DE MONITOREO EN VIVO - IMPLEMENTACI├ôN COMPLETA
 
-**Estado:** ✅ **COMPLETADO AL 100%**  
+**Estado:** Ô£à **COMPLETADO AL 100%**  
 **Fecha:** 21 de Enero 2025  
 **Archivos Creados/Modificados:** 30 archivos
 
 ---
 
-## 📋 RESUMEN EJECUTIVO
+## ­ƒôï RESUMEN EJECUTIVO
 
 Se ha implementado exitosamente un sistema completo de monitoreo en tiempo real con:
-- ✅ Transmisión en vivo de cámaras RTSP
-- ✅ Detección de vehículos con YOLO en tiempo real
-- ✅ Visualización de bounding boxes sobre frames
-- ✅ Grabación de video local con subida a AWS S3
-- ✅ Control manual de inicio/parada/guardado
-- ✅ WebSocket para streaming de 20-30 FPS
-- ✅ Interfaz web moderna y responsive
+- Ô£à Transmisi├│n en vivo de c├ímaras RTSP
+- Ô£à Detecci├│n de veh├¡culos con YOLO en tiempo real
+- Ô£à Visualizaci├│n de bounding boxes sobre frames
+- Ô£à Grabaci├│n de video local con subida a AWS S3
+- Ô£à Control manual de inicio/parada/guardado
+- Ô£à WebSocket para streaming de 20-30 FPS
+- Ô£à Interfaz web moderna y responsive
 
 ---
 
-## 🏗️ ARQUITECTURA IMPLEMENTADA
+## ­ƒÅù´©Å ARQUITECTURA IMPLEMENTADA
 
 ### Backend (Django + Channels)
 
 ```
 apps/streaming/
-├── models.py                 # Camera y Recording (JSON-based)
-├── serializers.py            # DRF Serializers
-├── views.py                  # REST API endpoints
-├── consumers.py              # WebSocket consumer
-├── routing.py                # WebSocket URL patterns
-├── urls.py                   # REST URL patterns
-└── services/
-    ├── s3_service.py         # AWS S3 client wrapper
-    ├── recording_manager.py  # Video recording + S3 upload
-    ├── yolo_processor.py     # YOLO detection + frame encoding
-    └── streaming_service.py  # Orchestrator principal
+Ôö£ÔöÇÔöÇ models.py                 # Camera y Recording (JSON-based)
+Ôö£ÔöÇÔöÇ serializers.py            # DRF Serializers
+Ôö£ÔöÇÔöÇ views.py                  # REST API endpoints
+Ôö£ÔöÇÔöÇ consumers.py              # WebSocket consumer
+Ôö£ÔöÇÔöÇ routing.py                # WebSocket URL patterns
+Ôö£ÔöÇÔöÇ urls.py                   # REST URL patterns
+ÔööÔöÇÔöÇ services/
+    Ôö£ÔöÇÔöÇ s3_service.py         # AWS S3 client wrapper
+    Ôö£ÔöÇÔöÇ recording_manager.py  # Video recording + S3 upload
+    Ôö£ÔöÇÔöÇ yolo_processor.py     # YOLO detection + frame encoding
+    ÔööÔöÇÔöÇ streaming_service.py  # Orchestrator principal
 ```
 
 ### Frontend (React + TypeScript)
 
 ```
 frontend/src/
-├── services/
-│   └── streamingService.js   # API client
-├── hooks/
-│   └── useWebSocket.js       # Custom WebSocket hook
-└── pages/monitoring/
-    ├── LiveMonitoring.tsx    # Página principal de monitoreo
-    └── RecordingsLibrary.tsx # Biblioteca de grabaciones
+Ôö£ÔöÇÔöÇ services/
+Ôöé   ÔööÔöÇÔöÇ streamingService.js   # API client
+Ôö£ÔöÇÔöÇ hooks/
+Ôöé   ÔööÔöÇÔöÇ useWebSocket.js       # Custom WebSocket hook
+ÔööÔöÇÔöÇ pages/monitoring/
+    Ôö£ÔöÇÔöÇ LiveMonitoring.tsx    # P├ígina principal de monitoreo
+    ÔööÔöÇÔöÇ RecordingsLibrary.tsx # Biblioteca de grabaciones
 ```
 
 ---
 
-## 🔌 API ENDPOINTS IMPLEMENTADOS
+## ­ƒöî API ENDPOINTS IMPLEMENTADOS
 
 ### REST API (http://localhost:8001/api/streaming/)
 
-#### Cámaras
-- `GET /cameras/` - Listar todas las cámaras
-- `POST /cameras/create/` - Crear nueva cámara
-- `GET /cameras/{camera_id}/` - Obtener detalles de cámara
+#### C├ímaras
+- `GET /cameras/` - Listar todas las c├ímaras
+- `POST /cameras/create/` - Crear nueva c├ímara
+- `GET /cameras/{camera_id}/` - Obtener detalles de c├ímara
 
 #### Control de Streaming
-- `POST /stream/start/` - Iniciar transmisión
-- `POST /stream/stop/` - Detener y guardar grabación
-- `GET /stream/status/{camera_id}/` - Obtener estadísticas
+- `POST /stream/start/` - Iniciar transmisi├│n
+- `POST /stream/stop/` - Detener y guardar grabaci├│n
+- `GET /stream/status/{camera_id}/` - Obtener estad├¡sticas
 
 #### Grabaciones
-- `GET /recordings/` - Listar grabaciones (filtro opcional por cámara)
-- `GET /recordings/{recording_id}/` - Obtener detalles de grabación
+- `GET /recordings/` - Listar grabaciones (filtro opcional por c├ímara)
+- `GET /recordings/{recording_id}/` - Obtener detalles de grabaci├│n
 
 #### Sistema
 - `GET /system/active-streams/` - Listar streams activos
@@ -99,7 +99,7 @@ frontend/src/
 
 ---
 
-## ⚙️ CONFIGURACIÓN NECESARIA
+## ÔÜÖ´©Å CONFIGURACI├ôN NECESARIA
 
 ### 1. Variables de Entorno (.env)
 
@@ -171,22 +171,22 @@ Ya actualizado en `backend/config/urls.py`:
 
 ---
 
-## 🚀 PASOS PARA EJECUTAR
+## ­ƒÜÇ PASOS PARA EJECUTAR
 
-### 1. Asegurarse de que Redis esté corriendo
+### 1. Asegurarse de que Redis est├® corriendo
 
 ```powershell
-# Verificar si Redis está corriendo
+# Verificar si Redis est├í corriendo
 redis-cli ping
 # Debe responder: PONG
 ```
 
-Si no está corriendo, iniciar Redis (Windows):
+Si no est├í corriendo, iniciar Redis (Windows):
 ```powershell
 redis-server
 ```
 
-### 2. Crear cámara de prueba (JSON)
+### 2. Crear c├ímara de prueba (JSON)
 
 Crear archivo `backend/data/cameras.json`:
 
@@ -195,7 +195,7 @@ Crear archivo `backend/data/cameras.json`:
   "cameras": [
     {
       "camera_id": "CAM001",
-      "name": "Cámara Principal",
+      "name": "C├ímara Principal",
       "rtsp_url": "rtsp://192.168.1.100:554/stream",
       "location": "Entrada Principal",
       "is_active": true,
@@ -213,9 +213,9 @@ python manage.py runserver 0.0.0.0:8001
 ```
 
 Verifica que veas en consola:
-- ✅ `apps.streaming` en INSTALLED_APPS
-- ✅ Redis conectado
-- ✅ WebSocket routing cargado
+- Ô£à `apps.streaming` en INSTALLED_APPS
+- Ô£à Redis conectado
+- Ô£à WebSocket routing cargado
 
 ### 4. Iniciar Frontend
 
@@ -232,59 +232,59 @@ Navega a:
 
 ---
 
-## 🎮 FLUJO DE USO
+## ­ƒÄ« FLUJO DE USO
 
 ### Escenario Completo
 
 1. **Acceder a Monitoreo en Vivo**
-   - Ir a sidebar → "Monitoreo en Vivo"
+   - Ir a sidebar ÔåÆ "Monitoreo en Vivo"
 
-2. **Seleccionar Cámara**
-   - Elegir cámara del dropdown (ej: CAM001)
+2. **Seleccionar C├ímara**
+   - Elegir c├ímara del dropdown (ej: CAM001)
 
 3. **Iniciar Stream**
-   - Clic en botón "Iniciar" (verde)
+   - Clic en bot├│n "Iniciar" (verde)
    - Backend conecta a RTSP
    - WebSocket comienza a enviar frames
-   - YOLO detecta vehículos en tiempo real
+   - YOLO detecta veh├¡culos en tiempo real
    - Bounding boxes visibles en video
 
 4. **Monitorear en Tiempo Real**
    - Ver stream en vivo (20-30 FPS)
-   - Panel derecho muestra estadísticas:
+   - Panel derecho muestra estad├¡sticas:
      - Frames procesados
      - Detecciones totales
      - Tiempo transcurrido
      - Recording ID
    - Detecciones actuales listadas con confianza
 
-5. **Guardar Grabación**
-   - Clic en botón "Guardar" (azul)
+5. **Guardar Grabaci├│n**
+   - Clic en bot├│n "Guardar" (azul)
    - Backend detiene stream
    - Video se sube a AWS S3: `trafismart-live-monitoring`
    - Metadata se guarda en `backend/data/recordings.json`
    - Video local se elimina tras subida exitosa
 
 6. **Ver Grabaciones**
-   - Ir a sidebar → "Grabaciones"
+   - Ir a sidebar ÔåÆ "Grabaciones"
    - Lista de todas las grabaciones
-   - Información: fecha, duración, tamaño, detecciones
+   - Informaci├│n: fecha, duraci├│n, tama├▒o, detecciones
    - Clic en "Descargar" abre URL de S3
 
 7. **Reconectar (si hay error)**
-   - Clic en botón "Reconectar" (gris)
-   - Recarga la página
+   - Clic en bot├│n "Reconectar" (gris)
+   - Recarga la p├ígina
 
 ---
 
-## 📊 DATOS ALMACENADOS
+## ­ƒôè DATOS ALMACENADOS
 
-### Estructura de Cámara (cameras.json)
+### Estructura de C├ímara (cameras.json)
 
 ```json
 {
   "camera_id": "CAM001",
-  "name": "Cámara Principal",
+  "name": "C├ímara Principal",
   "rtsp_url": "rtsp://192.168.1.100:554/stream",
   "location": "Entrada Principal",
   "is_active": true,
@@ -292,7 +292,7 @@ Navega a:
 }
 ```
 
-### Estructura de Grabación (recordings.json)
+### Estructura de Grabaci├│n (recordings.json)
 
 ```json
 {
@@ -312,22 +312,22 @@ Navega a:
 
 ```
 trafismart-live-monitoring/
-└── recordings/
-    └── 2025/
-        └── 01/
-            └── 21/
-                └── CAM001_20250121_143000_a1b2c3d4.mp4
+ÔööÔöÇÔöÇ recordings/
+    ÔööÔöÇÔöÇ 2025/
+        ÔööÔöÇÔöÇ 01/
+            ÔööÔöÇÔöÇ 21/
+                ÔööÔöÇÔöÇ CAM001_20250121_143000_a1b2c3d4.mp4
 ```
 
 ---
 
-## 🔧 TROUBLESHOOTING
+## ­ƒöº TROUBLESHOOTING
 
 ### Problema 1: "WebSocket connection failed"
 
-**Causa:** Redis no está corriendo o Channels mal configurado
+**Causa:** Redis no est├í corriendo o Channels mal configurado
 
-**Solución:**
+**Soluci├│n:**
 ```powershell
 redis-cli ping  # Debe responder PONG
 redis-server    # Si no responde, iniciar Redis
@@ -335,19 +335,19 @@ redis-server    # Si no responde, iniciar Redis
 
 ### Problema 2: "Failed to start stream"
 
-**Causa:** URL RTSP inválida o cámara no alcanzable
+**Causa:** URL RTSP inv├ílida o c├ímara no alcanzable
 
-**Solución:**
+**Soluci├│n:**
 ```powershell
-# Verificar conectividad a cámara
+# Verificar conectividad a c├ímara
 ffprobe -v error rtsp://192.168.1.100:554/stream
 ```
 
 ### Problema 3: "S3 upload failed"
 
-**Causa:** Credenciales AWS inválidas o bucket no existe
+**Causa:** Credenciales AWS inv├ílidas o bucket no existe
 
-**Solución:**
+**Soluci├│n:**
 ```powershell
 # Verificar bucket
 aws s3 ls s3://trafismart-live-monitoring --region us-east-1
@@ -360,7 +360,7 @@ aws s3 mb s3://trafismart-live-monitoring --region us-east-1
 
 **Causa:** YOLO model path incorrecto
 
-**Solución:**
+**Soluci├│n:**
 ```python
 # Verificar en settings.py
 YOLO_MODEL_PATH = BASE_DIR / "models" / "yolov8n.pt"
@@ -371,9 +371,9 @@ ls backend/models/yolov8n.pt
 
 ### Problema 5: "Camera dropdown empty"
 
-**Causa:** Archivo cameras.json no existe o está vacío
+**Causa:** Archivo cameras.json no existe o est├í vac├¡o
 
-**Solución:**
+**Soluci├│n:**
 ```powershell
 # Crear archivo manualmente
 echo '{"cameras": []}' > backend/data/cameras.json
@@ -381,12 +381,12 @@ echo '{"cameras": []}' > backend/data/cameras.json
 
 ---
 
-## 🧪 TESTING RÁPIDO
+## ­ƒº¬ TESTING R├üPIDO
 
 ### Test 1: API REST
 
 ```powershell
-# Listar cámaras
+# Listar c├ímaras
 curl http://localhost:8001/api/streaming/cameras/ -H "Authorization: Bearer YOUR_TOKEN"
 
 # Iniciar stream
@@ -407,88 +407,88 @@ curl -X POST http://localhost:8001/api/streaming/stream/stop/ \
 ```javascript
 const ws = new WebSocket('ws://localhost:8001/ws/live-stream/CAM001/');
 
-ws.onopen = () => console.log('✅ WebSocket connected');
+ws.onopen = () => console.log('Ô£à WebSocket connected');
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  console.log('📨 Message:', data.type, data);
+  console.log('­ƒô¿ Message:', data.type, data);
 };
-ws.onerror = (err) => console.error('❌ Error:', err);
-ws.onclose = () => console.log('🔌 WebSocket closed');
+ws.onerror = (err) => console.error('ÔØî Error:', err);
+ws.onclose = () => console.log('­ƒöî WebSocket closed');
 ```
 
 ---
 
-## 📝 NOTAS IMPORTANTES
+## ­ƒôØ NOTAS IMPORTANTES
 
-### ⚠️ Limitaciones Actuales
+### ÔÜá´©Å Limitaciones Actuales
 
-1. **No hay base de datos:** Cámaras y grabaciones se guardan en JSON
+1. **No hay base de datos:** C├ímaras y grabaciones se guardan en JSON
    - Beneficio: No requiere migraciones
-   - Limitación: No escalable a producción
+   - Limitaci├│n: No escalable a producci├│n
 
-2. **Sin autenticación en WebSocket:** Solo REST API tiene auth
+2. **Sin autenticaci├│n en WebSocket:** Solo REST API tiene auth
    - Mejora futura: Implementar token en WebSocket handshake
 
 3. **Detections_count en recording siempre 0:** Se puede mejorar
-   - Razón: Se necesita agregar contador en `recording_manager.py`
+   - Raz├│n: Se necesita agregar contador en `recording_manager.py`
 
-### ✅ Puntos Fuertes
+### Ô£à Puntos Fuertes
 
-1. **Arquitectura sólida:** Separación clara de responsabilidades
+1. **Arquitectura s├│lida:** Separaci├│n clara de responsabilidades
 2. **Reusabilidad:** Los servicios YOLO del `traffic_app` se reusan
 3. **UI moderna:** Interfaz intuitiva y responsive
 4. **AWS S3 integrado:** Almacenamiento escalable
 5. **Threading eficiente:** Procesamiento paralelo no bloquea
 
-### 🚀 Mejoras Futuras Sugeridas
+### ­ƒÜÇ Mejoras Futuras Sugeridas
 
-1. **Migrar a base de datos:** PostgreSQL para producción
-2. **Agregar autenticación WebSocket:** JWT token validation
+1. **Migrar a base de datos:** PostgreSQL para producci├│n
+2. **Agregar autenticaci├│n WebSocket:** JWT token validation
 3. **Implementar HLS streaming:** Para mejor escalabilidad
-4. **Añadir notificaciones:** Alertas cuando detecta vehículos específicos
-5. **Dashboard de estadísticas:** Gráficos de detecciones por hora/día
-6. **Soporte multi-cámara simultáneo:** Grid view de múltiples streams
+4. **A├▒adir notificaciones:** Alertas cuando detecta veh├¡culos espec├¡ficos
+5. **Dashboard de estad├¡sticas:** Gr├íficos de detecciones por hora/d├¡a
+6. **Soporte multi-c├ímara simult├íneo:** Grid view de m├║ltiples streams
 7. **Thumbnail generation:** Preview de grabaciones en S3
-8. **Búsqueda y filtros avanzados:** Por fecha, tipo vehículo, ubicación
+8. **B├║squeda y filtros avanzados:** Por fecha, tipo veh├¡culo, ubicaci├│n
 
 ---
 
-## 📞 CONTACTO Y SOPORTE
+## ­ƒô× CONTACTO Y SOPORTE
 
 Si encuentras errores o necesitas ayuda:
 
 1. Revisa la consola del navegador (F12) para errores JS
 2. Revisa logs del backend en terminal
-3. Verifica que Redis esté corriendo: `redis-cli ping`
+3. Verifica que Redis est├® corriendo: `redis-cli ping`
 4. Comprueba credenciales AWS: `aws s3 ls`
 5. Valida modelo YOLO: `ls backend/models/yolov8n.pt`
 
 ---
 
-## ✅ CHECKLIST DE VERIFICACIÓN
+## Ô£à CHECKLIST DE VERIFICACI├ôN
 
 Antes de probar el sistema, confirma:
 
-- [x] Redis está corriendo (`redis-cli ping`)
+- [x] Redis est├í corriendo (`redis-cli ping`)
 - [x] Backend corriendo en puerto 8001
 - [x] Frontend corriendo en puerto 5173
 - [x] Archivo `.env` tiene credenciales AWS
 - [x] Bucket S3 existe: `trafismart-live-monitoring`
 - [x] Modelo YOLO existe: `backend/models/yolov8n.pt`
-- [x] Archivo `cameras.json` existe con al menos 1 cámara
+- [x] Archivo `cameras.json` existe con al menos 1 c├ímara
 - [x] Usuario autenticado en frontend
-- [x] URL RTSP de cámara es válida
+- [x] URL RTSP de c├ímara es v├ílida
 
 ---
 
-## 🎉 CONCLUSIÓN
+## ­ƒÄë CONCLUSI├ôN
 
 Sistema de monitoreo en vivo **completamente funcional** con:
-- ✅ 19 archivos backend creados/modificados
-- ✅ 11 archivos frontend creados/modificados
-- ✅ **30 archivos totales**
-- ✅ Arquitectura WebSocket + YOLO + AWS S3
-- ✅ UI moderna y responsive
-- ✅ **100% listo para producción** (con migraciones sugeridas)
+- Ô£à 19 archivos backend creados/modificados
+- Ô£à 11 archivos frontend creados/modificados
+- Ô£à **30 archivos totales**
+- Ô£à Arquitectura WebSocket + YOLO + AWS S3
+- Ô£à UI moderna y responsive
+- Ô£à **100% listo para producci├│n** (con migraciones sugeridas)
 
-**Todo funcionando sin romper código existente** 🚀
+**Todo funcionando sin romper c├│digo existente** ­ƒÜÇ
