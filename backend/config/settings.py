@@ -166,7 +166,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "es-es"
 TIME_ZONE = "America/Guayaquil"
 USE_I18N = True
-USE_TZ = True
+USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -469,7 +469,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "run-all-bottleneck-schedulers": {
         "task": "apps.predictions_app.tasks.run_all_bottleneck_schedulers",
-        "schedule": crontab(hour=11, minute=30),
+        "schedule": crontab(hour="11", minute="30"),
     },
     # Limpieza de usuarios no verificados (cada 5 minutos)
     "cleanup-unverified-users": {

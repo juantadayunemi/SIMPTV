@@ -4,7 +4,7 @@ import datetime
 from prophet import Prophet
 
 
-def train_prophet_models(holidays: pd.DataFrame, df: pd.DataFrame) -> pd.DataFrame:
+def train_prophet_models(holidays: pd.DataFrame, df: pd.DataFrame) -> Prophet:
     model = Prophet(holidays=holidays)
     model.fit(df)
     return model
@@ -34,14 +34,14 @@ def get_forecast(
 
 
 
-def get_forecast_by_date(forecast, target_datetime: datetime) -> pd.DataFrame:
+def get_forecast_by_date(forecast, target_datetime: datetime.datetime) -> pd.DataFrame:
     """
     Devuelve la fila del DataFrame de predicciones correspondiente a la fecha especificada.
     Args:
     forecast : pd.DataFrame
         DataFrame que contiene las predicciones generadas por Prophet,
         con al menos la columna 'ds' (fechas) y 'yhat' (predicción).
-    target_datetime : datetime
+    target_datetime : datetime.datetime
         Fecha específica para la que se desea obtener la predicción.
 
     Return:

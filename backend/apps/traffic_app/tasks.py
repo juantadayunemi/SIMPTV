@@ -166,7 +166,7 @@ def analyze_video_async(self, analysis_id, video_path):
         )  # {track_id: {'bbox': [x,y,w,h], 'type': str, 'frames_missing': int}}
         MAX_FRAMES_MISSING = 10  # Máximo frames sin detectar antes de eliminar track
         IOU_THRESHOLD_TRACKING = 0.3  # IoU mínimo para asociar detección con track
-        SKIP_FRAMES = 3 # Procesar cada 3 frames
+        SKIP_FRAMES = 3  # Procesar cada 3 frames
         IMGSZ = 576  # Resolución de entrada [16:9] (480, 576, 720 )
         CONF_THRESHOLD = 0.5  # Umbral de confianza
         IOU_THRESHOLD = 0.45  # IoU para NMS
@@ -349,8 +349,8 @@ def analyze_video_async(self, analysis_id, video_path):
                     conf = float(box.conf[0])
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
 
-                    class_names = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
-                    vehicle_type = class_names.get(cls, "unknown")
+                    class_names = {2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
+                    vehicle_type = class_names.get(cls, "UNKNOWN")
 
                     bbox = [int(x1), int(y1), int(x2 - x1), int(y2 - y1)]
 
@@ -552,16 +552,16 @@ def analyze_video_async(self, analysis_id, video_path):
 
                 # Contar vehículos por tipo
                 car_count = sum(
-                    1 for v in tracked_vehicles.values() if v["type"] == "car"
+                    1 for v in tracked_vehicles.values() if v["type"] == "CAR"
                 )
                 truck_count = sum(
-                    1 for v in tracked_vehicles.values() if v["type"] == "truck"
+                    1 for v in tracked_vehicles.values() if v["type"] == "TRUCK"
                 )
                 moto_count = sum(
-                    1 for v in tracked_vehicles.values() if v["type"] == "motorcycle"
+                    1 for v in tracked_vehicles.values() if v["type"] == "MOTORCYCLE"
                 )
                 bus_count = sum(
-                    1 for v in tracked_vehicles.values() if v["type"] == "bus"
+                    1 for v in tracked_vehicles.values() if v["type"] == "BUS"
                 )
 
                 # Actualizar base de datos
@@ -990,12 +990,29 @@ def analyze_video_async(self, analysis_id, video_path):
             f"📊 Resumen placas: {platesDetected} detectadas, {platesCaptured} capturadas, {plates_saved_to_db} guardadas en DB"
         )
 
+        # Calcular velocidad promedio del análisis (solo vehículos con velocidad > 0)
+        from decimal import Decimal
+
+        vehicles_with_speed = Vehicle.objects.filter(
+            trafficAnalysisId=analysis_id, avgSpeed__gt=0
+        ).values_list("avgSpeed", flat=True)
+
+        if vehicles_with_speed:
+            analysis_avg_speed = sum(vehicles_with_speed) / len(vehicles_with_speed)
+            logger.info(
+                f"📊 Velocidad promedio calculada: {analysis_avg_speed:.2f} km/h ({len(vehicles_with_speed)} vehículos)"
+            )
+        else:
+            analysis_avg_speed = Decimal("0.0")
+            logger.info("📊 No hay vehículos con velocidad calculada")
+
         # Finalizar análisis
         analysis.processedFrames = frame_count
         analysis.totalFrames = total_frames
         analysis.totalVehicles = saved_vehicles
         analysis.platesDetected = platesDetected
         analysis.platesCaptured = platesCaptured
+        analysis.avgSpeed = Decimal(str(round(float(analysis_avg_speed), 2)))
         analysis.status = "COMPLETED"
         analysis.endedAt = timezone.now()
         analysis.save()

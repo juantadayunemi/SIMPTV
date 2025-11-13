@@ -1,6 +1,6 @@
 from config.celery import app
 from django.core.management.base import BaseCommand
-from apps.predictions_app.models import NotificationTask, NotificationBottleNeck
+from apps.notifications_app.models import NotificationTask, NotificationBottleNeck
         
 class Command(BaseCommand):
     help = "Revoca las tareas de notificaciones programadas para embotellamientos que ya no están activas."

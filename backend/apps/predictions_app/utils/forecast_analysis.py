@@ -28,7 +28,7 @@ def get_total_seasonality(row, columns_name=("weekly", "yearly", "daily")) -> fl
     return seasonality_total
 
 
-def get_previous_forecast(forecast, previous_date, yhat, trend) -> json:
+def get_previous_forecast(forecast, previous_date, yhat, trend) -> json   :
     """
     Calcula la variación de las métricas de pronóstico ('yhat' y 'trend')
     con respecto a una fecha anterior.

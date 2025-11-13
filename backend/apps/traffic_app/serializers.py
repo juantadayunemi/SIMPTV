@@ -4,16 +4,35 @@ Convierten modelos Django a JSON y viceversa
 """
 
 from rest_framework import serializers
+from django.utils import timezone
+import pytz
 from .models import Location, Camera, TrafficAnalysis, Vehicle, VehicleFrame
+
+
+# Timezone de Ecuador
+ECUADOR_TZ = pytz.timezone("America/Guayaquil")
 
 
 class LocationSerializer(serializers.ModelSerializer):
     """Serializer para Location"""
 
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
+
     class Meta:
         model = Location
         fields = "__all__"
         read_only_fields = ("id", "createdAt", "updatedAt")
+
+    def get_createdAt(self, obj):
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
 
 
 class CameraSerializer(serializers.ModelSerializer):
@@ -22,19 +41,39 @@ class CameraSerializer(serializers.ModelSerializer):
     location = LocationSerializer(source="locationId", read_only=True)
     currentLocation = LocationSerializer(source="currentLocationId", read_only=True)
 
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
+
     class Meta:
         model = Camera
         fields = "__all__"
         read_only_fields = ("id", "createdAt", "updatedAt")
 
+    def get_createdAt(self, obj):
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
 
 class VehicleFrameSerializer(serializers.ModelSerializer):
     """Serializer para VehicleFrame"""
+
+    createdAt = serializers.SerializerMethodField()
 
     class Meta:
         model = VehicleFrame
         fields = "__all__"
         read_only_fields = ("id", "createdAt")
+
+    def get_createdAt(self, obj):
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
 
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -44,10 +83,35 @@ class VehicleSerializer(serializers.ModelSerializer):
         many=True, read_only=True, source="vehicleframe_set"
     )
 
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
+    firstSeenAt = serializers.SerializerMethodField()
+    lastSeenAt = serializers.SerializerMethodField()
+
     class Meta:
         model = Vehicle
         fields = "__all__"
         read_only_fields = ("createdAt", "updatedAt")
+
+    def get_createdAt(self, obj):
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_firstSeenAt(self, obj):
+        if obj.firstSeenAt:
+            return obj.firstSeenAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_lastSeenAt(self, obj):
+        if obj.lastSeenAt:
+            return obj.lastSeenAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
 
 
 class TrafficAnalysisSerializer(serializers.ModelSerializer):
@@ -57,10 +121,40 @@ class TrafficAnalysisSerializer(serializers.ModelSerializer):
     location = LocationSerializer(source="locationId", read_only=True)
     vehicles = VehicleSerializer(many=True, read_only=True, source="vehicle_set")
 
+    # Campos de fecha en hora local
+    startedAt = serializers.SerializerMethodField()
+    endedAt = serializers.SerializerMethodField()
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
+
     class Meta:
         model = TrafficAnalysis
         fields = "__all__"
         read_only_fields = ("id", "createdAt", "updatedAt")
+
+    def get_startedAt(self, obj):
+        """Convertir startedAt a hora de Ecuador"""
+        if obj.startedAt:
+            return obj.startedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_endedAt(self, obj):
+        """Convertir endedAt a hora de Ecuador"""
+        if obj.endedAt:
+            return obj.endedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_createdAt(self, obj):
+        """Convertir createdAt a hora de Ecuador"""
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        """Convertir updatedAt a hora de Ecuador"""
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
 
 
 class TrafficAnalysisListSerializer(serializers.ModelSerializer):
@@ -68,6 +162,12 @@ class TrafficAnalysisListSerializer(serializers.ModelSerializer):
 
     camera = CameraSerializer(source="cameraId", read_only=True)
     location = LocationSerializer(source="locationId", read_only=True)
+
+    # Campos de fecha en hora local
+    startedAt = serializers.SerializerMethodField()
+    endedAt = serializers.SerializerMethodField()
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
 
     class Meta:
         model = TrafficAnalysis
@@ -98,6 +198,30 @@ class TrafficAnalysisListSerializer(serializers.ModelSerializer):
             "location",
         )
         read_only_fields = ("id", "createdAt", "updatedAt")
+
+    def get_startedAt(self, obj):
+        """Convertir startedAt a hora de Ecuador"""
+        if obj.startedAt:
+            return obj.startedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_endedAt(self, obj):
+        """Convertir endedAt a hora de Ecuador"""
+        if obj.endedAt:
+            return obj.endedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_createdAt(self, obj):
+        """Convertir createdAt a hora de Ecuador"""
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        """Convertir updatedAt a hora de Ecuador"""
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
 
 
 class CreateTrafficAnalysisSerializer(serializers.Serializer):
@@ -195,6 +319,12 @@ class TrafficAnalysisWithPlatesSerializer(serializers.ModelSerializer):
     detected_plates = DetectedPlateSerializer(many=True, read_only=True)
     plate_stats = serializers.SerializerMethodField()
 
+    # Campos de fecha en hora local
+    startedAt = serializers.SerializerMethodField()
+    endedAt = serializers.SerializerMethodField()
+    createdAt = serializers.SerializerMethodField()
+    updatedAt = serializers.SerializerMethodField()
+
     class Meta:
         model = TrafficAnalysis
         fields = "__all__"
@@ -216,3 +346,27 @@ class TrafficAnalysisWithPlatesSerializer(serializers.ModelSerializer):
                 else 0
             ),
         }
+
+    def get_startedAt(self, obj):
+        """Convertir startedAt a hora de Ecuador"""
+        if obj.startedAt:
+            return obj.startedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_endedAt(self, obj):
+        """Convertir endedAt a hora de Ecuador"""
+        if obj.endedAt:
+            return obj.endedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_createdAt(self, obj):
+        """Convertir createdAt a hora de Ecuador"""
+        if obj.createdAt:
+            return obj.createdAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
+
+    def get_updatedAt(self, obj):
+        """Convertir updatedAt a hora de Ecuador"""
+        if obj.updatedAt:
+            return obj.updatedAt.astimezone(ECUADOR_TZ).isoformat()
+        return None
